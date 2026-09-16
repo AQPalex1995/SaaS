@@ -1,0 +1,107 @@
+# Land Intelligence — Local Infrastructure
+# Ports are non-standard to avoid conflicts with other services (e.g. CAST ERP)
+# PostgreSQL: 5433 (not 5432), Redis: 6380 (not 6379)
+#
+# Default `docker compose up -d` runs ONLY infrastructure (postgres + redis).
+# To also build and run the API + worker containers (local full stack):
+#   docker compose --profile full up -d --build
+#
+# Inside the compose network the app reaches postgres as `postgres:5432` and
+# redis as `redis:6379`. Host ports stay non-standard to protect CAST ERP.
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: land-intel-postgres
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: land_intelligence
+      POSTGRES_USER: land_intel
+      POSTGRES_PASSWORD: land_intel_dev_2024
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./server/src/db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U land_intel -d land_intelligence"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: land-intel-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: land-intel-api
+    restart: unless-stopped
+    ports:
+      - "3001:8080"
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://land_intel:land_intel_dev_2024@postgres:5432/land_intelligence
+      REDIS_URL: redis://redis:6379
+      APP_URL: http://localhost:8787
+      API_URL: http://localhost:3001
+      CORS_ORIGINS: http://localhost:8787,http://127.0.0.1:8787
+      LOG_LEVEL: info
+      STORAGE_PROVIDER: local
+      STORAGE_BUCKET: land-intel-local
+      STORAGE_LOCAL_DIR: ./data/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: land-intel-worker
+    restart: unless-stopped
+    command: ["node", "dist/worker.js"]
+    environment:
+      NODE_ENV: production
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://land_intel:land_intel_dev_2024@postgres:5432/land_intelligence
+      APP_URL: http://localhost:8787
+      API_URL: http://localhost:3001
+      CORS_ORIGINS: http://localhost:8787,http://127.0.0.1:8787
+      LOG_LEVEL: info
+      STORAGE_PROVIDER: local
+      STORAGE_BUCKET: land-intel-local
+      STORAGE_LOCAL_DIR: ./data/storage
+      # Which queues this process consumes (comma-separated).
+      WORKER_QUEUES: scraping,research,geocoding,gis,market,notifications
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node scripts/queue-health.mjs"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  pgdata:
+  redisdata:
