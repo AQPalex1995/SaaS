@@ -19,7 +19,8 @@ Todo pipeline debe ejecutar, en este orden:
 
 - El `PROJECT_EXECUTION_PLAN.md` establece que cada tarea DONE exige un **checkpoint** (ver `AGENTS.md` §2.1): tests + typecheck + build + docs actualizados + commit.
 - El CI local (manual) cumple ese gate: `npm.cmd run typecheck && npm.cmd test && npm.cmd run build` en `server/`, más typecheck raíz.
-- **Estado de git**: el repositorio NO es un repo git todavía (git no instalado en este equipo). El commit del checkpoint queda pendiente hasta instalar git e inicializar el repo. Mientras, el estado se preserva vía `PROJECT_STATUS.md` + `CHANGELOG_AGENTS.md`.
+- **Estado de git**: repositorio inicializado en `main` (commit raíz `dcd6ef3`). Git portable instalado en `D:\SaaS\PortableGit\cmd\git.exe` (NO está en el PATH global); invócalo por ruta completa o agrégalo al PATH por sesión: `$env:Path += ";D:\SaaS\PortableGit\cmd"`.
+- `data/` (perfil de navegador, credenciales, cache), `scratch/`, `.env*` y `node_modules/` están en `.gitignore` — **nunca** forzarlos con `git add -f`.
 
 ## Shape futuro (GitHub Actions)
 
