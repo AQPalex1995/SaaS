@@ -8,6 +8,7 @@ import {
   propertyGeometries,
   researchCases,
   researchTasks,
+  researchResults,
   auditLogs,
 } from '../../db/schema/index.js';
 import { osmConnector } from '../../connectors/implementations/osm.js';
@@ -21,12 +22,22 @@ export interface GeocodingJobData {
   propertyId: string;
 }
 
+export interface GeolocationResultData {
+  lat?: number;
+  lng?: number;
+  district?: string | null;
+  address?: string | null;
+  displayName?: string | null;
+  sourceUrl?: string | null;
+}
+
 /** Mark the (first pending) geolocation task of a property and refresh progress. */
 export async function markGeolocationTask(
   propertyId: string,
   status: TaskStatus,
   error?: string,
-  db: DbLike = getDb(),
+  db: any = getDb(),
+  resultData?: GeolocationResultData,
 ): Promise<void> {
   const rows = await db
     .select({
@@ -48,8 +59,42 @@ export async function markGeolocationTask(
     // left untouched (idempotent re-deliveries of the job).
     if (row.taskStatus !== 'pending' && row.taskStatus !== 'running') continue;
     const completed = status === 'completed';
+
+    let resultReference: string | undefined = undefined;
+    if (completed && resultData && db.insert) {
+      try {
+        const [res] = await db
+          .insert(researchResults)
+          .values({
+            researchTaskId: row.taskId,
+            propertyId,
+            source: 'openstreetmap',
+            sourceUrl: resultData.sourceUrl ?? 'https://nominatim.openstreetmap.org',
+            dataType: 'geolocation',
+            data: {
+              latitude: resultData.lat,
+              longitude: resultData.lng,
+              district: resultData.district,
+              address: resultData.address,
+              displayName: resultData.displayName,
+            },
+            confidence: 'medium',
+            verification: 'verified',
+            parserVersion: 'osm-v1',
+          })
+          .returning({ id: researchResults.id });
+        resultReference = res?.id;
+      } catch (insertErr) {
+        logger.warn(
+          { taskId: row.taskId, err: insertErr },
+          'No se pudo insertar researchResult para geolocalización',
+        );
+      }
+    }
+
     await transitionTask(db, row.taskId, status, {
       error: error && !completed ? error : null,
+      resultReference,
       manualActionDescription:
         status === 'requires_manual_action' ? error ?? null : undefined,
     });
@@ -75,133 +120,155 @@ export async function processGeocodingJob(job: Job<GeocodingJobData>): Promise<v
   if (!propertyId) throw new Error('Job geocoding sin propertyId');
 
   const db = getDb();
-  const propRows = await db
-    .select()
-    .from(properties)
-    .where(eq(properties.id, propertyId))
-    .limit(1);
-  const prop = propRows[0];
-  if (!prop) {
-    logger.warn({ propertyId }, 'Geocoding: propiedad no encontrada, abortando');
-    return;
-  }
 
-  if (prop.latitude && prop.longitude && prop.locationVerification === 'verified') {
-    await markGeolocationTask(propertyId, 'skipped', 'Ya geolocalizada (coordenadas verificadas)');
-    return;
-  }
+  try {
+    const propRows = await db
+      .select()
+      .from(properties)
+      .where(eq(properties.id, propertyId))
+      .limit(1);
+    const prop = propRows[0];
+    if (!prop) {
+      logger.warn({ propertyId }, 'Geocoding: propiedad no encontrada, abortando');
+      return;
+    }
 
-  const query = buildGeocodingQuery(prop);
-  if (!query) {
-    await markGeolocationTask(
-      propertyId,
-      'requires_manual_action',
-      'Sin dirección ni distrito para geolocalizar',
-    );
-    return;
-  }
+    if (prop.latitude && prop.longitude && prop.locationVerification === 'verified') {
+      await markGeolocationTask(propertyId, 'skipped', 'Ya geolocalizada (coordenadas verificadas)');
+      return;
+    }
 
-  const result = await osmConnector.search({ query });
-  const item = result.items[0];
-  if (!item || item.latitude == null || item.longitude == null) {
-    await markGeolocationTask(
-      propertyId,
-      'failed',
-      `Sin resultados en OpenStreetMap para "${query}"`,
-    );
-    return;
-  }
-
-  const lat = Number(item.latitude);
-  const lng = Number(item.longitude);
-  const geom = `SRID=4326;POINT(${lng} ${lat})`;
-  const confirmedDistrict = item.district ? normalizeDistrict(item.district) : prop.district;
-  const pointGeo = geom;
-
-  await db.transaction(async (tx) => {
-    // Lock the property row to serialize concurrent geocoding jobs for the
-    // same property. If another job already geolocated it (e.g. a research
-    // case and the sync both enqueued), skip the inserts to avoid duplicates.
-    const locked = await tx.execute(
-      sql`SELECT latitude, longitude, location_verification FROM properties WHERE id = ${propertyId} FOR UPDATE`,
-    );
-    const lockedRow = locked.rows[0] as
-      | { latitude: string | null; longitude: string | null; location_verification: string | null }
-      | undefined;
-    if (
-      lockedRow &&
-      lockedRow.latitude != null &&
-      lockedRow.longitude != null &&
-      lockedRow.location_verification === 'verified'
-    ) {
+    const query = buildGeocodingQuery(prop);
+    if (!query) {
       await markGeolocationTask(
         propertyId,
-        'skipped',
-        'Ya geolocalizada por otra ejecución',
-        tx as unknown as DbLike,
+        'requires_manual_action',
+        'Sin dirección ni distrito para geolocalizar',
       );
       return;
     }
 
-    await tx
-      .update(properties)
-      .set({
+    const result = await osmConnector.search({ query });
+    const item = result.items[0];
+    if (!item || item.latitude == null || item.longitude == null) {
+      await markGeolocationTask(
+        propertyId,
+        'failed',
+        `Sin resultados en OpenStreetMap para "${query}"`,
+      );
+      return;
+    }
+
+    const lat = Number(item.latitude);
+    const lng = Number(item.longitude);
+    const geom = `SRID=4326;POINT(${lng} ${lat})`;
+    const confirmedDistrict = item.district ? normalizeDistrict(item.district) : prop.district;
+    const pointGeo = geom;
+
+    await db.transaction(async (tx) => {
+      // Lock the property row to serialize concurrent geocoding jobs for the
+      // same property. If another job already geolocated it (e.g. a research
+      // case and the sync both enqueued), skip the inserts to avoid duplicates.
+      const locked = await tx.execute(
+        sql`SELECT latitude, longitude, location_verification FROM properties WHERE id = ${propertyId} FOR UPDATE`,
+      );
+      const lockedRow = locked.rows[0] as
+        | { latitude: string | null; longitude: string | null; location_verification: string | null }
+        | undefined;
+      if (
+        lockedRow &&
+        lockedRow.latitude != null &&
+        lockedRow.longitude != null &&
+        lockedRow.location_verification === 'verified'
+      ) {
+        await markGeolocationTask(
+          propertyId,
+          'skipped',
+          'Ya geolocalizada por otra ejecución',
+          tx as unknown as DbLike,
+        );
+        return;
+      }
+
+      await tx
+        .update(properties)
+        .set({
+          latitude: String(lat),
+          longitude: String(lng),
+          geomPoint: pointGeo,
+          district: confirmedDistrict ?? null,
+          locationSource: 'openstreetmap',
+          locationConfidence: 'medium',
+          locationVerification: 'verified',
+          updatedAt: new Date(),
+        })
+        .where(eq(properties.id, propertyId));
+
+      await tx.insert(propertyLocations).values({
+        propertyId,
+        address: prop.address ?? null,
+        district: confirmedDistrict ?? null,
+        province: 'Arequipa',
+        department: 'Arequipa',
         latitude: String(lat),
         longitude: String(lng),
+        source: 'openstreetmap',
+        sourceUrl: item.sourceUrl ?? null,
+        confidence: 'medium',
+        verification: 'verified',
+        retrievedAt: new Date(),
+        metadata: { displayName: item.title ?? null, query },
+      });
+
+      await tx.insert(propertyGeometries).values({
+        propertyId,
         geomPoint: pointGeo,
-        district: confirmedDistrict ?? null,
-        locationSource: 'openstreetmap',
-        locationConfidence: 'medium',
-        locationVerification: 'verified',
-        updatedAt: new Date(),
-      })
-      .where(eq(properties.id, propertyId));
+        geomType: 'point',
+        source: 'openstreetmap',
+        sourceUrl: item.sourceUrl ?? null,
+        confidence: 'medium',
+        verification: 'verified',
+        retrievedAt: new Date(),
+      });
 
-    await tx.insert(propertyLocations).values({
-      propertyId,
-      address: prop.address ?? null,
-      district: confirmedDistrict ?? null,
-      province: 'Arequipa',
-      department: 'Arequipa',
-      latitude: String(lat),
-      longitude: String(lng),
-      source: 'openstreetmap',
-      sourceUrl: item.sourceUrl ?? null,
-      confidence: 'medium',
-      verification: 'verified',
-      retrievedAt: new Date(),
-      metadata: { displayName: item.title ?? null, query },
+      await tx.insert(auditLogs).values({
+        action: 'task_completed',
+        entityType: 'research_task',
+        propertyId,
+        sourceId: 'openstreetmap',
+        newData: { lat, lng, district: confirmedDistrict },
+        description: `Geolocalización completada vía OpenStreetMap (${query})`,
+      });
+
+      await markGeolocationTask(
+        propertyId,
+        'completed',
+        undefined,
+        tx,
+        {
+          lat,
+          lng,
+          district: confirmedDistrict,
+          address: prop.address,
+          displayName: item.title,
+          sourceUrl: item.sourceUrl,
+        },
+      );
     });
 
-    await tx.insert(propertyGeometries).values({
-      propertyId,
-      geomPoint: pointGeo,
-      geomType: 'point',
-      source: 'openstreetmap',
-      sourceUrl: item.sourceUrl ?? null,
-      confidence: 'medium',
-      verification: 'verified',
-      retrievedAt: new Date(),
-    });
-
-    await tx.insert(auditLogs).values({
-      action: 'task_completed',
-      entityType: 'research_task',
-      propertyId,
-      sourceId: 'openstreetmap',
-      newData: { lat, lng, district: confirmedDistrict },
-      description: `Geolocalización completada vía OpenStreetMap (${query})`,
-    });
-
-    await markGeolocationTask(
-      propertyId,
-      'completed',
-      undefined,
-      tx as unknown as DbLike,
-    );
-  });
-
-  logger.info({ propertyId, lat, lng, district: confirmedDistrict }, 'Propiedad geolocalizada vía OpenStreetMap');
+    logger.info({ propertyId, lat, lng, district: confirmedDistrict }, 'Propiedad geolocalizada vía OpenStreetMap');
+  } catch (err: any) {
+    logger.error({ propertyId, err: err?.message }, 'Error inesperado en job de geocodificación');
+    try {
+      await markGeolocationTask(
+        propertyId,
+        'failed',
+        `Fallo al procesar geolocalización: ${err?.message ?? 'error desconocido'}`,
+      );
+    } catch (markErr) {
+      logger.warn({ propertyId, markErr }, 'No se pudo marcar la tarea de geolocalización como failed');
+    }
+  }
 }
 
 /** Normalize OSM district names to the Scout district list where possible. */

@@ -182,3 +182,55 @@ Reglas de integridad:
   las tareas de un caso están settled, el caso puede terminar
   (`updateCaseProgress`, ver §4).
 - DTO `ResearchTaskDTO` expone `retryCount`, `maxRetries` y `updatedAt`.
+
+---
+
+## 6. Orquestación de la Investigación y Aislamiento de Fallos (Fase 3 / T3.3)
+
+La orquestación de la investigación se centraliza en `server/src/domain/research/orchestrator.ts` (`ResearchOrchestrator`), que coordina la ejecución de las tareas sobre una propiedad y garantiza la recolección de resultados en `research_results`.
+
+```text
+PROPERTY
+   ↓
+ResearchCase
+   ↓
+ResearchTasks
+   ↓
+BullMQ (colas 'research' y 'geocoding')
+   ↓
+Workers / Orchestrator
+   ↓
+ResearchResults
+```
+
+### Principios y Garantías
+
+1. **Aislamiento de Fallos (Fault Isolation)**:
+   - Cada tarea se ejecuta dentro de un bloque protegido (`try/catch` individual).
+   - Si una fuente externa está caída (p. ej. error HTTP 500, timeout, `ECONNREFUSED` o fallo inesperado del conector), la excepción se captura, se registra un log estructurado y la tarea pasa a estado `failed` con su mensaje de error.
+   - **Una fuente caída NO detiene la investigación**: el orquestador continúa ejecutando de inmediato las tareas restantes.
+
+2. **Ejecución Parcial (Partial Execution)**:
+   - Cuando todas las tareas del caso han finalizado su ciclo (`settled`), `updateCaseProgress()` evalúa los resultados:
+     - Si no hay tareas fallidas (`errorCount === 0`), el caso transiciona a `completed`.
+     - Si una o más tareas fallaron (`errorCount > 0`), el caso transiciona automáticamente a `partial`, con un resumen descriptivo (`Caso con ejecución parcial: X tarea(s) con error`).
+     - El caso nunca queda suspendido en `running` indefinidamente.
+
+3. **Proveniencia y Creación de `ResearchResults`**:
+   - Cada tarea completada exitosamente genera un registro en la tabla `research_results` con sus metadatos de proveniencia:
+     - `source`: identificador de la fuente (`system`, `openstreetmap`, `sunarp`, etc.).
+     - `source_url`: URL de origen de los datos cuando aplica.
+     - `data_type`: tipo de datos (`identity`, `geolocation`, etc.).
+     - `data`: estructura normalizada JSON.
+     - `confidence`: nivel de confianza (`high`, `medium`, `low`, `unknown`).
+     - `verification`: estado de verificación (`inferred`, `verified`, `reported`).
+     - `parser_version`: versión del parser que procesó la información.
+   - El ID del resultado se enlaza en `research_tasks.result_reference`.
+
+4. **Multi-Task Results Querying**:
+   - `ResearchService.getResults(researchCaseId)` utiliza `inArray(researchResults.researchTaskId, taskIds)` para recuperar los resultados de todas las tareas pertenecientes al caso de investigación, corrigiendo la limitación anterior que sólo consultaba la primera tarea.
+
+5. **Idempotencia**:
+   - Casos ya terminales (`completed`, `partial`, `failed`, `cancelled`) son ignorados sin error ante re-entregas de jobs en BullMQ.
+   - Tareas ya asentadas (`settled`) se omiten para evitar trabajo redundante o duplicación de datos.
+

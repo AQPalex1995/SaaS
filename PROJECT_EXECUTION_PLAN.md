@@ -279,7 +279,9 @@ Resultado (2026-09-17):
 T3.3 — Research orchestration
 ------------------------------------------------------------
 
-STATUS: TODO
+STATUS: DONE
+
+Objetivo:
 
 Crear flujo:
 
@@ -296,8 +298,23 @@ Workers
 ResearchResults
 
 Debe soportar ejecución parcial.
-
 Una fuente caída NO debe detener toda la investigación.
+
+Resultado (2026-09-17):
+
+- Flujo end-to-end implementado: `PROPERTY → ResearchCase → ResearchTasks → BullMQ → Workers → ResearchResults`.
+- Nuevo módulo `server/src/domain/research/orchestrator.ts`:
+  - `ResearchOrchestrator` y `orchestrateResearchCase()`.
+  - **Aislamiento de fallos (Fault Isolation)**: ejecución individual de tareas con `try/catch` aislado. Si un conector o fuente externa cae (timeout, error HTTP, `ECONNREFUSED`), la tarea pasa a `failed` y el orquestador continúa con las demás sin abortar el caso.
+  - **Ejecución parcial (Partial Execution)**: `updateCaseProgress()` detecta cuando todas las tareas están settled; si `errorCount > 0`, el caso transiciona automáticamente a `partial` con resumen honesto (`Caso con ejecución parcial: X tarea(s) con error`).
+  - **Proveniencia de Resultados**: tareas completadas registran filas en `research_results` (`source`, `dataType`, `data`, `confidence`, `verification`, `parserVersion`) y vinculan `resultReference` en la tarea.
+  - **Idempotencia**: casos terminales y tareas ya asentadas (`settled`) se omiten ante re-entregas de BullMQ.
+- `ResearchService`:
+  - `getResults()` corregido para consultar `inArray(researchResults.researchTaskId, taskIds)` devolviendo resultados multi-tarea (antes sólo tomaba la primera tarea `taskIds[0]`).
+  - `executeResearch()` expone orquestación a nivel de dominio.
+- `research.worker.ts`: refactorizado para delegar en `ResearchOrchestrator` (`skipGeolocation: true`).
+- `geocoding.worker.ts`: registra resultados en `research_results` con `resultReference` y boundary resiliente ante excepciones inesperadas.
+- Tests 57/57 (7 nuevos tests en `server/tests/orchestrator.test.ts`); typecheck server+root y build OK.
 
 ------------------------------------------------------------
 T3.4 — Manual Action

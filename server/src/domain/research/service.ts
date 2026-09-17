@@ -1,8 +1,13 @@
-import { eq, desc, count } from 'drizzle-orm';
+import { eq, desc, inArray } from 'drizzle-orm';
 import { getDb, type Database } from '../../db/connection.js';
 import { researchCases, researchTasks, researchResults, properties } from '../../db/schema/index.js';
 import type { ResearchCaseDTO, ResearchTaskDTO, ResearchResultDTO } from '../../dto/index.js';
 import { logger } from '../../logger.js';
+import {
+  ResearchOrchestrator,
+  type OrchestratorOptions,
+  type OrchestrationResult,
+} from './orchestrator.js';
 
 /** Default task types created for each new research case. */
 const DEFAULT_TASK_TYPES = [
@@ -111,7 +116,7 @@ export class ResearchService {
   }
 
   /**
-   * Get results for a research case.
+   * Get results for a research case across all its tasks.
    */
   async getResults(researchCaseId: string): Promise<ResearchResultDTO[]> {
     // Get task IDs for this case
@@ -126,11 +131,21 @@ export class ResearchService {
     const rows = await this.db
       .select()
       .from(researchResults)
-      .where(eq(researchResults.researchTaskId, taskIds[0]))
+      .where(inArray(researchResults.researchTaskId, taskIds))
       .orderBy(desc(researchResults.createdAt));
 
-    // For multiple tasks, we'd need an `inArray` — but this handles the basic case
     return rows.map(this.toResultDTO);
+  }
+
+  /**
+   * Orchestrate execution of a research case.
+   */
+  async executeResearch(
+    researchCaseId: string,
+    options?: OrchestratorOptions,
+  ): Promise<OrchestrationResult> {
+    const orchestrator = new ResearchOrchestrator(this.db);
+    return orchestrator.executeCase(researchCaseId, options);
   }
 
   private toCaseDTO(row: typeof researchCases.$inferSelect): ResearchCaseDTO {

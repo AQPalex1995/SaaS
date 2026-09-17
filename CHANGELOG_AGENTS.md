@@ -135,3 +135,25 @@ Verified:
 
 Next:
 - Phase 3 / T3.3 (Research orchestration)
+
+## 2026-09-17 — Antigravity — Phase 3 / T3.3 (Research orchestration)
+
+Completed:
+- Built full research orchestration flow: `PROPERTY → ResearchCase → ResearchTasks → BullMQ → Workers → ResearchResults`.
+- Added `server/src/domain/research/orchestrator.ts` (`ResearchOrchestrator` and `orchestrateResearchCase`):
+  - Fault isolation: each task is executed in an isolated `try/catch` block. If an external source or connector fails, times out, or throws (`ECONNREFUSED`, 500 error), only that task transitions to `failed` and the orchestrator continues with remaining tasks without crashing.
+  - Partial execution: `updateCaseProgress()` detects when all tasks are settled; if `errorCount > 0`, the case transiciona to `partial` with descriptive summary (`Caso con ejecución parcial: X tarea(s) con error`). Cases without errors transition to `completed`.
+  - Provenance & Results: completed tasks record rows in `research_results` (`source`, `dataType`, `data`, `confidence`, `verification`, `parserVersion`) and link `resultReference` on the task.
+  - Idempotency: terminal cases and settled tasks are safely skipped without re-running or duplicating data under BullMQ job re-deliveries.
+- Fixed `ResearchService.getResults`: changed from single-task `taskIds[0]` query to `inArray(researchResults.researchTaskId, taskIds)` to properly return all results across all tasks in a case.
+- Added `ResearchService.executeResearch` domain method.
+- Refactored `research.worker.ts` to delegate to `ResearchOrchestrator` (`skipGeolocation: true`).
+- Updated `geocoding.worker.ts`: records `research_results` on successful geocoding, links `resultReference`, and wraps `processGeocodingJob` with a top-level error boundary that marks the geolocation task `failed` on unexpected exceptions so the case doesn't hang.
+- Documentation synchronized: `docs/RESEARCH_ENGINE.md` §6, `docs/NEXT_STEPS.md`, `PROJECT_STATUS.md`, `PROJECT_EXECUTION_PLAN.md`.
+
+Verified:
+- Tests 57/57 (+7 new in `server/tests/orchestrator.test.ts`).
+- Typecheck server + root; server build OK.
+
+Next:
+- Phase 3 / T3.4 (Manual Action)

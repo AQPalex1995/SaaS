@@ -2,7 +2,7 @@
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
 > El estado del repositorio refleja la **Fase 3 (Research Engine Hardening)** en curso.
-> Las fases 0–2.5 están implementadas en `main`; T3.1 (ResearchCase lifecycle) y T3.2 (ResearchTask lifecycle) completadas el 2026-09-17.
+> Las fases 0–2.5 están implementadas en `main`; T3.1 (ResearchCase lifecycle), T3.2 (ResearchTask lifecycle) y T3.3 (Research orchestration) completadas el 2026-09-17.
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
 > Lee atentamente este documento antes de escribir código.
 
@@ -17,7 +17,7 @@
 - **Colas**: 6 colas BullMQ definidas en `server/src/workers/queue.ts`, con consumidores reales para `geocoding` y `research`.
 - **Ingesta**: Motor de sincronización `server/src/domain/ingestion/sync.ts` + CLI `server/src/scripts/sync-sqlite.ts`.
 - **UI**: Panel Scout intacto en puerto `8787` con botón `[INVESTIGAR]`, `Property Intelligence Drawer`, badges en tiempo real y lista dinámica de fuentes.
-- **Pruebas**: 50 tests automatizados pasando en Vitest (`cd server && npm.cmd test`).
+- **Pruebas**: 57 tests automatizados pasando en Vitest (`cd server && npm.cmd test`).
 
 > **Bugs conocidos y divergencias**: la base SQLite real es `data/scout.db` (no `data/terrenos.db` como cita la doc);
 > `node:sqlite` requiere import dinámico en Docker `node:22` (ya resuelto en `sync.ts`).
@@ -224,14 +224,14 @@ cd server && npm.cmd run sync:sqlite
 
 ---
 
-## 5. Siguientes Iteraciones (después de la Fase 2.5)
+## 5. Siguientes Iteraciones (después de T3.3)
 
-> **Siguiente tarea del plan**: **T3.3 — Research orchestration** (flujo
-> PROPERTY → ResearchCase → Tasks → BullMQ → Workers → Results, con ejecución
-> parcial y aislamiento de fuentes caídas). Ver `PROJECT_EXECUTION_PLAN.md`.
+> **Siguiente tarea del plan**: **T3.4 — Manual Action** (mecanismo genérico para fuentes
+> que requieren CAPTCHA, LOGIN, PAYMENT, USER ACTION con estado `requires_manual_action`
+> y campos `instructions`, `url`, `requested_at`, `completed_at`, `completed_by`, `result`).
+> Ver `PROJECT_EXECUTION_PLAN.md`.
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.
 - Implementar la verificación a nivel de caso: confirmar manualmente la identidad del property y la coordenada geocodificada (hoy `verification='inferred'`).
 - Probar escenarios de error restantes con Postgres caído (degradación sin crash) y OSM devolviendo 429/500 con retry+backoff.
 - Fase 3: motor de scores y alertas (hay endpoints marcados `not_implemented`).
-- Ajustar `getResults()` (hoy usa sólo el primer `taskId`) para resultados multi-tarea con `inArray`.
