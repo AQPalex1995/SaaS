@@ -127,9 +127,14 @@ idempotencia y contadores honestos. Ver `docs/RESEARCH_ENGINE.md` §4.
   transacción**. El migrador de Drizzle ejecuta **todas** las migraciones pendientes en una
   sola transacción, por lo que `ADD VALUE` y `SET DEFAULT 'created'` debieron separarse en
   **dos archivos** y aplicarse en **dos ejecuciones** de `npm run db:migrate`.
-- `drizzle-kit generate` está roto en esta máquina con **Node v26.4.0** (jiti no resuelve
-  `./x.js` → `x.ts`); las migraciones/snapshots/journal se escribieron a mano en el formato
-  v7 existente. Revisar esto antes de la próxima migración.
+- `drizzle-kit generate` fallaba con **Node v26.4.0** (el loader `@esbuild-kit/esm-loader`
+  de kit ≤0.28 no resuelve `./x.js` → `x.ts`). **Resuelto el 2026-09-17**: `drizzle-kit`
+  actualizado de `^0.28.0` a `^0.31.10` (usa `tsx` como loader, compatible con las bases
+  modernas de Node). `npm run db:generate` vuelve a funcionar y verifica
+  "No schema changes, nothing to migrate" con el schema actual.
+- Las migraciones de T3.1 (`0001`/`0002`), sus snapshots y el journal se escribieron a
+  mano en el formato v7; al `generate` siguiente la cadena `prevId`/`id` se alineó
+  (`0000 → 0001 → 0002`) y quedó validada por drizzle-kit 0.31.10.
 
 ### Verificación
 - Tests 44/44 (4 nuevos en `server/tests/lifecycle.test.ts`).

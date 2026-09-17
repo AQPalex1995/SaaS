@@ -83,5 +83,13 @@ Verified:
   `completed` (identity completed, geolocation requires_manual_action,
   6 stubs unavailable, errorCount 0, warningCount 7, 8/8 tasks).
 
+Toolchain fix:
+- `drizzle-kit` upgraded `^0.28.0` → `^0.31.10` (its embedded loader
+  `@esbuild-kit/esm-loader` is broken under Node v26.4.0; 0.31.x ships
+  `tsx` and loads the TS schema fine). `npm run db:generate` verified
+  with "No schema changes, nothing to migrate".
+- Migration snapshot chain (`prevId`/`id`) aligned for the two hand-made
+  migrations (0000 → 0001 → 0002) and validated by drizzle-kit 0.31.10.
+
 Next:
 - Phase 3 / T3.2 (ResearchTask lifecycle)
