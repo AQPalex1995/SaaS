@@ -126,3 +126,59 @@ Reglas de integridad:
 - `warningCount` = tareas `requires_manual_action` + `blocked` + `unavailable`.
 - `pending` se conserva como estado legacy de filas anteriores a T3.1; las
   nuevas cases nacen en `created`.
+
+---
+
+## 5. Ciclo de Vida del ResearchTask (Fase 3 / T3.2)
+
+El estado de cada tarea se modela en `server/src/domain/research/task-lifecycle.ts`
+y vive en la columna `research_tasks.status` (enum PostgreSQL `task_status`).
+
+```text
+               ┌──▶ completed (éxito)
+               ├──▶ failed (error / reintentos agotados)
+pending ──▶ running ──▶ requires_manual_action (pausa → running/completed)
+   │           ├──▶ unavailable (fuente externa no accesible)
+   │           ├──▶ blocked (bloqueado por otra tarea/estado)
+   │           └──▶ skipped (no aplica / ya resuelto por otro camino)
+   │
+   └──▶ completed / failed / requires_manual_action /
+        unavailable / blocked / skipped (sin pasar por running)
+```
+
+Estados (enum `task_status`):
+
+- **pending**: creada junto con el caso; a la espera de un worker.
+- **running**: un worker la tomó en ejecución (`startedAt`).
+- **completed**: resultado obtenido y registrado (con `resultReference` cuando
+  aplica). Estado **inmutable**.
+- **failed**: el intento falló (p. ej. geolocalización sin resultados).
+- **requires_manual_action**: el trabajo quedó pausado esperando acción humana
+  (CAPTCHA, login, pago, dato manual). `requiresManualAction = true` con
+  `manualActionDescription`. No se marca `completedAt` porque no terminó.
+- **blocked**: bloqueada por una dependencia no disponible.
+- **unavailable**: el conector externo es un stub o no está accesible
+  (política anti-datos-inventados).
+- **skipped**: no aplica o ya fue resuelta por otra ejecución (geolocalización
+  idempotente). Estado **inmutable**.
+
+Reglas de integridad:
+
+- Las transiciones se validan con `assertTaskTransition()` y se aplican con
+  `transitionTask()` mediante un `UPDATE ... WHERE status = <estado actual>`,
+  por lo que son **race-safe** y **atómicas** (mismo patrón que el caso).
+- **Inmutables**: `completed` y `skipped` nunca cambian.
+- **Reintentables**: `failed`, `blocked`, `unavailable` y
+  `requires_manual_action` pueden volver a `pending`/`running`
+  (re-ejecución), lo que invalida `completedAt`, re-abre `startedAt` cuando
+  aplica y **suma 1 a `retryCount`** hasta `maxRetries`.
+- `startedAt` se fija al entrar en `running`, o al alcanzar un estado final sin
+  haber pasado por `running` (ventana de trabajo implícita). `completedAt` se
+  fija al concluir el trabajo automatizado (nunca en `requires_manual_action`).
+- `completed` limpia `error` y `requiresManualAction`; `requires_manual_action`
+  activa automáticamente el flag `requiresManualAction`.
+- **Settled** (para decidir el estado del caso): `completed`, `failed`,
+  `skipped`, `unavailable`, `blocked`, `requires_manual_action`. Cuando todas
+  las tareas de un caso están settled, el caso puede terminar
+  (`updateCaseProgress`, ver §4).
+- DTO `ResearchTaskDTO` expone `retryCount`, `maxRetries` y `updatedAt`.

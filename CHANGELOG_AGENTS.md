@@ -93,3 +93,45 @@ Toolchain fix:
 
 Next:
 - Phase 3 / T3.2 (ResearchTask lifecycle)
+
+## 2026-09-17 — OpenCode — Phase 3 / T3.2 (ResearchTask lifecycle)
+
+Completed:
+- Added `server/src/domain/research/task-lifecycle.ts`: `TASK_TRANSITIONS`
+  table (8 states), `assertTaskTransition()`, race-safe `transitionTask()`
+  (conditional UPDATE + immutable-state protection), and TASK_TERMINAL /
+  TASK_SETTLED / TASK_DONE / TASK_WARNING sets.
+- Semantics verified/hardened: `completed` and `skipped` are **immutable**;
+  `failed`, `blocked`, `unavailable`, `requires_manual_action` are
+  **retryable** (back to pending/running → clears completedAt, re-opens
+  startedAt when applicable, +1 `retryCount` up to `maxRetries`).
+- Automation centralized: `startedAt` on `running` (or on reaching a final
+  state without passing `running`); `completedAt` when automated work ends
+  (NEVER on `requires_manual_action`); `completed` clears error +
+  requiresManualAction; `requires_manual_action` auto-sets the flag.
+- Refactored `lifecycle.ts`: `updateCaseProgress()` now uses
+  `isTaskSettled()`/`TASK_WARNING` from task-lifecycle.ts (single source of
+  truth; case behavior unchanged).
+- Migrated workers off hand-written status writes:
+  - `research.worker.ts`: identity → `completed` via transitionTask with
+    `resultReference`; connector stubs → `unavailable`.
+  - `geocoding.worker.ts`: `markGeolocationTask` → transitionTask
+    (completed/failed/requires_manual_action/skipped).
+- DTO `ResearchTaskDTO` now exposes `maxRetries` and `updatedAt`
+  (`server/src/dto/index.ts`, `service.ts` `toTaskDTO`).
+- No DB migration needed: task_status enum already covered all 8 states.
+- Bumped stale test counts in docs (44 → 50).
+
+Important finding (environment):
+- PostgreSQL (5433), Redis (6380), API (3001) and Scout (8787) were ALL
+  stopped during this session and the Docker daemon was not running, so the
+  live smoke test was NOT repeated. Behavior equivalence with the previous
+  direct updates was validated by inspection + unit coverage (6 new tests).
+  This is NOT a code blocker: no schema change was introduced.
+
+Verified:
+- Tests 50/50 (6 new in `server/tests/task-lifecycle.test.ts`).
+- Typecheck server + root; server build.
+
+Next:
+- Phase 3 / T3.3 (Research orchestration)

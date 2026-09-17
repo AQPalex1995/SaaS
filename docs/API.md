@@ -151,7 +151,9 @@ Inicia un nuevo expediente de investigación para la propiedad e inserta automá
 Consulta el estado de un expediente de investigación.
 
 ### `GET /api/v1/research/:id/tasks`
-Lista las 8 tareas del expediente con su estado individual (`pending`, `running`, `completed`, `failed`, `requires_manual_action`, `unavailable`, `skipped`, `blocked`).
+Lista las tareas del expediente con su estado individual (`pending`, `running`, `completed`, `failed`, `requires_manual_action`, `unavailable`, `blocked`, `skipped`).
+- Las transiciones de tarea se validan de forma atómica en `server/src/domain/research/task-lifecycle.ts` (`transitionTask()`); `completed` y `skipped` son estados **inmutables**, y los estados `failed` / `blocked` / `unavailable` / `requires_manual_action` pueden reintentarse (incrementa `retryCount`, tope `maxRetries`). Ver `docs/RESEARCH_ENGINE.md` §5.
+- Cada tarea expone: `retryCount`, `maxRetries`, `requiresManualAction`, `manualActionDescription`, `startedAt`, `completedAt`, `error`, `createdAt` y `updatedAt`.
 - Estados explicables: `identity` y `geolocation` llegan a `completed`/`skipped`; las tareas apoyadas en conectores stub (`registry`, `bgr`, `urbanism`, `judicial`, `market`, `risk`) terminan en `unavailable` hasta que se implementen los conectores (política anti-datos-inventados).
 
 ### `GET /api/v1/research/:id/results`

@@ -2,7 +2,7 @@
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
 > El estado del repositorio refleja la **Fase 3 (Research Engine Hardening)** en curso.
-> Las fases 0–2.5 están implementadas en `main`; T3.1 (ResearchCase lifecycle) completada el 2026-09-17.
+> Las fases 0–2.5 están implementadas en `main`; T3.1 (ResearchCase lifecycle) y T3.2 (ResearchTask lifecycle) completadas el 2026-09-17.
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
 > Lee atentamente este documento antes de escribir código.
 
@@ -17,7 +17,7 @@
 - **Colas**: 6 colas BullMQ definidas en `server/src/workers/queue.ts`, con consumidores reales para `geocoding` y `research`.
 - **Ingesta**: Motor de sincronización `server/src/domain/ingestion/sync.ts` + CLI `server/src/scripts/sync-sqlite.ts`.
 - **UI**: Panel Scout intacto en puerto `8787` con botón `[INVESTIGAR]`, `Property Intelligence Drawer`, badges en tiempo real y lista dinámica de fuentes.
-- **Pruebas**: 44 tests automatizados pasando en Vitest (`cd server && npm.cmd test`).
+- **Pruebas**: 50 tests automatizados pasando en Vitest (`cd server && npm.cmd test`).
 
 > **Bugs conocidos y divergencias**: la base SQLite real es `data/scout.db` (no `data/terrenos.db` como cita la doc);
 > `node:sqlite` requiere import dinámico en Docker `node:22` (ya resuelto en `sync.ts`).
@@ -146,6 +146,47 @@ idempotencia y contadores honestos. Ver `docs/RESEARCH_ENGINE.md` §4.
 
 ---
 
+## 2.7. Fase 3 — T3.2 ResearchTask lifecycle — ✅ COMPLETADA (2026‑09‑17)
+
+Endurecimiento del ciclo de vida de cada tarea de investigación, con transiciones
+validadas, idempotencia, estados inmutables vs. reintentables y timestamps
+consistentes. Ver `docs/RESEARCH_ENGINE.md` §5.
+
+### Cambios
+- **`server/src/domain/research/task-lifecycle.ts`** (nuevo): tabla
+  `TASK_TRANSITIONS`, `assertTaskTransition()`, `transitionTask()` (UPDATE
+  condicional `WHERE status = <from>`, race-safe, estados inmutables protegidos)
+  y conjuntos `TASK_TERMINAL` / `TASK_SETTLED` / `TASK_DONE` / `TASK_WARNING`.
+- **Semántica**: `completed` y `skipped` son **inmutables**; `failed`, `blocked`,
+  `unavailable` y `requires_manual_action` son **reintentables** (vuelven a
+  `pending`/`running`, limpian `completedAt`, re-abren `startedAt` y suman 1 a
+  `retryCount` hasta `maxRetries`).
+- **Automación de timestamps**: `startedAt` al entrar en `running` (o en un
+  estado final sin pasar por `running`); `completedAt` al concluir el trabajo
+  automatizado (NUNCA en `requires_manual_action`); `completed` limpia
+  `error`/`requiresManualAction`; `requires_manual_action` activa el flag.
+- **`server/src/domain/research/lifecycle.ts`**: `updateCaseProgress()` ahora
+  usa `isTaskSettled()`/`TASK_WARNING` desde `task-lifecycle.ts` (fuente única
+  de verdad; comportamiento del caso sin cambios).
+- **Workers**: `research.worker.ts` (identity → `completed` con
+  `resultReference`; stubs → `unavailable`) y `geocoding.worker.ts`
+  (`markGeolocationTask` → `completed`/`failed`/`requires_manual_action`/`skipped`)
+  ya no escriben `status` a mano: usan `transitionTask()`.
+- **DTO**: `ResearchTaskDTO` ahora expone `maxRetries` y `updatedAt`
+  (`server/src/dto/index.ts`, `server/src/domain/research/service.ts`).
+- **Sin migración**: el enum `task_status` ya contenía los 8 estados; no se
+  alteró el esquema.
+
+### Verificación
+- Tests 50/50 (+6 en `server/tests/task-lifecycle.test.ts`).
+- Typecheck server + root, build del server.
+- Nota de ambiente: el smoke test en vivo NO se repitió en esta sesión porque
+  PostgreSQL (5433) y Redis (6380) estaban detenidos y el daemon de Docker no
+  estaba corriendo. La equivalencia de comportamiento con los updates directos
+  previos se validó por inspección + cobertura unitaria.
+
+---
+
 ## 3. Checklist de Verificación para el Agente
 
 Antes de dar por concluida cualquier sesión de trabajo, ejecuta siempre:
@@ -155,7 +196,7 @@ Antes de dar por concluida cualquier sesión de trabajo, ejecuta siempre:
 cd server
 npm.cmd run typecheck
 
-# 2. Ejecutar toda la suite de tests (44 tests)
+# 2. Ejecutar toda la suite de tests (50 tests)
 npm.cmd test
 
 # 3. Build de producción del servidor
@@ -185,8 +226,9 @@ cd server && npm.cmd run sync:sqlite
 
 ## 5. Siguientes Iteraciones (después de la Fase 2.5)
 
-> **Siguiente tarea del plan**: **T3.2 — ResearchTask lifecycle** (estados por tarea,
-> `retry_count`, `requires_manual_action` a nivel de tarea). Ver `PROJECT_EXECUTION_PLAN.md`.
+> **Siguiente tarea del plan**: **T3.3 — Research orchestration** (flujo
+> PROPERTY → ResearchCase → Tasks → BullMQ → Workers → Results, con ejecución
+> parcial y aislamiento de fuentes caídas). Ver `PROJECT_EXECUTION_PLAN.md`.
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.
 - Implementar la verificación a nivel de caso: confirmar manualmente la identidad del property y la coordenada geocodificada (hoy `verification='inferred'`).

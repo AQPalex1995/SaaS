@@ -87,14 +87,14 @@ Cada expediente genera automáticamente **8 tareas de investigación**:
 
 ### Ciclo de Vida de `ResearchTask`:
 ```text
-[ pending ] ──► [ running ] ──► [ completed ]
-                    │
-                    ├──► [ requires_manual_action ] ──► [ completed ]
-                    │
-                    ├──► [ unavailable ] (fuente externa no accesible)
-                    │
-                    └──► [ failed ] (reintentos agotados)
+[pending] ──► [running] ──┬──► [completed / skipped]   (inmutables)
+                          ├──► [failed] ──► [pending|running]  (retry, retryCount+1)
+                          ├──► [requires_manual_action] ──► [running|pending]
+                          ├──► [unavailable] ──► [pending|running]
+                          └──► [blocked] ──► [pending|running]
+[pending] ───────────────► cualquier estado final sin pasar por running
 ```
+- Transiciones validadas y aplicadas de forma atómica en `server/src/domain/research/task-lifecycle.ts` (`assertTaskTransition()` / `transitionTask()`); `completed` y `skipped` son inmutables; `failed`/`blocked`/`unavailable`/`requires_manual_action` son reintentables (`retryCount` → `maxRetries`). Detalle en `docs/RESEARCH_ENGINE.md` §5.
 
 ### Ciclo de Vida de `PropertyAlert`:
 ```text

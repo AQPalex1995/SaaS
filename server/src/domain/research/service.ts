@@ -164,7 +164,9 @@ export class ResearchService {
       requiresManualAction: row.requiresManualAction ?? false,
       manualActionDescription: row.manualActionDescription,
       retryCount: row.retryCount ?? 0,
+      maxRetries: row.maxRetries ?? 3,
       createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
     };
   }
 

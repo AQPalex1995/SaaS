@@ -235,7 +235,9 @@ Resultado (2026-09-17):
 T3.2 — ResearchTask lifecycle
 ------------------------------------------------------------
 
-STATUS: TODO
+STATUS: DONE
+
+Objetivo:
 
 Verificar:
 
@@ -248,6 +250,30 @@ unavailable
 blocked
 
 Agregar constraints si son necesarios.
+
+Resultado (2026-09-17):
+
+- Nuevo módulo `server/src/domain/research/task-lifecycle.ts`: tabla
+  `TASK_TRANSITIONS` (8 estados), `assertTaskTransition()` y
+  `transitionTask()` (UPDATE condicional race-safe, estados inmutables
+  protegidos). Conjuntos `TASK_TERMINAL`, `TASK_SETTLED`, `TASK_DONE` y
+  `TASK_WARNING`.
+- Inmutables: `completed`, `skipped`. Reintentables: `failed`, `blocked`,
+  `unavailable`, `requires_manual_action` (vuelven a pending/running,
+  limpian completedAt y suman 1 a `retryCount` hasta `maxRetries`).
+- Automación: `startedAt` (running o final sin pasar por running),
+  `completedAt` (trabajo automatizado terminado; nunca en
+  requires_manual_action), `completed` limpia error/requiresManualAction,
+  requires_manual_action activa el flag.
+- `lifecycle.ts`: `updateCaseProgress()` usa `isTaskSettled()` /
+  `TASK_WARNING` desde task-lifecycle.ts (fuente única de verdad).
+- Workers: research.worker.ts (identity→completed con resultReference;
+  stubs→unavailable) y geocoding.worker.ts (markGeolocationTask)
+  migrados a `transitionTask()`.
+- DTO `ResearchTaskDTO` expone `retryCount`, `maxRetries` y `updatedAt`.
+- Sin migración: el enum `task_status` ya cubría los 8 estados.
+- Tests 50/50 (6 nuevos en task-lifecycle.test.ts); typecheck server+root,
+  build OK. Sin smoke test en vivo (Postgres 5433/Redis 6380 detenidos).
 
 ------------------------------------------------------------
 T3.3 — Research orchestration

@@ -12,6 +12,7 @@ import {
   transitionCase,
   updateCaseProgress,
 } from '../../domain/research/lifecycle.js';
+import { transitionTask } from '../../domain/research/task-lifecycle.js';
 import { logger } from '../../logger.js';
 
 export interface ResearchJobData {
@@ -64,16 +65,9 @@ async function completeIdentityTask(
     })
     .returning({ id: researchResults.id });
 
-  await db
-    .update(researchTasks)
-    .set({
-      status: 'completed',
-      resultReference: result.id,
-      startedAt: new Date(),
-      completedAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .where(eq(researchTasks.id, researchTaskId));
+  await transitionTask(db, researchTaskId, 'completed', {
+    resultReference: result.id,
+  });
 }
 
 export async function processResearchJob(job: Job<ResearchJobData>): Promise<void> {
@@ -124,14 +118,9 @@ export async function processResearchJob(job: Job<ResearchJobData>): Promise<voi
       if (UNAVAILABLE_TASKS.has(task.taskType)) {
         // Connector-backed tasks whose external source is still a stub.
         // Honest, non-simulated outcome: mark as unavailable.
-        await db
-          .update(researchTasks)
-          .set({
-            status: 'unavailable',
-            error: 'Conector externo no implementado (stub)',
-            updatedAt: new Date(),
-          })
-          .where(eq(researchTasks.id, task.id));
+        await transitionTask(db, task.id, 'unavailable', {
+          error: 'Conector externo no implementado (stub)',
+        });
       }
     }
 

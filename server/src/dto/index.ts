@@ -93,7 +93,9 @@ export interface ResearchTaskDTO {
   requiresManualAction: boolean;
   manualActionDescription: string | null;
   retryCount: number;
+  maxRetries: number;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface ResearchResultDTO {

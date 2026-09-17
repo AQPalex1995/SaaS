@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import type { Database } from '../../db/connection.js';
 import { researchCases, researchTasks } from '../../db/schema/index.js';
+import { isTaskSettled, TASK_WARNING } from './task-lifecycle.js';
 
 type DbLike = Pick<Database, 'update' | 'select'>;
 
@@ -106,24 +107,16 @@ export async function transitionCase(
   }
 }
 
-/** Task statuses that mean "no more work is expected from this task". */
-const TASK_TERMINAL = new Set([
-  'completed',
-  'failed',
-  'skipped',
-  'unavailable',
-  'requires_manual_action',
-  'blocked',
-]);
-
-/** Task statuses that surface as case-level warnings. */
-const TASK_WARNING = new Set(['requires_manual_action', 'blocked', 'unavailable']);
+/**
+ * Task statuses that mean "no more work is expected from this task",
+ * surfaced as case progress (single source: ./task-lifecycle.js T3.2).
+ */
 
 /**
  * Recompute case counters from its tasks and land the case on a terminal state
- * when all tasks are terminal:
- *   - completed  → every task terminal, no failures
- *   - partial    → every task terminal but at least one failed
+ * when all tasks are settled:
+ *   - completed  → every task settled, no failures
+ *   - partial    → every task settled but at least one failed
  *          (a source failing must not leave the case running forever)
  * Otherwise it keeps the current state (work still in progress) and only
  * refreshes the counters.
@@ -140,7 +133,7 @@ export async function updateCaseProgress(
   const total = rows.length;
   if (total === 0) return;
 
-  const terminal = rows.filter((r) => TASK_TERMINAL.has(r.status)).length;
+  const terminal = rows.filter((r) => isTaskSettled(r.status)).length;
   const failed = rows.filter((r) => r.status === 'failed').length;
   const warnings = rows.filter((r) => TASK_WARNING.has(r.status)).length;
 

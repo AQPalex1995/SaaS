@@ -13,21 +13,13 @@ import {
 import { osmConnector } from '../../connectors/implementations/osm.js';
 import { logger } from '../../logger.js';
 import { updateCaseProgress } from '../../domain/research/lifecycle.js';
+import { transitionTask, type TaskStatus } from '../../domain/research/task-lifecycle.js';
 
 type DbLike = Pick<Database, 'update' | 'select'>;
 
 export interface GeocodingJobData {
   propertyId: string;
 }
-
-type TaskStatus =
-  | 'pending'
-  | 'running'
-  | 'completed'
-  | 'failed'
-  | 'requires_manual_action'
-  | 'unavailable'
-  | 'skipped';
 
 /** Mark the (first pending) geolocation task of a property and refresh progress. */
 export async function markGeolocationTask(
@@ -52,21 +44,15 @@ export async function markGeolocationTask(
     );
 
   for (const row of rows) {
+    // Only a claimed task (pending/running) may move on; terminal tasks are
+    // left untouched (idempotent re-deliveries of the job).
     if (row.taskStatus !== 'pending' && row.taskStatus !== 'running') continue;
     const completed = status === 'completed';
-    await db
-      .update(researchTasks)
-      .set({
-        status,
-        error: error && !completed ? error : null,
-        requiresManualAction: status === 'requires_manual_action',
-        manualActionDescription:
-          status === 'requires_manual_action' ? error ?? null : null,
-        startedAt: row.taskStatus === 'running' ? undefined : new Date(),
-        completedAt: completed || status === 'failed' || status === 'skipped' ? new Date() : undefined,
-        updatedAt: new Date(),
-      })
-      .where(eq(researchTasks.id, row.taskId));
+    await transitionTask(db, row.taskId, status, {
+      error: error && !completed ? error : null,
+      manualActionDescription:
+        status === 'requires_manual_action' ? error ?? null : undefined,
+    });
     await updateCaseProgress(db, row.caseId);
   }
 }
