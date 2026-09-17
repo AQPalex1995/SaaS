@@ -1,0 +1,1 @@
+ALTER TABLE "public"."research_cases" ALTER COLUMN "status" SET DEFAULT 'created';

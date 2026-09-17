@@ -79,12 +79,18 @@ export const connectorStatusEnum = pgEnum('connector_status', [
 ]);
 
 // ── Research ────────────────────────────────────────────────
+// ResearchCase lifecycle: created → queued → running → completed | partial | failed.
+// `pending` (legacy) and `cancelled` are kept as-is; new values are appended
+// to the PostgreSQL enum for a non-destructive migration (ALTER TYPE ADD VALUE).
 export const researchStatusEnum = pgEnum('research_status', [
   'pending',
   'running',
   'completed',
   'failed',
   'cancelled',
+  'created',
+  'queued',
+  'partial',
 ]);
 
 export const taskStatusEnum = pgEnum('task_status', [

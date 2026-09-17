@@ -8,6 +8,8 @@ import {
 } from '../../domain/ingestion/sync.js';
 import { serverConfig } from '../../config.js';
 import { enqueueGeocoding, enqueueResearch } from '../../workers/jobs.js';
+import { transitionCase } from './lifecycle.js';
+import { getDb } from '../../db/connection.js';
 
 export async function researchRoutes(app: FastifyInstance) {
   const service = new ResearchService();
@@ -72,13 +74,24 @@ export async function researchRoutes(app: FastifyInstance) {
       const researchCase = await service.createResearch(propertyId!);
 
       // Kick off async work (best-effort; Redis may be down).
-      await Promise.allSettled([
+      const enqueues = await Promise.allSettled([
         enqueueGeocoding(propertyId!),
         enqueueResearch(propertyId!, researchCase.id),
       ]);
+      const anyEnqueued = enqueues.some(
+        (r) => r.status === 'fulfilled' && Boolean(r.value),
+      );
+
+      // Lifecycle: created → queued once at least one worker is scheduled.
+      // If nothing was enqueued (e.g. Redis down), the case stays `created`.
+      let data = researchCase;
+      if (anyEnqueued) {
+        await transitionCase(getDb(), researchCase.id, 'queued');
+        data = (await service.getCaseById(researchCase.id)) ?? researchCase;
+      }
 
       return reply.status(201).send({
-        data: researchCase,
+        data,
         resolvedPropertyId: propertyId !== id ? propertyId : undefined,
       });
     } catch (err: any) {

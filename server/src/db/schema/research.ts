@@ -33,7 +33,7 @@ export const researchCases = pgTable(
       .notNull()
       .references(() => properties.id, { onDelete: 'cascade' }),
 
-    status: researchStatusEnum('status').default('pending').notNull(),
+    status: researchStatusEnum('status').default('created').notNull(),
     summary: text('summary'),
     errorCount: integer('error_count').default(0),
     warningCount: integer('warning_count').default(0),

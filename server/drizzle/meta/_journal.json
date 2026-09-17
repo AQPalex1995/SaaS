@@ -8,6 +8,20 @@
       "when": 1789508862994,
       "tag": "0000_military_salo",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789606685883,
+      "tag": "0001_research_lifecycle_enums",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789606703315,
+      "tag": "0002_research_lifecycle_default",
+      "breakpoints": true
     }
   ]
 }

@@ -190,7 +190,7 @@ manteniendo estado, provenance, errores y resultados.
 T3.1 — ResearchCase lifecycle
 ------------------------------------------------------------
 
-STATUS: TODO
+STATUS: DONE
 
 Objetivo:
 
@@ -211,6 +211,25 @@ Criterios:
 - warnings
 - retry
 - idempotencia
+
+Resultado (2026-09-17):
+
+- `research_status` extendido (no destructivo, ADD VALUE) con
+  `created`, `queued`, `partial`; default de nuevas cases: `created`;
+  `pending` conservado para filas legacy.
+- Nuevo módulo `server/src/domain/research/lifecycle.ts`: tabla de
+  transiciones válidas, `assertCaseTransition()`, `transitionCase()`
+  (UPDATE condicional race-safe) y `updateCaseProgress()`.
+- Caso: `created → queued (al encolar) → running (startedAt) →
+  completed | partial | failed`; estados terminales inmutables;
+  `completedAt` + `summary` al terminar.
+- Idempotencia: el worker omite cases terminales re-entregadas.
+- `errorCount` = tareas failed; `warningCount` = tareas
+  requires_manual_action + blocked + unavailable.
+- DTO `ResearchCase` expone `updatedAt`.
+- Migraciones `0001_research_lifecycle_enums.sql` y
+  `0002_research_lifecycle_default.sql` (aplicadas en transacciones
+  separadas por el límite ADD-VALUE de PostgreSQL 16).
 
 ------------------------------------------------------------
 T3.2 — ResearchTask lifecycle

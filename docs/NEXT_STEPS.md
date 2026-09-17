@@ -1,9 +1,9 @@
 # Próximos Pasos de Implementación (NEXT_STEPS.md)
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
-> El estado del repositorio refleja la **Fase 2 (Pipeline de Ingesta & Sincronización)** en curso.
-> Las tareas 2.1–2.4 están implementadas en `main`. Este documento mantiene el detalle de cada tarea,
-> marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
+> El estado del repositorio refleja la **Fase 3 (Research Engine Hardening)** en curso.
+> Las fases 0–2.5 están implementadas en `main`; T3.1 (ResearchCase lifecycle) completada el 2026-09-17.
+> Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
 > Lee atentamente este documento antes de escribir código.
 
 ---
@@ -17,7 +17,7 @@
 - **Colas**: 6 colas BullMQ definidas en `server/src/workers/queue.ts`, con consumidores reales para `geocoding` y `research`.
 - **Ingesta**: Motor de sincronización `server/src/domain/ingestion/sync.ts` + CLI `server/src/scripts/sync-sqlite.ts`.
 - **UI**: Panel Scout intacto en puerto `8787` con botón `[INVESTIGAR]`, `Property Intelligence Drawer`, badges en tiempo real y lista dinámica de fuentes.
-- **Pruebas**: 40 tests automatizados pasando en Vitest (`cd server && npm.cmd test`).
+- **Pruebas**: 44 tests automatizados pasando en Vitest (`cd server && npm.cmd test`).
 
 > **Bugs conocidos y divergencias**: la base SQLite real es `data/scout.db` (no `data/terrenos.db` como cita la doc);
 > `node:sqlite` requiere import dinámico en Docker `node:22` (ya resuelto en `sync.ts`).
@@ -97,6 +97,50 @@ Validación contra el ambiente real (API :3001, worker local, Scout legacy :8787
 
 ---
 
+## 2.6. Fase 3 — T3.1 ResearchCase lifecycle — ✅ COMPLETADA (2026‑09‑17)
+
+Endurecimiento del ciclo de vida del caso de investigación, con transiciones validadas,
+idempotencia y contadores honestos. Ver `docs/RESEARCH_ENGINE.md` §4.
+
+### Cambios
+- **Enum `research_status`** (`server/src/db/schema/enums.ts`): se agregaron `created`,
+  `queued`, `partial` (no destructivo, `ALTER TYPE ADD VALUE`). Las nuevas cases nacen en
+  `created`; `pending` se conserva para filas legacy.
+- **`server/src/domain/research/lifecycle.ts`** (nuevo): tabla `CASE_TRANSITIONS`,
+  `assertCaseTransition()`, `transitionCase()` (UPDATE condicional `WHERE status = <from>`,
+  race-safe, estados terminales inmutables) y `updateCaseProgress()` (movido desde
+  `geocoding.worker.ts`).
+- **Ciclo**: `created` (service) → `queued` (routes, solo si se encoló algo) → `running`
+  (+`startedAt`, worker) → `completed | partial | failed` (+`completedAt`, `summary`).
+  `partial` = todas las tareas terminaron pero al menos una falló; `failed` = error no
+  recuperable del caso.
+- **Idempotencia**: `processResearchJob` omite cases ya terminales (seguro ante re-entregas
+  de BullMQ); `transitionCase` es no-op si el estado ya es el destino.
+- **Contadores**: `errorCount` = tareas `failed`; `warningCount` = tareas
+  `requires_manual_action` + `blocked` + `unavailable`.
+- **DTO**: `ResearchCaseDTO` ahora expone `updatedAt` (`server/src/dto/index.ts`).
+- **Migraciones**: `server/drizzle/0001_research_lifecycle_enums.sql` y
+  `0002_research_lifecycle_default.sql`.
+
+### Hallazgo importante (migraciones)
+- PostgreSQL 16 **no permite usar** un valor de enum recién agregado dentro de la **misma
+  transacción**. El migrador de Drizzle ejecuta **todas** las migraciones pendientes en una
+  sola transacción, por lo que `ADD VALUE` y `SET DEFAULT 'created'` debieron separarse en
+  **dos archivos** y aplicarse en **dos ejecuciones** de `npm run db:migrate`.
+- `drizzle-kit generate` está roto en esta máquina con **Node v26.4.0** (jiti no resuelve
+  `./x.js` → `x.ts`); las migraciones/snapshots/journal se escribieron a mano en el formato
+  v7 existente. Revisar esto antes de la próxima migración.
+
+### Verificación
+- Tests 44/44 (4 nuevos en `server/tests/lifecycle.test.ts`).
+- Typecheck server + root, build del server.
+- Migración aplicada y verificada en PostgreSQL (enum, default, filas legacy intactas).
+- Smoke test en vivo: `POST /research` → `queued` (con `updatedAt`), luego `completed`
+  (identity `completed`, geolocation `requires_manual_action`, 6 stubs `unavailable`,
+  `errorCount 0`, `warningCount 7`, 8/8 tareas).
+
+---
+
 ## 3. Checklist de Verificación para el Agente
 
 Antes de dar por concluida cualquier sesión de trabajo, ejecuta siempre:
@@ -106,7 +150,7 @@ Antes de dar por concluida cualquier sesión de trabajo, ejecuta siempre:
 cd server
 npm.cmd run typecheck
 
-# 2. Ejecutar toda la suite de tests (40 tests: 18 originales + 22 nuevos)
+# 2. Ejecutar toda la suite de tests (44 tests)
 npm.cmd test
 
 # 3. Build de producción del servidor
@@ -135,6 +179,9 @@ cd server && npm.cmd run sync:sqlite
 ---
 
 ## 5. Siguientes Iteraciones (después de la Fase 2.5)
+
+> **Siguiente tarea del plan**: **T3.2 — ResearchTask lifecycle** (estados por tarea,
+> `retry_count`, `requires_manual_action` a nivel de tarea). Ver `PROJECT_EXECUTION_PLAN.md`.
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.
 - Implementar la verificación a nivel de caso: confirmar manualmente la identidad del property y la coordenada geocodificada (hoy `verification='inferred'`).

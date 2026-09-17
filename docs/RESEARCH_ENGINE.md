@@ -86,3 +86,43 @@ No todas las fuentes en el Perú están 100% digitalizadas o libres de CAPTCHAs.
 `task.manual_action_description = 'Se requiere adquirir copia literal de la partida 11029384 en SUNARP SPRL'`
 
 Esto permite que un analista humano suba el documento o ingrese el dato, sin bloquear el resto del pipeline.
+
+---
+
+## 4. Ciclo de Vida del ResearchCase (Fase 3 / T3.1)
+
+El estado del caso se modela en `server/src/domain/research/lifecycle.ts` y vive en la columna `research_cases.status` (enum PostgreSQL `research_status`).
+
+```text
+created ──▶ queued ──▶ running ──┬──▶ completed
+   │          │          │        ├──▶ partial
+   └──────────┴──────────┘        └──▶ failed
+                                 (cancelled disponible)
+```
+
+Estados:
+
+- **created**: el caso se creó junto con sus 8 tareas; aún no se encoló nada.
+- **queued**: al menos un job (geocoding o research) fue encolado en BullMQ.
+  Si Redis está caído no se encola nada y el caso permanece en `created`.
+- **running**: el worker de research toma el caso y registra `startedAt`.
+- **completed**: todas las tareas llegaron a estado terminal y ninguna falló.
+- **partial**: todas las tareas terminaron, pero al menos una falló (una fuente
+  caída no deja el caso colgado en `running`).
+- **failed**: el procesamiento del caso lanzó un error no recuperable.
+- **cancelled**: reservado para cancelación explícita.
+
+Reglas de integridad:
+
+- Las transiciones se validan con `assertCaseTransition()` y se aplican con
+  `transitionCase()` mediante un `UPDATE ... WHERE status = <estado actual>`,
+  por lo que son **race-safe** y **atómicas**.
+- Los estados terminales (`completed`, `partial`, `failed`, `cancelled`) son
+  **inmutables**: el worker omite casos ya terminados (idempotencia ante
+  re-entregas de BullMQ).
+- `startedAt` se fija al entrar en `running`; `completedAt` y `summary` al
+  alcanzar un estado terminal.
+- `errorCount` = número de tareas `failed`.
+- `warningCount` = tareas `requires_manual_action` + `blocked` + `unavailable`.
+- `pending` se conserva como estado legacy de filas anteriores a T3.1; las
+  nuevas cases nacen en `created`.

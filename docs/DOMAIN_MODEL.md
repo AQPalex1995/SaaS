@@ -54,8 +54,9 @@ El modelo de dominio de **Land Intelligence** separa estrictamente el **anuncio 
 
 ### C. `ResearchCase` (Expediente de Investigación)
 - Representa el esfuerzo coordinado de validación técnica, legal y comercial sobre una propiedad.
-- Ciclo de vida: `pending` ➔ `running` ➔ `completed` / `failed` / `cancelled`.
-- Contiene el resumen de hallazgos, nivel de riesgo general y notas del analista.
+- Ciclo de vida (Fase 3 / T3.1): `created` ➔ `queued` ➔ `running` ➔ `completed` / `partial` / `failed` (y `cancelled`). `pending` se conserva como estado legacy.
+- Los estados terminales (`completed`, `partial`, `failed`, `cancelled`) son inmutables; las transiciones se validan y aplican de forma atómica en `server/src/domain/research/lifecycle.ts`.
+- Contiene el resumen de hallazgos, contadores (`errorCount`, `warningCount`, `completedTaskCount`, `totalTaskCount`) y timestamps (`startedAt`, `completedAt`).
 
 ### D. `ResearchTask` (Tarea Especializada de Investigación)
 Cada expediente genera automáticamente **8 tareas de investigación**:
@@ -75,6 +76,14 @@ Cada expediente genera automáticamente **8 tareas de investigación**:
 ---
 
 ## 3. Matriz de Estados y Transiciones
+
+### Ciclo de Vida de `ResearchCase`:
+```text
+[ created ] ──► [ queued ] ──► [ running ] ──┬──► [ completed ]
+                                              ├──► [ partial ]  (tarea fallida)
+                                              └──► [ failed ]   (error del caso)
+                                              (y [ cancelled ])
+```
 
 ### Ciclo de Vida de `ResearchTask`:
 ```text

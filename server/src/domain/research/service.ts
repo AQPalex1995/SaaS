@@ -42,12 +42,12 @@ export class ResearchService {
       throw new Error(`Property ${propertyId} not found`);
     }
 
-    // Create the research case
+    // Create the research case (lifecycle: created → queued → running → ...)
     const [researchCase] = await this.db
       .insert(researchCases)
       .values({
         propertyId,
-        status: 'pending',
+        status: 'created',
         totalTaskCount: DEFAULT_TASK_TYPES.length,
         createdBy: createdBy ?? 'system',
       })
@@ -147,6 +147,7 @@ export class ResearchService {
       completedAt: row.completedAt?.toISOString() ?? null,
       createdBy: row.createdBy,
       createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
     };
   }
 

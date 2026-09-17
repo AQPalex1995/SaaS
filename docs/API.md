@@ -122,20 +122,29 @@ Lista todos los casos de investigación iniciados sobre una propiedad.
 ### `POST /api/v1/properties/:id/research`
 Inicia un nuevo expediente de investigación para la propiedad e inserta automáticamente las **8 tareas de investigación**.
 - `:id` puede ser un **UUID** o un **ID legacy de SQLite** (Facebook/adondevivir/urbania). Si el ID legacy aún no está sincronizado, la propiedad se crea automáticamente (ingesta on-the-fly), respetando la deduplicación por `content_hash`.
-- Encola en BullMQ los jobs de `geocoding` y `research` (best-effort; si Redis está caído el caso queda `pending` y se procesa cuando los workers vuelvan).
+- Encola en BullMQ los jobs de `geocoding` y `research` (best-effort). Si al menos uno se encola, el caso pasa a `queued`; si Redis está caído no se encola nada y el caso queda en `created` hasta que los workers vuelvan.
 - **Respuesta 201**:
   ```json
   {
     "data": {
       "id": "b0000000-0000-0000-0000-000000000001",
       "propertyId": "a0000000-0000-0000-0000-000000000001",
-      "status": "pending",
-      "overallRiskLevel": "unknown",
-      "createdAt": "2026-09-15T21:50:00.000Z"
+      "status": "queued",
+      "summary": null,
+      "errorCount": 0,
+      "warningCount": 0,
+      "completedTaskCount": 0,
+      "totalTaskCount": 8,
+      "startedAt": null,
+      "completedAt": null,
+      "createdBy": "system",
+      "createdAt": "2026-09-15T21:50:00.000Z",
+      "updatedAt": "2026-09-15T21:50:00.050Z"
     },
     "resolvedPropertyId": "a0000000-0000-0000-0000-000000000001"
   }
   ```
+- **Ciclo de vida** (`status`): `created → queued → running → completed | partial | failed` (`pending` legacy, `cancelled` reservado). Ver `docs/RESEARCH_ENGINE.md` §4.
 - **Respuesta 404**: `{ "error": "... no encontrada en data/scout.db ni en PostgreSQL" }`.
 
 ### `GET /api/v1/research/:id`

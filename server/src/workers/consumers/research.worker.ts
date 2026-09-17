@@ -1,5 +1,5 @@
 import type { Job } from 'bullmq';
-import { eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 import { getDb } from '../../db/connection.js';
 import {
   properties,
@@ -7,7 +7,11 @@ import {
   researchTasks,
   researchResults,
 } from '../../db/schema/index.js';
-import { updateCaseProgress } from './geocoding.worker.js';
+import {
+  isCaseTerminal,
+  transitionCase,
+  updateCaseProgress,
+} from '../../domain/research/lifecycle.js';
 import { logger } from '../../logger.js';
 
 export interface ResearchJobData {
@@ -89,42 +93,72 @@ export async function processResearchJob(job: Job<ResearchJobData>): Promise<voi
     logger.warn({ researchCaseId }, 'Research case no encontrada, abortando');
     return;
   }
-
-  await db
-    .update(researchCases)
-    .set({ status: 'running', startedAt: new Date(), updatedAt: new Date() })
-    .where(eq(researchCases.id, researchCaseId));
+  if (isCaseTerminal(caseRows[0].status)) {
+    // Idempotency: a re-delivered/re-run job must not reprocess a finished case.
+    logger.info(
+      { researchCaseId, status: caseRows[0].status },
+      'Research case ya terminada, omitiendo job',
+    );
+    return;
+  }
 
   const tasks = await db
     .select()
     .from(researchTasks)
     .where(eq(researchTasks.researchCaseId, researchCaseId));
 
-  for (const task of tasks) {
-    if (task.taskType === 'geolocation') {
-      // Geolocation runs in its own queue consumer. The geocoding job was
-      // already enqueued when the research case was created — re-enqueuing
-      // here would duplicate locations/geometries, so we skip it.
-      continue;
-    }
-    if (task.taskType === 'identity') {
-      await completeIdentityTask(task.id, propertyId);
-      continue;
-    }
-    if (UNAVAILABLE_TASKS.has(task.taskType)) {
-      // Connector-backed tasks whose external source is still a stub.
-      // Honest, non-simulated outcome: mark as unavailable.
-      await db
-        .update(researchTasks)
-        .set({
-          status: 'unavailable',
-          error: 'Conector externo no implementado (stub)',
-          updatedAt: new Date(),
-        })
-        .where(eq(researchTasks.id, task.id));
-    }
-  }
+  try {
+    await transitionCase(db, researchCaseId, 'running');
 
-  await updateCaseProgress(db, researchCaseId);
-  logger.info({ propertyId, researchCaseId }, 'Research job procesado');
+    for (const task of tasks) {
+      if (task.taskType === 'geolocation') {
+        // Geolocation runs in its own queue consumer. The geocoding job was
+        // already enqueued when the research case was created — re-enqueuing
+        // here would duplicate locations/geometries, so we skip it.
+        continue;
+      }
+      if (task.taskType === 'identity') {
+        await completeIdentityTask(task.id, propertyId);
+        continue;
+      }
+      if (UNAVAILABLE_TASKS.has(task.taskType)) {
+        // Connector-backed tasks whose external source is still a stub.
+        // Honest, non-simulated outcome: mark as unavailable.
+        await db
+          .update(researchTasks)
+          .set({
+            status: 'unavailable',
+            error: 'Conector externo no implementado (stub)',
+            updatedAt: new Date(),
+          })
+          .where(eq(researchTasks.id, task.id));
+      }
+    }
+
+    await updateCaseProgress(db, researchCaseId);
+    logger.info({ propertyId, researchCaseId }, 'Research job procesado');
+  } catch (err) {
+    const failedTasks = await db
+      .select({ n: count() })
+      .from(researchTasks)
+      .where(
+        and(
+          eq(researchTasks.researchCaseId, researchCaseId),
+          eq(researchTasks.status, 'failed'),
+        ),
+      );
+    const errorCount = (Number(failedTasks[0]?.n) || 0) + 1;
+    try {
+      await transitionCase(db, researchCaseId, 'failed', {
+        errorCount,
+        summary: `Fallo al procesar el research case: ${(err as Error).message}`,
+      });
+    } catch (transitionErr) {
+      logger.warn(
+        { researchCaseId, transitionErr },
+        'No se pudo marcar el research case como failed',
+      );
+    }
+    throw err;
+  }
 }

@@ -1,7 +1,7 @@
 # PROJECT STATUS
 
 Updated:
-2026-09-16
+2026-09-17
 
 ## Runtime
 
@@ -31,7 +31,7 @@ PostGIS:
 ## Tests
 
 Server:
-✅ 40/40
+✅ 44/44
 
 Root:
 ✅
@@ -42,7 +42,7 @@ Phase 3
 
 ## Current Task
 
-T3.1 ResearchCase lifecycle
+T3.2 ResearchTask lifecycle
 
 ## Blockers
 

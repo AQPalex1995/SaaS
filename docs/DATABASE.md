@@ -22,7 +22,7 @@ La capa de persistencia de **Land Intelligence** utiliza **PostgreSQL 16** con l
 | `source_type` | `facebook_marketplace`, `facebook_group`, `adondevivir`, `urbania`, `remaju`, `sunarp`, `sunarp_bgr`, `sunarp_sprl`, `google_maps`, `openstreetmap`, `impla`, `pdm`, `pat`, `municipality`, `cadastre`, `cej`, `sbn`, `cofopri`, `seace`, `manual`, `other` | Identificador de fuente o conector |
 | `confidence_level` | `high`, `medium`, `low`, `unknown` | Certeza algorítmica del dato |
 | `verification_status` | `reported`, `inferred`, `verified`, `conflicting`, `unknown` | Grado de corroboración oficial |
-| `research_status` | `pending`, `running`, `completed`, `failed`, `cancelled` | Estado del expediente de investigación |
+| `research_status` | `pending`, `running`, `completed`, `failed`, `cancelled`, `created`, `queued`, `partial` | Estado del expediente de investigación (`created`/`queued`/`partial` desde T3.1; `pending` es legacy) |
 | `task_type` | `identity`, `geolocation`, `registry`, `bgr`, `urbanism`, `judicial`, `market`, `risk`, `documentation`, `manual_verification` | Tipo de tarea de due diligence |
 | `task_status` | `pending`, `running`, `completed`, `failed`, `requires_manual_action`, `blocked`, `unavailable`, `skipped` | Estado de la tarea individual |
 | `task_priority` | `critical`, `high`, `medium`, `low` | Prioridad en la cola de procesamiento |

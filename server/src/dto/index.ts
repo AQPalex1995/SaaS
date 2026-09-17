@@ -78,6 +78,7 @@ export interface ResearchCaseDTO {
   completedAt: string | null;
   createdBy: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface ResearchTaskDTO {

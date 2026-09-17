@@ -12,6 +12,7 @@ import {
 } from '../../db/schema/index.js';
 import { osmConnector } from '../../connectors/implementations/osm.js';
 import { logger } from '../../logger.js';
+import { updateCaseProgress } from '../../domain/research/lifecycle.js';
 
 type DbLike = Pick<Database, 'update' | 'select'>;
 
@@ -27,38 +28,6 @@ type TaskStatus =
   | 'requires_manual_action'
   | 'unavailable'
   | 'skipped';
-
-export async function updateCaseProgress(
-  db: DbLike,
-  researchCaseId: string,
-): Promise<void> {
-  const rows = await db
-    .select({ status: researchTasks.status })
-    .from(researchTasks)
-    .where(eq(researchTasks.researchCaseId, researchCaseId));
-
-  const total = rows.length;
-  const terminal = rows.filter((r) =>
-    ['completed', 'failed', 'skipped', 'unavailable', 'requires_manual_action'].includes(
-      r.status,
-    ),
-  ).length;
-  const failed = rows.filter((r) => r.status === 'failed').length;
-
-  const set: Partial<typeof researchCases.$inferInsert> = {
-    completedTaskCount: terminal,
-    totalTaskCount: total,
-    warningCount: failed,
-  };
-  if (total > 0 && terminal >= total) {
-    set.status = 'completed';
-    set.completedAt = new Date();
-    set.summary = failed > 0
-      ? `Caso completado con ${failed} tarea(s) con error`
-      : 'Caso completado correctamente';
-  }
-  await db.update(researchCases).set(set).where(eq(researchCases.id, researchCaseId));
-}
 
 /** Mark the (first pending) geolocation task of a property and refresh progress. */
 export async function markGeolocationTask(

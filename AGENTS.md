@@ -101,6 +101,31 @@ Cuando esté bloqueado, anotar en `CHANGELOG_AGENTS.md` y `PROJECT_STATUS.md`: l
 - El índice de documentación de este archivo (sección 7) debe listar todos los docs de gobernanza y archivos de estado raíz.
 - Versiones: subir `VERSION` de `PROJECT_EXECUTION_PLAN.md` ante cambios estructurales; mantener `CHANGELOG_AGENTS.md` cronológico.
 
+### 2.7 Git Safety Rules
+
+Before making a major change:
+
+1. Check `git status`.
+2. Ensure there are no unexpected local changes.
+3. Create a checkpoint commit when appropriate.
+
+Agents MUST NOT use:
+
+- `git reset --hard`
+- `git clean -fd`
+- `git push --force`
+
+unless explicitly authorized by the user.
+
+Prefer:
+
+- `git revert` when undoing a committed change.
+
+Never delete user work to make tests pass.
+
+> Remote de referencia: `origin` → `https://github.com/AQPalex1995/SaaS.git` (push solo por `main`, sin `--force`).
+> Git portable disponible en `D:\SaaS\PortableGit\cmd\git.exe` (no está en el PATH global).
+
 ---
 
 ## 3. ⚠️ Reglas Críticas y Restricciones Operativas
@@ -170,10 +195,11 @@ d:\SaaS\fb-terreno-scout\
 │   ├── drizzle/               # Migraciones SQL generadas (0000_military_salo.sql)
 │   ├── scripts/
 │   │   └── queue-health.mjs   # Healthcheck Redis para el worker en Docker
-│   ├── tests/                 # Suite de pruebas Vitest (40 tests pasando)
+│   ├── tests/                 # Suite de pruebas Vitest (44 tests pasando)
 │   │   ├── app.test.ts        # Tests de API Fastify, /health, /sources
 │   │   ├── connector.test.ts  # Tests de registro y conectores stubs
 │   │   ├── research.test.ts   # Tests del motor de investigación
+│   │   ├── lifecycle.test.ts  # Tests de transiciones del ResearchCase lifecycle
 │   │   ├── schema.test.ts     # Tests de los 27 esquemas y 17 enums
 │   │   ├── sync.test.ts       # Tests de helpers de ingestión (contentHash, mapeos, etc.)
 │   │   └── osm.test.ts        # Tests del conector OpenStreetMap (fetch stubbed, sin red)
@@ -201,7 +227,7 @@ d:\SaaS\fb-terreno-scout\
 │       │   └── schema/        # 27 tablas Drizzle + 17 enums PostgreSQL
 │       ├── domain/            # Servicios de negocio
 │       │   ├── properties/    # PropertyService + rutas /api/v1/properties
-│       │   ├── research/      # ResearchService + 8 tareas automáticas
+│       │   ├── research/      # ResearchService + lifecycle.ts + 8 tareas automáticas
 │       │   ├── ingestion/     # sync.ts: SQLite legacy → PostgreSQL (dedup, hash, audit)
 │       │   └── audit/         # AuditService para registro de eventos
 │       ├── dto/               # Tipos de transferencia de datos
@@ -291,7 +317,7 @@ npm.cmd run db:seed       # Inserta usuario de sistema, fuentes y datos de prueb
 ### Paso 5: Ejecutar la suite de tests
 ```bash
 cd server
-npm.cmd test               # Ejecuta Vitest (18 tests automáticos)
+npm.cmd test               # Ejecuta Vitest (44 tests automáticos)
 npm.cmd run typecheck      # Verifica que TypeScript esté al 100% sin errores
 ```
 
