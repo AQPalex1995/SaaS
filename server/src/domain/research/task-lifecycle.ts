@@ -16,6 +16,9 @@ type DbLike = Pick<Database, 'update' | 'select'>;
  *   (completed, skipped).
  * - retryable: the task may go back to pending/running and be re-tried
  *   (failed, blocked, unavailable, requires_manual_action).
+ * - resolvable by hand: `requires_manual_action` can also move straight to
+ *   `completed` when a human finishes the manual action and the recorded
+ *   `result` (data entered by the operator) settles the task (Phase 3 / T3.4).
  *
  * Transitions are validated locally (assertTaskTransition) and enforced
  * atomically by transitionTask() with a conditional UPDATE, so a status can
@@ -51,7 +54,11 @@ export const TASK_TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
     'unavailable',
     'skipped',
   ],
-  requires_manual_action: ['running', 'pending'],
+  requires_manual_action: [
+    'running',
+    'pending',
+    'completed',
+  ],
   blocked: ['running', 'pending', 'unavailable'],
   failed: ['running', 'pending'],
   unavailable: ['running', 'pending'],

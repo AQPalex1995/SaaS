@@ -7,8 +7,8 @@ La capa de persistencia de **Land Intelligence** utiliza **PostgreSQL 16** con l
 - **Puerto de Conexión**: `5433` (no colisiona con el puerto `5432` del CAST ERP).
 - **Nombre de Base de Datos**: `land_intelligence`.
 - **Extensiones Habilitadas**: `postgis`, `"uuid-ossp"`.
-- **Total de Tablas**: 27.
-- **Total de Enums PostgreSQL**: 17.
+- **Total de Tablas**: 28.
+- **Total de Enums PostgreSQL**: 19.
 
 ---
 
@@ -33,6 +33,8 @@ La capa de persistencia de **Land Intelligence** utiliza **PostgreSQL 16** con l
 | `connector_status` | `available`, `unavailable`, `maintenance`, `rate_limited`, `requires_auth`, `error` | Salud y disponibilidad de la fuente |
 | `audit_action` | `property_created`, `property_updated`, `property_deleted`, `listing_created`, `listing_linked`, `research_started`, `research_completed`, `research_failed`, `task_completed`, `task_failed`, `manual_result_entered`, `score_changed`, `alert_created`, `alert_dismissed` | Registro de auditoría |
 | `scraping_job_status` | `pending`, `running`, `completed`, `failed`, `cancelled` | Estado del job de extracción |
+| `manual_action_kind` | `captcha`, `login`, `payment`, `user_action`, `other` | Motivo de la acción manual (T3.4) |
+| `manual_action_status` | `requested`, `completed`, `cancelled` | Ciclo de vida de la acción manual (T3.4) |
 
 ---
 
@@ -67,23 +69,24 @@ La capa de persistencia de **Land Intelligence** utiliza **PostgreSQL 16** con l
 16. **`research_cases`**: Expediente global de investigación de un inmueble.
 17. **`research_tasks`**: Cada una de las 8 tareas automáticas de due diligence que componen la investigación.
 18. **`research_results`**: Evidencia y datos normalizados resultantes de una tarea, con copia íntegra del `raw_data`.
+19. **`manual_actions`** (T3.4): Solicitudes de intervención humana para fuentes con CAPTCHA/LOGIN/PAYMENT/USER ACTION. FK a `research_tasks` y `properties`; incluye `action_kind`, `status`, `instructions`, `url`, `source`, `requested_at`, `completed_at`, `completed_by` y `result` (jsonb).
 
 ### Grupo G: Documentos & Evidencia
-19. **`documents`**: Metadatos de archivos (imágenes, PDFs de partidas, certificados de parámetros, capturas).
-20. **`external_links`**: Enlaces externos rastreados (publicaciones, visores cartográficos, resoluciones).
+20. **`documents`**: Metadatos de archivos (imágenes, PDFs de partidas, certificados de parámetros, capturas).
+21. **`external_links`**: Enlaces externos rastreados (publicaciones, visores cartográficos, resoluciones).
 
 ### Grupo H: Scoring & Riesgo
-21. **`property_scores`**: Índices calculados: score de oportunidad, score de riesgo legal, liquidez comercial.
-22. **`property_alerts`**: Alertas operativas (inconsistencias de área, indicios de litigio, discrepancia de precios).
+22. **`property_scores`**: Índices calculados: score de oportunidad, score de riesgo legal, liquidez comercial.
+23. **`property_alerts`**: Alertas operativas (inconsistencias de área, indicios de litigio, discrepancia de precios).
 
 ### Grupo I: Operaciones de Scraping
-23. **`scraping_jobs`**: Definición de trabajos recurrentes o bajo demanda por fuente.
-24. **`scraping_runs`**: Registro de ejecuciones individuales, tiempos y métricas de extracción.
-25. **`scraping_errors`**: Registro detallado de fallos, códigos de error y trazas de scraping.
+24. **`scraping_jobs`**: Definición de trabajos recurrentes o bajo demanda por fuente.
+25. **`scraping_runs`**: Registro de ejecuciones individuales, tiempos y métricas de extracción.
+26. **`scraping_errors`**: Registro detallado de fallos, códigos de error y trazas de scraping.
 
 ### Grupo J: Sistema & Auditoría
-26. **`users`**: Usuarios del sistema (preparado para autenticación y roles).
-27. **`audit_logs`**: Bitácora inmutable de eventos del sistema para trazabilidad total.
+27. **`users`**: Usuarios del sistema (preparado para autenticación y roles).
+28. **`audit_logs`**: Bitácora inmutable de eventos del sistema para trazabilidad total.
 
 ---
 
@@ -99,7 +102,7 @@ En `server/src/db/schema/geo.ts` se implementaron tipos de columna personalizado
 ## 5. Estrategia de Migraciones
 
 - Las migraciones SQL son generadas por **Drizzle Kit** y residen en `server/drizzle/`.
-- El archivo `server/drizzle/0000_military_salo.sql` contiene la definición completa de las 27 tablas y 17 enums.
+- El archivo `server/drizzle/0000_military_salo.sql` contiene la definición base (27 tablas y los enums originales); `0001_research_lifecycle_enums.sql` y `0002_research_lifecycle_default.sql` ampliaron `research_status`; `0003_natural_mysterio.sql` crea `manual_actions` + enums `manual_action_kind`/`manual_action_status` (T3.4).
 - Comando para generar: `npm.cmd run db:generate`
 - Comando para aplicar: `npm.cmd run db:migrate`
 - Comando para sembrar: `npm.cmd run db:seed`

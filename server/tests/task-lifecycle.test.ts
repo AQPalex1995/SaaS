@@ -35,6 +35,8 @@ describe('ResearchTask lifecycle', () => {
     expect(() => assertTaskTransition('running', 'failed')).not.toThrow();
     expect(() => assertTaskTransition('running', 'blocked')).not.toThrow();
     expect(() => assertTaskTransition('running', 'unavailable')).not.toThrow();
+    // A manual action resolved by a human settles the task directly (T3.4).
+    expect(() => assertTaskTransition('requires_manual_action', 'completed')).not.toThrow();
   });
 
   it('rejects invalid transitions', () => {

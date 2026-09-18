@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as schema from '../src/db/schema/index';
 
 describe('Database Schema Definitions', () => {
-  it('should export all 27 core tables', () => {
+  it('should export all 28 core tables', () => {
     const expectedTables = [
       'properties',
       'propertyListings',
@@ -22,6 +22,7 @@ describe('Database Schema Definitions', () => {
       'researchCases',
       'researchTasks',
       'researchResults',
+      'manualActions',
       'documents',
       'externalLinks',
       'propertyScores',
@@ -64,6 +65,28 @@ describe('Database Schema Definitions', () => {
     expect(schema.sourceTypeEnum.enumValues).toContain('urbania');
     expect(schema.sourceTypeEnum.enumValues).toContain('sunarp');
     expect(schema.sourceTypeEnum.enumValues).toContain('impla');
+
+    expect(schema.manualActionKindEnum.enumValues).toContain('captcha');
+    expect(schema.manualActionKindEnum.enumValues).toContain('login');
+    expect(schema.manualActionKindEnum.enumValues).toContain('payment');
+    expect(schema.manualActionKindEnum.enumValues).toContain('user_action');
+    expect(schema.manualActionKindEnum.enumValues).toContain('other');
+    expect(schema.manualActionStatusEnum.enumValues).toContain('requested');
+    expect(schema.manualActionStatusEnum.enumValues).toContain('completed');
+    expect(schema.manualActionStatusEnum.enumValues).toContain('cancelled');
+  });
+
+  it('should have the manual action mechanism columns', () => {
+    const table = schema.manualActions;
+    expect(table.researchTaskId).toBeDefined();
+    expect(table.instructions).toBeDefined();
+    expect(table.url).toBeDefined();
+    expect(table.requestedAt).toBeDefined();
+    expect(table.completedAt).toBeDefined();
+    expect(table.completedBy).toBeDefined();
+    expect(table.result).toBeDefined();
+    expect(table.actionKind).toBeDefined();
+    expect(table.status).toBeDefined();
   });
 
   it('should have primary keys and required columns on properties table', () => {

@@ -16,6 +16,8 @@ import {
   taskPriorityEnum,
   verificationStatusEnum,
   confidenceLevelEnum,
+  manualActionKindEnum,
+  manualActionStatusEnum,
 } from './enums.js';
 import { properties } from './properties.js';
 
@@ -131,5 +133,49 @@ export const researchResults = pgTable(
     idxResultsTask: index('idx_results_task').on(table.researchTaskId),
     idxResultsProperty: index('idx_results_property').on(table.propertyId),
     idxResultsSource: index('idx_results_source').on(table.source),
+  })
+);
+
+/**
+ * MANUAL_ACTIONS — Generic mechanism for sources that require human
+ * intervention (CAPTCHA, LOGIN, PAYMENT, USER ACTION).
+ *
+ * When a research task lands on `requires_manual_action`, a manual action
+ * record is requested so an operator can resolve it. The request carries the
+ * instructions/url a human needs; completion records who resolved it, when,
+ * and the `result` data entered (later persisted into research_results with
+ * provenance source='manual').
+ */
+export const manualActions = pgTable(
+  'manual_actions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    researchTaskId: uuid('research_task_id')
+      .notNull()
+      .references(() => researchTasks.id, { onDelete: 'cascade' }),
+    propertyId: uuid('property_id')
+      .notNull()
+      .references(() => properties.id, { onDelete: 'cascade' }),
+
+    actionKind: manualActionKindEnum('action_kind').default('user_action').notNull(),
+    status: manualActionStatusEnum('status').default('requested').notNull(),
+
+    instructions: text('instructions').notNull(),
+    url: text('url'),
+    source: varchar('source', { length: 100 }),
+
+    requestedAt: timestamp('requested_at', { withTimezone: true }).defaultNow().notNull(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    completedBy: varchar('completed_by', { length: 100 }),
+    result: jsonb('result'),
+
+    metadata: jsonb('metadata'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    idxManualTask: index('idx_manual_task').on(table.researchTaskId),
+    idxManualProperty: index('idx_manual_property').on(table.propertyId),
+    idxManualStatus: index('idx_manual_status').on(table.status),
   })
 );

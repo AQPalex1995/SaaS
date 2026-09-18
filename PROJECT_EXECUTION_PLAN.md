@@ -320,7 +320,7 @@ Resultado (2026-09-17):
 T3.4 — Manual Action
 ------------------------------------------------------------
 
-STATUS: TODO
+STATUS: DONE
 
 Crear mecanismo genérico para fuentes que requieren:
 
@@ -341,6 +341,33 @@ requested_at
 completed_at
 completed_by
 result
+
+Resultado (2026-09-17):
+
+- Tabla `manual_actions` (28.ª tabla del esquema) con 2 enums nuevos:
+  `manual_action_kind` (`captcha`, `login`, `payment`, `user_action`, `other`)
+  y `manual_action_status` (`requested`, `completed`, `cancelled`) → 19 enums
+  en total.
+- Migration `server/drizzle/0003_natural_mysterio.sql` generada con
+  `npm run db:generate` (crea enums + tabla + 2 FKs + 3 índices).
+- Nuevo servicio `server/src/domain/research/manual-action.service.ts`
+  (`ManualActionService`): `requestManualAction` (idempotente por tarea),
+  `getManualAction`, `listManualActions` (filtros status/propertyId/task),
+  `completeManualAction` (registra `research_results` con source `manual`,
+  `verification='verified'`, `confidence='high'`, audita
+  `manual_result_entered`, transiciona la tarea
+  `requires_manual_action → completed` con `resultReference` y refresca el
+  caso) y `cancelManualAction`.
+- Wiring: `ResearchOrchestrator.executeConnectorTask` solicita acción manual
+  para fuentes con `requires_manual_action`/`requires_auth` (login → `login`,
+  resto → `user_action`, source = sourceId) y para geolocalización sin
+  dirección geocodificable (source `system`); `geocoding.worker.ts` solicita
+  acción manual cuando la tarea queda en `requires_manual_action`.
+- `task-lifecycle.ts`: nuevo borde directo `requires_manual_action → completed`
+  (resultado ingresado por humano).
+- DTO `ManualActionDTO` expuesto en `server/src/dto/index.ts`.
+- Tests 67/67 (9 nuevos en `server/tests/manual-action.test.ts`); typecheck
+  server + root y build del server OK.
 
 ------------------------------------------------------------
 T3.5 — Research Result provenance

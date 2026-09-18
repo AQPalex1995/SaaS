@@ -157,3 +157,57 @@ Verified:
 
 Next:
 - Phase 3 / T3.4 (Manual Action)
+
+## 2026-09-17 — OpenCode — Phase 3 / T3.4 (Manual Action)
+
+Completed:
+- Schema: 2 new enums `manual_action_kind` (captcha, login, payment,
+  user_action, other) and `manual_action_status` (requested, completed,
+  cancelled) in `server/src/db/schema/enums.ts`; new table `manual_actions`
+  in `research.ts` (id, researchTaskId FK cascade, propertyId FK cascade,
+  actionKind, status, instructions, url, source, requestedAt, completedAt,
+  completedBy, result jsonb, metadata, createdAt, updatedAt) with 3 indexes.
+- Migration `server/drizzle/0003_natural_mysterio.sql` generated with
+  `npm run db:generate` (drizzle-kit 0.31.10, offline, no Postgres needed);
+  no manual SQL editing required this time.
+- `server/src/domain/research/manual-action.service.ts` (`ManualActionService`):
+  requestManualAction (idempotent per task — an open `requested` action is
+  returned instead of duplicating), getManualAction, listManualActions
+  (status/propertyId/researchTaskId filters, ordered by requestedAt desc),
+  completeManualAction (updates the action, inserts a `research_results` row
+  with source 'manual', sourceUrl from the action, verification 'verified',
+  confidence 'high', parserVersion 'manual-v1', metadata {manualActionId,
+  externalSource}; writes audit_logs 'manual_result_entered'; transitions the
+  task `requires_manual_action → completed` with resultReference;
+  updateCaseProgress), cancelManualAction.
+- Wiring: `ResearchOrchestrator.executeConnectorTask` → requestManualAction for
+  `requires_manual_action`/`requires_auth` connectors (login → 'login', else
+  'user_action', source = sourceId) and for geolocation without a
+  geocodifiable address (source 'system'); `geocoding.worker.ts`
+  `markGeolocationTask` → requestManualAction (source 'system') when the task
+  lands in `requires_manual_action`. Both wrapped in try/catch (manual action
+  creation must never crash the pipeline).
+- `task-lifecycle.ts`: new direct edge `requires_manual_action → completed`
+  for analyst-entered results.
+- DTO `ManualActionDTO` exposed in `server/src/dto/index.ts`.
+
+Important finding (tests):
+- The in-memory mock DB in `tests/manual-action.test.ts` needed to emulate
+  drizzle predicate ASTs. Drizzle `PgColumn.name` is the **snake_case DB name**
+  (`research_task_id`), NOT the camelCase JS key — the mock resolves the column
+  key from the owning table (`Object.keys(col.table).find(k => t[k] === col)`).
+  Also `and()` produces one extra nested `SQL` wrapper, and `PgUUID` columns
+  are ignored by a constructor-name `includes('column')` check.
+- Full suite emits environmental noise when local services are down
+  (osm.test.ts real Nominatim 500, app.test.ts pg-pool ECONNREFUSED :5433) but
+  every test file passes (10/10 files, 67/67 tests).
+
+Verified:
+- Tests 67/67 (9 new in `server/tests/manual-action.test.ts`; schema.test →
+  28 tables / 19 enums; task-lifecycle.test + new edge assertion).
+- Typecheck server + root; server build OK.
+- Live smoke test NOT repeated: PostgreSQL (5433), Redis (6380) and Docker
+  were down; migration 0003 not yet applied to a running database.
+
+Next:
+- Phase 3 / T3.5 (Research Result provenance)

@@ -79,13 +79,51 @@ graph TD
 
 ---
 
-## 3. Manejo de Acciones Manuales (`requires_manual_action`)
+## 3. Manejo de Acciones Manuales (`requires_manual_action`) — Fase 3 / T3.4
 
 No todas las fuentes en el Perú están 100% digitalizadas o libres de CAPTCHAs. Cuando un conector no puede resolver automáticamente una consulta (ej. requiere comprar una copia literal en SPRL o resolver un captcha complejo de SUNARP), la tarea cambia a estado:
-`task.status = 'requires_manual_action'`
-`task.manual_action_description = 'Se requiere adquirir copia literal de la partida 11029384 en SUNARP SPRL'`
 
-Esto permite que un analista humano suba el documento o ingrese el dato, sin bloquear el resto del pipeline.
+`task.status = 'requires_manual_action'`
+
+y se crea **un registro en la tabla `manual_actions`** con los datos que un analista humano necesita para intervenir.
+
+### Campos de `manual_actions`
+
+| Campo | Propósito |
+|---|---|
+| `research_task_id` (FK) | Tarea que quedó a la espera de intervención |
+| `property_id` (FK) | Inmueble relacionado |
+| `action_kind` | Motivo: `captcha`, `login`, `payment`, `user_action`, `other` |
+| `status` | `requested` → `completed` / `cancelled` |
+| `instructions` | Instrucciones concretas para el analista |
+| `url` | URL de la fuente donde intervenir |
+| `source` | Origen (`sourceId` del conector o `system`) |
+| `requested_at` | Cuándo se solicitó |
+| `completed_at` / `completed_by` | Cuándo y quién resolvió |
+| `result` (jsonb) | Dato/evidencia ingresado por el analista |
+
+### Servicio (`server/src/domain/research/manual-action.service.ts`)
+
+- **`requestManualAction`**: idempotente por tarea (una acción `requested`
+  abierta se reutiliza en vez de duplicarse). Se invoca automáticamente desde:
+  - `ResearchOrchestrator.executeConnectorTask` cuando el conector declara
+    `requires_manual_action` o `requires_auth` (auth → `login`, resto →
+    `user_action`; `source = sourceId`).
+  - La ruta de geolocalización sin dirección geocodificable (`source = 'system'`).
+  - `geocoding.worker.ts` cuando la tarea accidentalmente queda en
+    `requires_manual_action` (fallback de seguridad, `source = 'system'`).
+- **`completeManualAction`**: fija `completed_at`/`completed_by`/`result`,
+  inserta una fila en `research_results` (`source='manual'`,
+  `sourceUrl=action.url`, `verification='verified'`, `confidence='high'`,
+  `parserVersion='manual-v1'`, `metadata={manualActionId, externalSource}`),
+  audita `manual_result_entered`, transiciona la tarea
+  `requires_manual_action → completed` (borde nuevo en
+  `task-lifecycle.ts`) con `resultReference` y refresca el avance del caso.
+- **`cancelManualAction`**: cierra la solicitud sin resultado.
+
+> Política anti-datos-inventados: el mecanismo **no** produce resultados
+> automáticos; un analista humano introduce el dato real y éste queda marcado
+> como `verified` con proveniencia `manual`.
 
 ---
 
@@ -177,6 +215,9 @@ Reglas de integridad:
   fija al concluir el trabajo automatizado (nunca en `requires_manual_action`).
 - `completed` limpia `error` y `requiresManualAction`; `requires_manual_action`
   activa automáticamente el flag `requiresManualAction`.
+- **T3.4**: el borde directo `requires_manual_action → completed` cierra la tarea
+  cuando un analista ingresa el resultado vía `completeManualAction`
+  (ver §3).
 - **Settled** (para decidir el estado del caso): `completed`, `failed`,
   `skipped`, `unavailable`, `blocked`, `requires_manual_action`. Cuando todas
   las tareas de un caso están settled, el caso puede terminar

@@ -35,7 +35,12 @@ export { judicialCases, judicialEvents } from './judicial.js';
 export { marketComparables, marketPrices } from './market.js';
 
 // ── Research engine ─────────────────────────────────────────
-export { researchCases, researchTasks, researchResults } from './research.js';
+export {
+  researchCases,
+  researchTasks,
+  researchResults,
+  manualActions,
+} from './research.js';
 
 // ── Documents & links ───────────────────────────────────────
 export { documents, externalLinks } from './documents.js';

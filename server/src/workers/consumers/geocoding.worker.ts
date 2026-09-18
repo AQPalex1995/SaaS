@@ -15,6 +15,7 @@ import { osmConnector } from '../../connectors/implementations/osm.js';
 import { logger } from '../../logger.js';
 import { updateCaseProgress } from '../../domain/research/lifecycle.js';
 import { transitionTask, type TaskStatus } from '../../domain/research/task-lifecycle.js';
+import { ManualActionService } from '../../domain/research/manual-action.service.js';
 
 type DbLike = Pick<Database, 'update' | 'select'>;
 
@@ -99,6 +100,20 @@ export async function markGeolocationTask(
         status === 'requires_manual_action' ? error ?? null : undefined,
     });
     await updateCaseProgress(db, row.caseId);
+
+    if (status === 'requires_manual_action') {
+      try {
+        await new ManualActionService(db).requestManualAction(row.taskId, propertyId, {
+          instructions: error ?? 'Se requiere acción manual para completar la geolocalización',
+          source: 'system',
+        });
+      } catch (err) {
+        logger.warn(
+          { taskId: row.taskId, err },
+          'No se pudo crear la manual action de geolocalización',
+        );
+      }
+    }
   }
 }
 

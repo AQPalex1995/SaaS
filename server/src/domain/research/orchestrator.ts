@@ -17,6 +17,7 @@ import {
   transitionTask,
   type TaskStatus,
 } from './task-lifecycle.js';
+import { ManualActionService } from './manual-action.service.js';
 import { connectorRegistry } from '../../connectors/registry.js';
 import type { SourceType } from '../../connectors/base.js';
 import { osmConnector } from '../../connectors/implementations/osm.js';
@@ -72,9 +73,11 @@ export const TASK_SOURCE_MAP: Record<string, SourceType> = {
  */
 export class ResearchOrchestrator {
   private db: Database;
+  private manualActions: ManualActionService;
 
   constructor(db?: Database) {
     this.db = db ?? getDb();
+    this.manualActions = new ManualActionService(this.db);
   }
 
   /**
@@ -337,6 +340,17 @@ export class ResearchOrchestrator {
       await transitionTask(this.db, researchTaskId, 'requires_manual_action', {
         manualActionDescription: 'Sin dirección ni distrito para geolocalizar',
       });
+      try {
+        await this.manualActions.requestManualAction(researchTaskId, propertyId, {
+          instructions: 'Sin dirección ni distrito para geolocalizar',
+          source: 'system',
+        });
+      } catch (err: any) {
+        logger.warn(
+          { researchTaskId, err: err?.message },
+          'No se pudo crear la manual action de geolocalización',
+        );
+      }
       return null;
     }
 
@@ -411,12 +425,25 @@ export class ResearchOrchestrator {
     }
 
     if (status.requiresManualAction || status.status === 'requires_auth') {
+      const description =
+        status.manualActionDescription ??
+        status.message ??
+        `El conector ${sourceId} requiere acción manual o autenticación`;
       await transitionTask(this.db, researchTaskId, 'requires_manual_action', {
-        manualActionDescription:
-          status.manualActionDescription ??
-          status.message ??
-          `El conector ${sourceId} requiere acción manual o autenticación`,
+        manualActionDescription: description,
       });
+      try {
+        await this.manualActions.requestManualAction(researchTaskId, propertyId, {
+          actionKind: status.status === 'requires_auth' ? 'login' : 'user_action',
+          instructions: description,
+          source: sourceId,
+        });
+      } catch (err: any) {
+        logger.warn(
+          { researchTaskId, sourceId, err: err?.message },
+          'No se pudo crear la manual action del conector',
+        );
+      }
       return null;
     }
 

@@ -2,7 +2,7 @@
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
 > El estado del repositorio refleja la **Fase 3 (Research Engine Hardening)** en curso.
-> Las fases 0–2.5 están implementadas en `main`; T3.1 (ResearchCase lifecycle), T3.2 (ResearchTask lifecycle) y T3.3 (Research orchestration) completadas el 2026-09-17.
+> Las fases 0–2.5 están implementadas en `main`; T3.1 (ResearchCase lifecycle), T3.2 (ResearchTask lifecycle), T3.3 (Research orchestration) y T3.4 (Manual Action) completadas el 2026-09-17.
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
 > Lee atentamente este documento antes de escribir código.
 
@@ -11,13 +11,13 @@
 ## 1. Estado del Proyecto al Recibirlo
 
 - **Servidor Fastify**: Implementado en `server/src/app.ts` e `index.ts` (puerto `3001`).
-- **Base de Datos**: Esquema completo en `server/src/db/schema/` (27 tablas, 17 enums, tipos PostGIS).
-- **Migraciones**: Archivo `server/drizzle/0000_military_salo.sql` generado y listo.
+- **Base de Datos**: Esquema completo en `server/src/db/schema/` (28 tablas, 19 enums, tipos PostGIS).
+- **Migraciones**: Archivos `server/drizzle/0000_military_salo.sql`, `0001_research_lifecycle_enums.sql`, `0002_research_lifecycle_default.sql` y `0003_natural_mysterio.sql` (manual_actions) generados (0003 sin aplicar aún a un Postgres vivo).
 - **Conectores**: 14 stubs + **conector OSM/Nominatim real** registrado sobre el stub en `index.ts`.
 - **Colas**: 6 colas BullMQ definidas en `server/src/workers/queue.ts`, con consumidores reales para `geocoding` y `research`.
 - **Ingesta**: Motor de sincronización `server/src/domain/ingestion/sync.ts` + CLI `server/src/scripts/sync-sqlite.ts`.
 - **UI**: Panel Scout intacto en puerto `8787` con botón `[INVESTIGAR]`, `Property Intelligence Drawer`, badges en tiempo real y lista dinámica de fuentes.
-- **Pruebas**: 57 tests automatizados pasando en Vitest (`cd server && npm.cmd test`).
+- **Pruebas**: 67 tests automatizados pasando en Vitest (`cd server && npm.cmd test`).
 
 > **Bugs conocidos y divergencias**: la base SQLite real es `data/scout.db` (no `data/terrenos.db` como cita la doc);
 > `node:sqlite` requiere import dinámico en Docker `node:22` (ya resuelto en `sync.ts`).
@@ -187,6 +187,50 @@ consistentes. Ver `docs/RESEARCH_ENGINE.md` §5.
 
 ---
 
+## 2.8. Fase 3 — T3.4 Manual Action — ✅ COMPLETADA (2026‑09‑17)
+
+Mecanismo genérico para fuentes que requieren acción humana (CAPTCHA, LOGIN,
+PAYMENT, USER ACTION) con datos concretos (`instructions`, `url`,
+`requested_at`, `completed_at`, `completed_by`, `result`). Ver
+`docs/RESEARCH_ENGINE.md` §3.
+
+### Cambios
+- **Enums**: `manual_action_kind` (`captcha`, `login`, `payment`,
+  `user_action`, `other`) y `manual_action_status` (`requested`, `completed`,
+  `cancelled`) en `server/src/db/schema/enums.ts`.
+- **Tabla `manual_actions`** (`server/src/db/schema/research.ts`): FK a
+  `research_tasks` y `properties` (cascade), `actionKind`, `status`,
+  `instructions`, `url`, `source`, timestamps `requestedAt`/`completedAt`,
+  `completedBy`, `result` (jsonb), `metadata`, `createdAt`, `updatedAt`;
+  índices por task, property y status.
+- **`server/src/domain/research/manual-action.service.ts`**:
+  `requestManualAction` (idempotente por tarea), `getManualAction`,
+  `listManualActions` (filtros), `completeManualAction` (registra
+  `research_results` con source `manual` y verification `verified`, audita
+  `manual_result_entered`, transiciona la tarea
+  `requires_manual_action → completed` con `resultReference` y refresca el
+  caso) y `cancelManualAction`.
+- **Wiring**: `ResearchOrchestrator` solicita acción manual para conectores con
+  `requires_manual_action`/`requires_auth` (login → `login`, resto →
+  `user_action`) y para geolocalización sin dirección geocodificable;
+  `geocoding.worker.ts` la solicita cuando la tarea queda en
+  `requires_manual_action`. Todo en try/catch (nunca rompe el pipeline).
+- **`task-lifecycle.ts`**: borde directo `requires_manual_action → completed`.
+- **DTO**: `ManualActionDTO` en `server/src/dto/index.ts`.
+- **Migración**: `server/drizzle/0003_natural_mysterio.sql` (generada por
+  drizzle-kit, sin edición manual).
+
+### Verificación
+- Tests 67/67 (9 nuevos en `server/tests/manual-action.test.ts`; `schema.test.ts`
+  valida 28 tablas y los 2 enums nuevos; un test de mock DB que emula ASTs de
+  drizzle: `and()` anida un wrapper SQL extra y `PgColumn.name` es **snake_case**,
+  el key JS se resuelve desde `col.table`).
+- Typecheck server + root, build del server.
+- Nota de ambiente: PostgreSQL (5433) y Redis (6380) detenidos; la migración
+  0003 no se aplicó a una base viva en esta sesión.
+
+---
+
 ## 3. Checklist de Verificación para el Agente
 
 Antes de dar por concluida cualquier sesión de trabajo, ejecuta siempre:
@@ -196,7 +240,7 @@ Antes de dar por concluida cualquier sesión de trabajo, ejecuta siempre:
 cd server
 npm.cmd run typecheck
 
-# 2. Ejecutar toda la suite de tests (50 tests)
+# 2. Ejecutar toda la suite de tests (67 tests)
 npm.cmd test
 
 # 3. Build de producción del servidor
@@ -224,11 +268,11 @@ cd server && npm.cmd run sync:sqlite
 
 ---
 
-## 5. Siguientes Iteraciones (después de T3.3)
+## 5. Siguientes Iteraciones (después de T3.4)
 
-> **Siguiente tarea del plan**: **T3.4 — Manual Action** (mecanismo genérico para fuentes
-> que requieren CAPTCHA, LOGIN, PAYMENT, USER ACTION con estado `requires_manual_action`
-> y campos `instructions`, `url`, `requested_at`, `completed_at`, `completed_by`, `result`).
+> **Siguiente tarea del plan**: **T3.5 — Research Result provenance** (asegurar
+> `source`, `source_url`, `retrieved_at`, `confidence`, `verification_status`,
+> `raw_data`, `normalized_data` en cada resultado de investigación).
 > Ver `PROJECT_EXECUTION_PLAN.md`.
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.

@@ -94,7 +94,7 @@ Todos los orígenes de datos externos implementan la interfaz `PropertyDataSourc
 
 ### 1. `server/src/db/` — Capa de Persistencia
 - **Drizzle ORM** con soporte completo para PostgreSQL 16 y tipos nativos PostGIS (`geometry(Point, 4326)`, `geometry(Polygon, 4326)`).
-- 27 tablas relacionales y 17 tipos enum de PostgreSQL que garantizan integridad referencial estricta.
+- 28 tablas relacionales y 19 tipos enum de PostgreSQL que garantizan integridad referencial estricta.
 
 ### 2. `server/src/domain/properties/` — Módulo Inmobiliario Central
 - Administra el ciclo de vida de la entidad `Property` (inmueble unificado).

@@ -113,6 +113,23 @@ export interface ResearchResultDTO {
   createdAt: string;
 }
 
+export interface ManualActionDTO {
+  id: string;
+  researchTaskId: string;
+  propertyId: string;
+  actionKind: string;
+  status: string;
+  instructions: string;
+  url: string | null;
+  source: string | null;
+  requestedAt: string;
+  completedAt: string | null;
+  completedBy: string | null;
+  result: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ── Scores & Alerts ─────────────────────────────────────────
 
 export interface PropertyScoreDTO {

@@ -192,15 +192,18 @@ d:\SaaS\fb-terreno-scout\
 │   ├── tsconfig.json          # TypeScript ESM Bundler
 │   ├── tsconfig.build.json    # Build producción (emit dist/)
 │   ├── drizzle.config.ts      # Configuración de Drizzle Kit
-│   ├── drizzle/               # Migraciones SQL generadas (0000_military_salo.sql)
+│   ├── drizzle/               # Migraciones SQL generadas (0000_military_salo.sql … 0003_natural_mysterio.sql)
 │   ├── scripts/
 │   │   └── queue-health.mjs   # Healthcheck Redis para el worker en Docker
-│   ├── tests/                 # Suite de pruebas Vitest (50 tests pasando)
+│   ├── tests/                 # Suite de pruebas Vitest (67 tests pasando)
 │   │   ├── app.test.ts        # Tests de API Fastify, /health, /sources
 │   │   ├── connector.test.ts  # Tests de registro y conectores stubs
 │   │   ├── research.test.ts   # Tests del motor de investigación
 │   │   ├── lifecycle.test.ts  # Tests de transiciones del ResearchCase lifecycle
-│   │   ├── schema.test.ts     # Tests de los 27 esquemas y 17 enums
+│   │   ├── task-lifecycle.test.ts # Tests de transiciones del ResearchTask lifecycle
+│   │   ├── orchestrator.test.ts   # Tests de orquestación y aislamiento de fallos
+│   │   ├── manual-action.test.ts  # Tests de acciones manuales (T3.4)
+│   │   ├── schema.test.ts     # Tests de los 28 esquemas y 19 enums
 │   │   ├── sync.test.ts       # Tests de helpers de ingestión (contentHash, mapeos, etc.)
 │   │   └── osm.test.ts        # Tests del conector OpenStreetMap (fetch stubbed, sin red)
 │   └── src/
@@ -224,10 +227,10 @@ d:\SaaS\fb-terreno-scout\
 │       │   ├── init.sql       # Extensiones PostGIS y uuid-ossp (solo Docker entries)
 │       │   ├── migrate.ts     # Runner de migraciones Drizzle
 │       │   ├── seed.ts        # Seed de desarrollo (exporta runSeed())
-│       │   └── schema/        # 27 tablas Drizzle + 17 enums PostgreSQL
+│       │   └── schema/        # 28 tablas Drizzle + 19 enums PostgreSQL
 │       ├── domain/            # Servicios de negocio
 │       │   ├── properties/    # PropertyService + rutas /api/v1/properties
-│       │   ├── research/      # ResearchService + lifecycle.ts + 8 tareas automáticas
+│       │   ├── research/      # ResearchService + lifecycle + task-lifecycle + orchestrator + manual-action (8 tareas)
 │       │   ├── ingestion/     # sync.ts: SQLite legacy → PostgreSQL (dedup, hash, audit)
 │       │   └── audit/         # AuditService para registro de eventos
 │       ├── dto/               # Tipos de transferencia de datos
@@ -248,7 +251,7 @@ d:\SaaS\fb-terreno-scout\
 └── docs/                      # ── DOCUMENTACIÓN COMPLETA ──
     ├── ARCHITECTURE.md        # Arquitectura del sistema modular
     ├── ARCHITECTURE_AUDIT.md  # Auditoría del Scout inicial
-    ├── DATABASE.md            # Esquema de 27 tablas + PostGIS
+    ├── DATABASE.md            # Esquema de 28 tablas + PostGIS
     ├── DOMAIN_MODEL.md        # Entidades, invariantes y estados
     ├── API.md                 # Especificación de endpoints Fastify
     ├── CONNECTORS.md          # Arquitectura de conectores
@@ -317,7 +320,7 @@ npm.cmd run db:seed       # Inserta usuario de sistema, fuentes y datos de prueb
 ### Paso 5: Ejecutar la suite de tests
 ```bash
 cd server
-npm.cmd test               # Ejecuta Vitest (50 tests automáticos)
+npm.cmd test               # Ejecuta Vitest (67 tests automáticos)
 npm.cmd run typecheck      # Verifica que TypeScript esté al 100% sin errores
 ```
 
@@ -375,7 +378,7 @@ Para profundizar en cualquier área, lee directamente el documento correspondien
 | [CHANGELOG_AGENTS.md](file:///d:/SaaS/fb-terreno-scout/CHANGELOG_AGENTS.md) | **Bitácora de sesiones de agentes** |
 | [ARCHITECTURE.md](file:///d:/SaaS/fb-terreno-scout/docs/ARCHITECTURE.md) | Diagrama modular, flujo de datos, principios de diseño |
 | [ARCHITECTURE_AUDIT.md](file:///d:/SaaS/fb-terreno-scout/docs/ARCHITECTURE_AUDIT.md) | Diagnóstico completo del código previo de FB Terreno Scout |
-| [DATABASE.md](file:///d:/SaaS/fb-terreno-scout/docs/DATABASE.md) | Diccionario de 27 tablas, índices, llaves foráneas y tipos PostGIS |
+| [DATABASE.md](file:///d:/SaaS/fb-terreno-scout/docs/DATABASE.md) | Diccionario de 28 tablas, índices, llaves foráneas y tipos PostGIS |
 | [DOMAIN_MODEL.md](file:///d:/SaaS/fb-terreno-scout/docs/DOMAIN_MODEL.md) | Modelo de dominio: Property, Listing, ResearchCase, Task, Scores |
 | [API.md](file:///d:/SaaS/fb-terreno-scout/docs/API.md) | Contratos REST Fastify, DTOs de entrada y salida, códigos HTTP |
 | [CONNECTORS.md](file:///d:/SaaS/fb-terreno-scout/docs/CONNECTORS.md) | Arquitectura de adaptadores, política de rate limits y stubs |

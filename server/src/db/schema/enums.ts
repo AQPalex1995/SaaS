@@ -142,6 +142,23 @@ export const scrapingJobStatusEnum = pgEnum('scraping_job_status', [
   'cancelled',
 ]);
 
+// ── Research / Manual Action ───────────────────────────────
+// Generic mechanism for sources that require CAPTCHA, LOGIN, PAYMENT
+// or other USER ACTION to deliver their data (Phase 3 / T3.4).
+export const manualActionKindEnum = pgEnum('manual_action_kind', [
+  'captcha',
+  'login',
+  'payment',
+  'user_action',
+  'other',
+]);
+
+export const manualActionStatusEnum = pgEnum('manual_action_status', [
+  'requested',
+  'completed',
+  'cancelled',
+]);
+
 // ── Audit ───────────────────────────────────────────────────
 export const auditActionEnum = pgEnum('audit_action', [
   'property_created',
