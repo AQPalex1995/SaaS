@@ -583,7 +583,8 @@ T4.3 normalization — ✅ DONE (2026-09-17)
 T4.4 deduplication — ✅ DONE (2026-09-17)
 T4.5 Property linking + manual intake — ✅ DONE (2026-09-17)
 T4.6 research connector — ✅ DONE (2026-09-17)
-T4.7 manual action handling
+T4.7 manual action handling — ✅ DONE (2026-09-17)
+T4.8 tests
 T4.7 manual action handling
 T4.8 tests
 T4.9 monitoring
@@ -770,6 +771,27 @@ T4.6 research connector — result:
 Siguiente: **T4.7 manual action handling** (afinar el ciclo completo
 manual: listado/UI ya expuestos en T4.5b, verificación de estados
 `requires_manual_action` ↔ `completed`, cancelación desde la API).
+
+T4.7 manual action handling — result:
+
+- Ciclo manual completo expuesto vía API (rutas en
+  `remate-intake.routes.ts`): listar `GET /api/v1/manual-actions` (+`/:id`),
+  completar `POST /api/v1/manual-actions/:id/complete` (intake REM@JU payload +
+  PDF base64) y **nuevo** `POST /api/v1/manual-actions/:id/cancel` que delega en
+  `ManualActionService.cancelManualAction` (la tarea queda en
+  `requires_manual_action`; un re-run puede pedir otra acción).
+- `RemateIntakeService.cancel(id, cancelledBy?)` expuesto para rutas y tests.
+- Ciclo de estados verificado por los tests existentes: `requested` (request,
+  idempotente por tarea) → `completed` (settlea la tarea `requires_manual_action`
+  con resultado en `research_results`, provenance `manual-v1`) | `cancelled`
+  (idempotente; no toca la tarea).
+- Tests: `remate-intake.routes.test.ts` (+1: cancel HTTP) y cobertura previa de
+  `manual-action.test.ts` y `research-flows.test.ts` (flujo manual geolocation).
+  Suite completa **146/146 (21 archivos)**; typecheck server+root y build OK.
+
+Siguiente: **T4.8 tests** (batería de pruebas de aceptación de la Fase 4:
+ciclo E2E manual→completo sin red, fixtures del payload, casos límite de
+`planRemajuMatches` y del intake).
 
 ============================================================
 PHASE 5 — SUNARP

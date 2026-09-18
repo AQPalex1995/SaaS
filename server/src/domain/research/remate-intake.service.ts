@@ -139,6 +139,11 @@ export class RemateIntakeService {
     return { manualAction, plan, registryId, pdfKey, locationApplied };
   }
 
+  /** Cancela una acción manual pendiente (el operador decide que no procede). */
+  async cancel(id: string, cancelledBy?: string): Promise<ManualActionDTO> {
+    return this.manualActions().cancelManualAction(id, cancelledBy);
+  }
+
   private async saveRegistry(propertyId: string, plan: RemateManualPlan): Promise<string | null> {
     if (!plan.registry) return null;
     const [row] = await this.db()

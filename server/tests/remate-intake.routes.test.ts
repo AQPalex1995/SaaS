@@ -22,6 +22,7 @@ const fakeService = {
     pdfKey: null,
     locationApplied: true,
   })),
+  cancel: vi.fn(async () => ({ ...manualAction, status: 'cancelled' })),
 };
 
 describe('REM@JU manual intake routes (T4.5b)', () => {
@@ -71,5 +72,16 @@ describe('REM@JU manual intake routes (T4.5b)', () => {
     const body = JSON.parse(ok.body);
     expect(body.registryId).toBe('reg-1');
     expect(fakeService.complete).toHaveBeenCalled();
+  });
+
+  it('POST cancel delega y devuelve la acción cancelada', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/manual-actions/ma-1/cancel',
+      payload: { cancelledBy: 'analista' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).data.status).toBe('cancelled');
+    expect(fakeService.cancel).toHaveBeenCalledWith('ma-1', 'analista');
   });
 });

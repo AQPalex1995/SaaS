@@ -39,24 +39,21 @@ PostGIS:
 ## Tests
 
 Server:
-✅ 145/145 (21 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` T4.2–T4.6)
+✅ 146/146 (21 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` T4.2–T4.7)
 
 Root:
 ✅
 
 ## Current Phase
 
-Phase 4 — IN PROGRESS (REM@JU; T4.1 a T4.6 done: discovery, parser, normalization, dedup, linking/manual intake, research connector)
+Phase 4 — IN PROGRESS (REM@JU; T4.1 a T4.7 done: discovery, parser, normalization, dedup, linking/manual intake, research connector, manual action handling)
 
 ## Current Task
 
-Phase 4 / T4.7 (manual action handling) — próximo paso. T4.6 completado:
-la tarea `judicial` la ejecuta el orquestador contra REM@JU real
-(`executeRemajuTask`, `TASK_SOURCE_MAP.judicial='remaju'`, dep inyectable
-`remajuSearch`); módulo puro `remaju-research.ts` (`planRemajuMatches`,
-`toRemateEntry`); conector REM@JU real registrado en `index.ts`; resultados con
-provenance `remaju-research-v1` y candidatos débiles → `requires_manual_action`
-(kind captcha). Suite 145/145 (21 archivos). Reporte T4.1 en
+Phase 4 / T4.8 (tests) — próximo paso. T4.7 completado: ciclo manual completo
+vía API — listar/get, complete (intake REM@JU), y **cancel**
+(`POST /api/v1/manual-actions/:id/cancel` → `cancelManualAction`).
+Suite 146/146 (21 archivos). Reporte T4.1 en
 `docs/REMATE_JUDICIAL.md`.
 
 ## Blockers
@@ -68,7 +65,7 @@ None
 - La suite completa de tests emitió ruido ambiental durante T3.4–T3.6:
   `osm.test.ts` falla una llamada real a Nominatim (`500`) y `app.test.ts`
   reporta `ECONNREFUSED` a PostgreSQL 5433 (servicios locales detenidos), pero
-  **todos los archivos de test pasan** (21/21, 145/145). El smoke test en vivo de
+  **todos los archivos de test pasan** (21/21, 146/146). El smoke test en vivo de
   REM@JU (T4.2) SÍ se repitió contra la página pública real: 276 remates
   parseados (MIRAFLORES/40451/25296, distrito "cusco" → 2 hits).
 - Limitaciones conocidas del motor de investigación (reveladas por T3.8, sin

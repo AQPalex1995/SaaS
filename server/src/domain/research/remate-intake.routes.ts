@@ -73,6 +73,18 @@ export async function remateIntakeRoutes(
     },
   );
 
+  // POST /api/v1/manual-actions/:id/cancel
+  app.post('/api/v1/manual-actions/:id/cancel', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as { cancelledBy?: string } | undefined;
+    try {
+      const action = await service.cancel(id, body?.cancelledBy);
+      return reply.send({ data: action });
+    } catch (err) {
+      return asError(reply, err);
+    }
+  });
+
   // GET /manual-actions — UI mínima para el operador (sin tocar el Scout Legacy)
   app.get('/manual-actions', async (_request, reply) => {
     return reply.type('text/html; charset=utf-8').send(MANUAL_INTAKE_HTML);

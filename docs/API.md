@@ -210,6 +210,14 @@ aviso en base64). `bodyLimit` de 12 MB.
 - **Respuesta 200**: `{ "data": ManualActionDTO, "plan": {...}, "registryId", "pdfKey", "locationApplied" }`.
 - **Errores**: 400 payload/PDF inválido; 404 acción inexistente; 409 acción ya completada.
 
+### `POST /api/v1/manual-actions/:id/cancel`
+Cancela una acción manual pendiente (el operador decidió que no procede). La
+tarea sigue en `requires_manual_action`; un re-run posterior puede pedir una
+nueva acción.
+- **Body (opcional)**: `{ "cancelledBy": "analista" }`.
+- **Respuesta 200**: `{ "data": ManualActionDTO }` con `status: "cancelled"`.
+- **Errores**: 404 acción inexistente; 409 acción ya completada.
+
 ### `GET /manual-actions`
 UI HTML mínima (servida por el API) para listar pendientes y completar el
 formulario, incluyendo subida de PDF (leído como base64 en el navegador).

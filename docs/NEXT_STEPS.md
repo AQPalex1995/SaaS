@@ -407,12 +407,15 @@ cd server && npm.cmd run sync:sqlite
 > **T4.6 research connector → ✅ DONE**:
 > `server/src/domain/research/remaju-research.ts` (`planRemajuMatches`) +
 > `executeRemajuTask` en el orquestador (`TASK_SOURCE_MAP.judicial='remaju'`,
-> dep inyectable `remajuSearch`); conector REM@JU real registrado; suite
-> **145/145 (21 archivos)**.
+> dep inyectable `remajuSearch`); conector REM@JU real registrado.
+> **T4.7 manual action handling → ✅ DONE**:
+> ciclo completo vía API — `GET/POST` + **cancel**
+> (`POST /api/v1/manual-actions/:id/cancel` → `cancelManualAction`); suite
+> **146/146 (21 archivos)**.
 >
-> **Siguiente tarea del plan**: **Fase 4 / T4.7 — manual action handling**
-> (ciclo manual completo: `requested → completed | cancelled`, DTOs/API y
-> verificación de estados `requires_manual_action`).
+> **Siguiente tarea del plan**: **Fase 4 / T4.8 — tests**
+> (batería de aceptación Fase 4 sin red: ciclo E2E manual→completo, fixtures
+> del payload, límites de `planRemajuMatches` e intake).
 > Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 4).
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.

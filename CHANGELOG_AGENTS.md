@@ -650,3 +650,23 @@ Notes:
 Next:
 - **T4.7 — manual action handling**: refine the end-to-end manual cycle
   (pending → completed/`cancelled` from the API, DTOs, states).
+
+## 2026-09-17 — OpenCode — Phase 4 / T4.7 (manual action handling)
+
+Completed the human-in-the-loop lifecycle over HTTP.
+
+Code:
+- `RemateIntakeService.cancel(id, cancelledBy?)` delegating to
+  `ManualActionService.cancelManualAction`.
+- New route `POST /api/v1/manual-actions/:id/cancel` (body `{ cancelledBy }`);
+  404/409 error mapping.
+- Cycle verified by tests: `requested` (idempotent per task) → `completed`
+  (settles the `requires_manual_action` task, records result with provenance
+  `manual-v1`) | `cancelled` (idempotent, task untouched).
+- `docs/API.md` documents the new endpoint.
+- Tests: `remate-intake.routes.test.ts` (+1). Suite **146/146 (21 files)**;
+  server+root typecheck and build OK.
+
+Next:
+- **T4.8 — tests**: Fase 4 acceptance suite (offline E2E manual→complete cycle,
+  payload fixtures, edge cases for `planRemajuMatches` and intake).
