@@ -247,3 +247,27 @@ Verified:
 
 Next:
 - Phase 3 / T3.6 (Research API)
+
+## 2026-09-17 — OpenCode — Phase 3 / T3.6 (Research API)
+
+Completed:
+- Verified the 5 research endpoints exist and hardened them in
+  `server/src/domain/research/routes.ts`:
+  - GET/POST `/api/v1/properties/:id/research` (UUID or legacy SQLite id;
+    POST 201, case → `queued` only when at least one job was enqueued).
+  - GET `/api/v1/research/:id`, `/tasks`, `/results` now validate that `:id`
+    is a UUID → **400** for malformed ids (previously a Postgres
+    "invalid input syntax for type uuid" surfaced as 500) and **404** for
+    unknown cases (previously `/tasks` and `/results` returned `[]`).
+- `researchRoutes(app, deps)` now accepts injectable `service` and `db`
+  (defaults: real `ResearchService` + `getDb()`), enabling HTTP tests with no
+  database.
+- Added `server/tests/research-api.test.ts` (7 tests): all 5 endpoints plus the
+  400/404 contracts; Redis enqueues mocked.
+
+Verified:
+- Tests 76/76 (12 files). Typecheck server + root; server build OK.
+- Live smoke test NOT repeated (PostgreSQL 5433 / Redis 6380 / Docker down).
+
+Next:
+- Phase 3 / T3.7 (Research Drawer)

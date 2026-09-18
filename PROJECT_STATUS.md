@@ -17,7 +17,7 @@ PostgreSQL:
 Redis:
 ⏸️ 6380 (detenido al cierre de esta sesión)
 
-> Nota: todos los servicios locales estaban detenidos durante T3.1–T3.5; el smoke
+> Nota: todos los servicios locales estaban detenidos durante T3.1–T3.6; el smoke
 > test en vivo no se repitió desde T3.2 (ver CHANGELOG_AGENTS.md).
 
 ## Database
@@ -34,7 +34,7 @@ PostGIS:
 ## Tests
 
 Server:
-✅ 69/69
+✅ 76/76
 
 Root:
 ✅
@@ -45,7 +45,7 @@ Phase 3
 
 ## Current Task
 
-T3.6 Research API
+T3.7 Research Drawer
 
 ## Blockers
 
@@ -53,9 +53,9 @@ None
 
 ## Known Issues
 
-- La suite completa de tests emitió ruido ambiental durante T3.4/T3.5:
+- La suite completa de tests emitió ruido ambiental durante T3.4–T3.6:
   `osm.test.ts` falla una llamada real a Nominatim (`500`) y `app.test.ts`
   reporta `ECONNREFUSED` a PostgreSQL 5433 (servicios locales detenidos), pero
-  **todos los archivos de test pasan** (11/11, 69/69). El smoke test en vivo no
+  **todos los archivos de test pasan** (12/12, 76/76). El smoke test en vivo no
   se repitió: PostgreSQL/Redis/Docker estaban detenidos (ver CHANGELOG_AGENTS.md
-  2026-09-17, T3.4/T3.5).
+  2026-09-17, T3.4–T3.6).

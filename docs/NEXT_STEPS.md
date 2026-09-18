@@ -2,7 +2,7 @@
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
 > El estado del repositorio refleja la **Fase 3 (Research Engine Hardening)** en curso.
-> Las fases 0–2.5 están implementadas en `main`; T3.1 (ResearchCase lifecycle), T3.2 (ResearchTask lifecycle), T3.3 (Research orchestration), T3.4 (Manual Action) y T3.5 (Research Result provenance) completadas el 2026-09-17.
+> Las fases 0–2.5 están implementadas en `main`; T3.1 (ResearchCase lifecycle), T3.2 (ResearchTask lifecycle), T3.3 (Research orchestration), T3.4 (Manual Action), T3.5 (Research Result provenance) y T3.6 (Research API) completadas el 2026-09-17.
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
 > Lee atentamente este documento antes de escribir código.
 
@@ -17,7 +17,7 @@
 - **Colas**: 6 colas BullMQ definidas en `server/src/workers/queue.ts`, con consumidores reales para `geocoding` y `research`.
 - **Ingesta**: Motor de sincronización `server/src/domain/ingestion/sync.ts` + CLI `server/src/scripts/sync-sqlite.ts`.
 - **UI**: Panel Scout intacto en puerto `8787` con botón `[INVESTIGAR]`, `Property Intelligence Drawer`, badges en tiempo real y lista dinámica de fuentes.
-- **Pruebas**: 69 tests automatizados pasando en Vitest (`cd server && npm.cmd test`).
+- **Pruebas**: 76 tests automatizados pasando en Vitest (`cd server && npm.cmd test`).
 
 > **Bugs conocidos y divergencias**: la base SQLite real es `data/scout.db` (no `data/terrenos.db` como cita la doc);
 > `node:sqlite` requiere import dinámico en Docker `node:22` (ya resuelto en `sync.ts`).
@@ -257,6 +257,25 @@ Garantiza los campos de provenance en **todos** los resultados de investigación
 
 ---
 
+## 2.10. Fase 3 — T3.6 Research API — ✅ COMPLETADA (2026‑09‑17)
+
+Verificación y endurecimiento de los 5 endpoints de investigación.
+
+### Cambios
+- **`server/src/domain/research/routes.ts`**:
+  - `GET/POST /api/v1/properties/:id/research` (uuid o ID legacy SQLite).
+  - `GET /api/v1/research/:id`, `/tasks`, `/results`: validan `:id` como UUID
+    (400 si es malformado) y devuelven 404 para casos inexistentes.
+  - `researchRoutes(app, deps)` acepta `service` y `db` inyectables (default
+    real), habilitando tests HTTP sin base de datos.
+- **`server/tests/research-api.test.ts`** (7 tests): los 5 endpoints + 400/404,
+  con `enqueueGeocoding`/`enqueueResearch` mockeados (sin Redis).
+
+### Verificación
+- Tests 76/76 (12 archivos); typecheck server + root; build del server.
+
+---
+
 ## 3. Checklist de Verificación para el Agente
 
 Antes de dar por concluida cualquier sesión de trabajo, ejecuta siempre:
@@ -266,7 +285,7 @@ Antes de dar por concluida cualquier sesión de trabajo, ejecuta siempre:
 cd server
 npm.cmd run typecheck
 
-# 2. Ejecutar toda la suite de tests (69 tests)
+# 2. Ejecutar toda la suite de tests (76 tests)
 npm.cmd test
 
 # 3. Build de producción del servidor
@@ -294,11 +313,11 @@ cd server && npm.cmd run sync:sqlite
 
 ---
 
-## 5. Siguientes Iteraciones (después de T3.5)
+## 5. Siguientes Iteraciones (después de T3.6)
 
-> **Siguiente tarea del plan**: **T3.6 — Research API** (verificar/afinar
-> `POST /properties/:id/research`, `GET /properties/:id/research`,
-> `GET /research/:id`, `GET /research/:id/tasks`, `GET /research/:id/results`).
+> **Siguiente tarea del plan**: **T3.7 — Research Drawer** (mostrar ResearchCase,
+> Tasks, Progress, Errors, Warnings, Sources, Manual actions y Results en el
+> Drawer del panel).
 > Ver `PROJECT_EXECUTION_PLAN.md`.
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.

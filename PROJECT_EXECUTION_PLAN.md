@@ -418,7 +418,7 @@ Resultado (2026-09-17):
 T3.6 — Research API
 ------------------------------------------------------------
 
-STATUS: TODO
+STATUS: DONE
 
 Verificar:
 
@@ -427,6 +427,23 @@ GET /properties/:id/research
 GET /research/:id
 GET /research/:id/tasks
 GET /research/:id/results
+
+Resultado (2026-09-17):
+
+- Los 5 endpoints existen en `server/src/domain/research/routes.ts` y quedaron
+  endurecidos:
+  - `GET/POST /api/v1/properties/:id/research`: aceptan UUID o ID legacy de
+    SQLite (resolución on-the-fly); POST responde 201 y pasa el caso a `queued`
+    sólo si se encoló al menos un job (si no, queda `created`).
+  - `GET /api/v1/research/:id`, `/tasks` y `/results`: validan que el `:id` sea
+    UUID (si no, **400** con `{ error: 'Invalid research case id (expected UUID)' }`)
+    y devuelven **404** `{ error: 'Research case not found' }` para casos
+    inexistentes (antes `/tasks` y `/results` devolvían `[]` y un id malformado
+    provocaba un error 500 de PostgreSQL).
+- `researchRoutes(app, deps)` acepta `service` y `db` inyectables (default:
+  `ResearchService` real y `getDb()`), habilitando tests HTTP sin base de datos.
+- Tests 76/76 (7 nuevos en `server/tests/research-api.test.ts` cubriendo los 5
+  endpoints + 400/404); typecheck server + root y build del server OK.
 
 ------------------------------------------------------------
 T3.7 — Research Drawer

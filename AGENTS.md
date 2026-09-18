@@ -195,10 +195,11 @@ d:\SaaS\fb-terreno-scout\
 │   ├── drizzle/               # Migraciones SQL generadas (0000_military_salo.sql … 0003_natural_mysterio.sql)
 │   ├── scripts/
 │   │   └── queue-health.mjs   # Healthcheck Redis para el worker en Docker
-│   ├── tests/                 # Suite de pruebas Vitest (69 tests pasando)
+│   ├── tests/                 # Suite de pruebas Vitest (76 tests pasando)
 │   │   ├── app.test.ts        # Tests de API Fastify, /health, /sources
 │   │   ├── connector.test.ts  # Tests de registro y conectores stubs
 │   │   ├── research.test.ts   # Tests del motor de investigación
+│   │   ├── research-api.test.ts   # Tests HTTP de los endpoints de investigación (T3.6)
 │   │   ├── lifecycle.test.ts  # Tests de transiciones del ResearchCase lifecycle
 │   │   ├── task-lifecycle.test.ts # Tests de transiciones del ResearchTask lifecycle
 │   │   ├── orchestrator.test.ts   # Tests de orquestación y aislamiento de fallos
@@ -321,7 +322,7 @@ npm.cmd run db:seed       # Inserta usuario de sistema, fuentes y datos de prueb
 ### Paso 5: Ejecutar la suite de tests
 ```bash
 cd server
-npm.cmd test               # Ejecuta Vitest (69 tests automáticos)
+npm.cmd test               # Ejecuta Vitest (76 tests automáticos)
 npm.cmd run typecheck      # Verifica que TypeScript esté al 100% sin errores
 ```
 

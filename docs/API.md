@@ -149,15 +149,20 @@ Inicia un nuevo expediente de investigación para la propiedad e inserta automá
 
 ### `GET /api/v1/research/:id`
 Consulta el estado de un expediente de investigación.
+- **Respuesta 200**: `{ "data": { ...ResearchCaseDTO } }`.
+- **Respuesta 400**: `{ "error": "Invalid research case id (expected UUID)" }` si `:id` no es un UUID válido.
+- **Respuesta 404**: `{ "error": "Research case not found" }` si el caso no existe.
 
 ### `GET /api/v1/research/:id/tasks`
 Lista las tareas del expediente con su estado individual (`pending`, `running`, `completed`, `failed`, `requires_manual_action`, `unavailable`, `blocked`, `skipped`).
 - Las transiciones de tarea se validan de forma atómica en `server/src/domain/research/task-lifecycle.ts` (`transitionTask()`); `completed` y `skipped` son estados **inmutables**, y los estados `failed` / `blocked` / `unavailable` / `requires_manual_action` pueden reintentarse (incrementa `retryCount`, tope `maxRetries`). Ver `docs/RESEARCH_ENGINE.md` §5.
 - Cada tarea expone: `retryCount`, `maxRetries`, `requiresManualAction`, `manualActionDescription`, `startedAt`, `completedAt`, `error`, `createdAt` y `updatedAt`.
 - Estados explicables: `identity` y `geolocation` llegan a `completed`/`skipped`; las tareas apoyadas en conectores stub (`registry`, `bgr`, `urbanism`, `judicial`, `market`, `risk`) terminan en `unavailable` hasta que se implementen los conectores (política anti-datos-inventados).
+- **Respuesta 400/404**: `:id` malformado → 400; caso inexistente → 404 (mismo contrato que `GET /research/:id`).
 
 ### `GET /api/v1/research/:id/results`
-Lista todos los resultados y evidencias acumuladas para el expediente.
+Lista todos los resultados y evidencias acumuladas para el expediente, con provenance completa (`source`, `source_url`, `retrieved_at`, `data`, `raw_data`, `confidence`, `verification`, `parser_version`, `metadata`).
+- **Respuesta 400/404**: `:id` malformado → 400; caso inexistente → 404 (mismo contrato que `GET /research/:id`).
 
 ---
 

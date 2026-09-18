@@ -9,10 +9,26 @@ import {
 import { serverConfig } from '../../config.js';
 import { enqueueGeocoding, enqueueResearch } from '../../workers/jobs.js';
 import { transitionCase } from './lifecycle.js';
-import { getDb } from '../../db/connection.js';
+import { getDb, type Database } from '../../db/connection.js';
 
-export async function researchRoutes(app: FastifyInstance) {
-  const service = new ResearchService();
+export interface ResearchRoutesDeps {
+  /** Injectable for tests; defaults to a real ResearchService. */
+  service?: ResearchService;
+  /** Injectable DB for the lifecycle transition; defaults to getDb(). */
+  db?: Database;
+}
+
+export async function researchRoutes(
+  app: FastifyInstance,
+  deps: ResearchRoutesDeps = {},
+) {
+  const service = deps.service ?? new ResearchService();
+  const db = deps.db ?? getDb();
+
+  const notFound = (reply: any) =>
+    reply.status(404).send({ error: 'Research case not found' });
+  const badId = (reply: any) =>
+    reply.status(400).send({ error: 'Invalid research case id (expected UUID)' });
 
   /**
    * Resolve the `:id` param to a PostgreSQL property UUID.
@@ -86,7 +102,7 @@ export async function researchRoutes(app: FastifyInstance) {
       // If nothing was enqueued (e.g. Redis down), the case stays `created`.
       let data = researchCase;
       if (anyEnqueued) {
-        await transitionCase(getDb(), researchCase.id, 'queued');
+        await transitionCase(db, researchCase.id, 'queued');
         data = (await service.getCaseById(researchCase.id)) ?? researchCase;
       }
 
@@ -105,16 +121,18 @@ export async function researchRoutes(app: FastifyInstance) {
   // GET /api/v1/research/:id
   app.get('/api/v1/research/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
+    if (!isUuid(id)) return badId(reply);
     const researchCase = await service.getCaseById(id);
-    if (!researchCase) {
-      return reply.status(404).send({ error: 'Research case not found' });
-    }
+    if (!researchCase) return notFound(reply);
     return reply.send({ data: researchCase });
   });
 
   // GET /api/v1/research/:id/tasks
   app.get('/api/v1/research/:id/tasks', async (request, reply) => {
     const { id } = request.params as { id: string };
+    if (!isUuid(id)) return badId(reply);
+    const researchCase = await service.getCaseById(id);
+    if (!researchCase) return notFound(reply);
     const tasks = await service.getTasks(id);
     return reply.send({ data: tasks });
   });
@@ -122,6 +140,9 @@ export async function researchRoutes(app: FastifyInstance) {
   // GET /api/v1/research/:id/results
   app.get('/api/v1/research/:id/results', async (request, reply) => {
     const { id } = request.params as { id: string };
+    if (!isUuid(id)) return badId(reply);
+    const researchCase = await service.getCaseById(id);
+    if (!researchCase) return notFound(reply);
     const results = await service.getResults(id);
     return reply.send({ data: results });
   });
