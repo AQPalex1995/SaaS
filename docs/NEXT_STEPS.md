@@ -22,7 +22,7 @@
 - **Colas**: 6 colas BullMQ definidas en `server/src/workers/queue.ts`, con consumidores reales para `geocoding` y `research`.
 - **Ingesta**: Motor de sincronización `server/src/domain/ingestion/sync.ts` + CLI `server/src/scripts/sync-sqlite.ts`.
 - **UI**: Panel Scout intacto en puerto `8787` con botón `[INVESTIGAR]`, `Property Intelligence Drawer`, badges en tiempo real y lista dinámica de fuentes.
-- **Pruebas**: 104 tests automatizados pasando en Vitest (`cd server && npm.cmd test`).
+- **Pruebas**: 113 tests automatizados pasando en Vitest (`cd server && npm.cmd test`).
 
 > **Bugs conocidos y divergencias**: la base SQLite real es `data/scout.db` (no `data/terrenos.db` como cita la doc);
 > `node:sqlite` requiere import dinámico en Docker `node:22` (ya resuelto en `sync.ts`).
@@ -353,7 +353,7 @@ Antes de dar por concluida cualquier sesión de trabajo, ejecuta siempre:
 cd server
 npm.cmd run typecheck
 
-# 2. Ejecutar toda la suite de tests (104 tests)
+# 2. Ejecutar toda la suite de tests (113 tests)
 npm.cmd test
 
 # 3. Build de producción del servidor
@@ -394,11 +394,15 @@ cd server && npm.cmd run sync:sqlite
 > **T4.3 normalization → ✅ DONE**:
 > `server/src/connectors/implementations/remaju-normalize.ts`
 > (`normalizeRemateSlide`, tipo canónico, `ubicacionKey`, `parseMontoPEN`),
-> integrado en el conector; suite **104/104 (15 archivos)**.
+> integrado en el conector.
+> **T4.4 deduplication → ✅ DONE**:
+> `server/src/connectors/implementations/remaju-dedup.ts`
+> (hash SHA-256 + claves `remate`/`convocatoria` con alias cruzados y fusión),
+> integrado en `search()`; suite **113/113 (16 archivos)**.
 >
-> **Siguiente tarea del plan**: **Fase 4 / T4.4 — deduplication**
-> (ids `remate`/`convocatoria` + hash de contenido normalizado). Ver
-> `PROJECT_EXECUTION_PLAN.md` (PHASE 4).
+> **Siguiente tarea del plan**: **Fase 4 / T4.5 — property linking**
+> (partida registral como clave fuerte; distrito+dirección como débil;
+> candidatos sin hard-match). Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 4).
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.
 - Implementar la verificación a nivel de caso: confirmar manualmente la identidad del property y la coordenada geocodificada (hoy `verification='inferred'`).

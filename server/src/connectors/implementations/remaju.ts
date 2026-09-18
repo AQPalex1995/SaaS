@@ -15,6 +15,7 @@ import {
   type NormalizedRemate,
   type RemateSlide,
 } from './remaju-normalize.js';
+import { dedupeEntries } from './remaju-dedup.js';
 
 export { parseFechaRemaju } from './remaju-normalize.js';
 export type { NormalizedRemate, RemateSlide } from './remaju-normalize.js';
@@ -182,10 +183,9 @@ async function fetchRemajuHome(htmlOnly = true): Promise<string> {
   return res.text();
 }
 
-function slideToItem(slide: RemateSlide): SearchResultItem | null {
-  const id = slide.remate ?? slide.convocatoria;
-  if (id === undefined) return null;
-  const normalized: NormalizedRemate = normalizeRemateSlide(slide);
+function slideToItem(slide: RemateSlide, normalized: NormalizedRemate): SearchResultItem | null {
+  const id = normalized.remateId ?? normalized.convocatoriaId;
+  if (id === null) return null;
   const title = [slide.tipoLabel, normalized.ubicacion].filter(Boolean).join(' · ');
   return {
     externalId: `remaju:remate:${id}`,
@@ -239,18 +239,27 @@ export class RemajuConnector extends PropertyDataSource {
     const wanted = (params.query ?? params.district ?? '').trim();
     try {
       const html = await fetchRemajuHome();
-      let slides = parseRemajuHome(html);
+      let entries = parseRemajuHome(html).map((slide) => ({
+        raw: slide,
+        normalized: normalizeRemateSlide(slide),
+      }));
 
       if (wanted) {
         const needle = stripAccents(wanted.toUpperCase());
-        slides = slides.filter((slide) =>
-          stripAccents((slide.ubicacion ?? '').toUpperCase()).includes(needle),
+        entries = entries.filter((entry) => (entry.normalized.ubicacionKey ?? '').includes(needle));
+      }
+
+      const { unique, duplicates } = dedupeEntries(entries);
+      if (duplicates.length > 0) {
+        logger.debug(
+          { dropped: duplicates.length, kept: unique.length },
+          'REM@JU dedup descartó ocurrencias repetidas',
         );
       }
 
       const allItems: SearchResultItem[] = [];
-      for (const slide of slides) {
-        const item = slideToItem(slide);
+      for (const entry of unique) {
+        const item = slideToItem(entry.raw, entry.normalized);
         if (item) allItems.push(item);
       }
       const totalFound = allItems.length;

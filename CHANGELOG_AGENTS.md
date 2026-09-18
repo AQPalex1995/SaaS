@@ -539,3 +539,34 @@ Notes:
 
 Next:
 - **T4.4 — deduplication** (ids `remate`/`convocatoria` + content hash).
+
+## 2026-09-17 — OpenCode — Phase 4 / T4.4 (REM@JU deduplication)
+
+Deduplicated the public carousel so a remate repeated across panels (or as
+several convocatorias of the same remate) yields a single item, reusing the
+`contentHash` pattern from ingestion.
+
+Code:
+- New pure module `server/src/connectors/implementations/remaju-dedup.ts`:
+  - `remajuContentHash(normalized)`: SHA-256 hex of the canonical content
+    (case/space-insensitive) — mirrors `domain/ingestion/sync.ts` `contentHash`.
+  - `remajuDedupKey()` (primary identity) + `remajuDedupKeys()` (all keys of a
+    row): strong `remate:<id>` > `convocatoria:<id>`, fallback `hash:<sha256>`
+    when both ids are missing.
+  - `dedupeEntries()` indexes by **all** aliases, so a row with both ids matches
+    a partial row (single id) or an id-less row with identical content; merges
+    empty fields (`mergeRemate`) without overwriting present ones and keeps the
+    first-seen `raw`.
+  - `dedupeRemates()` convenience wrapper + `REMAJU_DEDUP_VERSION='v1'`.
+- `remaju.ts`: `search()` now normalizes → filters → **dedupes** → maps;
+  dropped duplicates logged via `logger.debug`.
+- Tests: `server/tests/remaju-dedup.test.ts` (9 cases). Suite **113/113
+  (16 files)**; server+root typecheck and build OK.
+
+Notes:
+- Alias indexing fixes the edge case where the same auction appears once with
+  `remate` and once with only `convocatoria`.
+
+Next:
+- **T4.5 — property linking** (partida registral strong key; district+address
+  weak; candidates without hard-match).

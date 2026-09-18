@@ -580,7 +580,7 @@ Tasks:
 T4.1 discovery — ✅ DONE (2026-09-17)
 T4.2 parser — ✅ DONE (2026-09-17)
 T4.3 normalization — ✅ DONE (2026-09-17)
-T4.4 deduplication
+T4.4 deduplication — ✅ DONE (2026-09-17)
 T4.5 Property linking
 T4.6 research connector
 T4.7 manual action handling
@@ -669,8 +669,30 @@ T4.3 normalization — result:
 - Tests: nuevo `server/tests/remaju-normalize.test.ts` (8 casos). Suite
   completa **104/104 (15 archivos)**; typecheck server+root y build OK.
 
-Siguiente: **T4.4 deduplication** (ids `remate`/`convocatoria` + hash de
-contenido normalizado).
+T4.4 deduplication — result:
+
+- Nuevo módulo puro `server/src/connectors/implementations/remaju-dedup.ts`:
+  - `remajuContentHash(normalized)` → SHA-256 hex del contenido canónico
+    (reutiliza el patrón `contentHash` de `domain/ingestion/sync.ts`);
+    normaliza mayúsculas/espacios para ser estable.
+  - `remajuDedupKey()` (identidad principal) y `remajuDedupKeys()`
+    (todas las claves de la fila).
+  - Claves fuertes por ids del portal: `remate:<id>` > `convocatoria:<id>`;
+    fallback `hash:<sha256>` cuando faltan ambos ids.
+  - `dedupeEntries()` indexa por **todos** los alias, de modo que una fila con
+    `remate`+`convocatoria` empareja con otra parcial (solo un id) o sin ids
+    pero de contenido idéntico. Fusiona campos vacíos (`mergeRemate`) sin pisar
+    valores presentes y conserva el `raw` de la primera aparición.
+  - `dedupeRemates()` (conveniencia sobre `NormalizedRemate`) y
+    `REMAJU_DEDUP_VERSION='v1'`.
+- `RemajuConnector.search()` ahora normaliza → filtra → **deduplica** →
+  mapea; los duplicados descartados se registran en `logger.debug`.
+- Tests: `server/tests/remaju-dedup.test.ts` (9 casos: hash determinista y
+  sensible, prioridad de claves, fusión, alias cruzados, conector deduplicado).
+  Suite completa **113/113 (16 archivos)**; typecheck server+root y build OK.
+
+Siguiente: **T4.5 property linking** (partida registral como clave fuerte,
+distrito+dirección como débil; candidatos sin hard-match).
 
 ============================================================
 PHASE 5 — SUNARP
