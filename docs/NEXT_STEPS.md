@@ -1,8 +1,10 @@
 # Próximos Pasos de Implementación (NEXT_STEPS.md)
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
-> El estado del repositorio refleja la **Fase 3 (Research Engine Hardening)** en curso.
-> Las fases 0–2.5 están implementadas en `main`; la Fase 3 (T3.1 ResearchCase lifecycle → T3.9 Research documentation) quedó completada el 2026-09-17.
+> El estado del repositorio refleja la **Fase 4 (REM@JU)** en curso.
+> Las fases 0–2.5 y la Fase 3 (T3.1 → T3.9) están implementadas en `main`
+> (Fase 3 completada el 2026-09-17); la Fase 4 fue aprobada por el usuario y
+> el T4.1 (discovery) ya está documentado (ver §5 y `docs/REMATE_JUDICIAL.md`).
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
 > Lee atentamente este documento antes de escribir código.
 > **Reglas operativas vigentes (AGENTS.md)**: el agente inicia **automáticamente** Docker/PostgreSQL
@@ -377,14 +379,16 @@ cd server && npm.cmd run sync:sqlite
 
 ---
 
-## 5. Siguientes Iteraciones (Fase 3 cerrada)
+## 5. Siguientes Iteraciones (Fase 4 en curso)
 
-> **Fase 3 (Research Engine Hardening) COMPLETA** (T3.1–T3.9, 2026‑09‑17).
+> **Fase 4 (REM@JU) IN PROGRESS** — aprobada por el usuario (2026‑09‑17).
+> **T4.1 discovery → ✅ DONE**: reporte en `docs/REMATE_JUDICIAL.md`
+> (portal público sin login viable, sin CAPTCHA; participación autenticada
+> NO automatizable; Akamai + JSF/ViewState; no hay JSON/API pública).
 >
-> **Siguiente tarea del plan**: **Fase 4 / T4.1 — REM@JU discovery**.
-> ⏸️ **Requiere aprobación explícita**: conectar un nuevo proveedor de datos
-> externo es un Decision Gate (AGENTS.md §2.1/§2.3). No iniciar sin autorización.
-> Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 4) y `docs/RESEARCH_ENGINE.md` §8.
+> **Siguiente tarea del plan**: **Fase 4 / T4.2 — parser** (zona pública:
+> home/carrusel y, si es alcanzable sin auth ni captcha, listado/detalle AJAX
+> con ViewState). Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 4).
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.
 - Implementar la verificación a nivel de caso: confirmar manualmente la identidad del property y la coordenada geocodificada (hoy `verification='inferred'`).

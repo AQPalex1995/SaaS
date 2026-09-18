@@ -9,8 +9,7 @@
 
 - **Objetivo**: Plataforma de inteligencia territorial e inmobiliaria para terrenos en Arequipa, Perú (con expansión nacional).
 - **Evolución**: De un scraper local básico de Facebook Marketplace/Grupos (`FB Terreno Scout`) hacia una plataforma modular de due diligence inmobiliario, valuación y análisis registral/urbano (`Land Intelligence`).
-- **Estado Actual**: **Fase 3 COMPLETA (Research Engine Hardening, T3.1–T3.9)** — ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). La siguiente fase (Fase 4 — REM@JU) está `PLANNED` y **requiere aprobación** (Decision Gate: nuevo proveedor externo).
-  - Fases 0–2.5 completadas: infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ y validación end-to-end.
+- **Estado Actual**: **Fase 4 EN CURSO (REM@JU, aprobada por el usuario)** — T4.1 discovery DONE (`docs/REMATE_JUDICIAL.md`); siguiente tarea T4.2 parser (zona pública, sin CAPTCHA). Ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). Fases 0–3 completadas (infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ, Research Engine T3.x).
 - **Gobernanza**: este documento contiene las **Checkpoint Rules**, **Decision Gates** y **reglas de ejecución autónoma** (sección 2). Todo agente DEBE leer `PROJECT_EXECUTION_PLAN.md`, `PROJECT_STATUS.md` y `CHANGELOG_AGENTS.md` antes de escribir código.
 - **Enfoque**: Modular Monolith en TypeScript (Node.js ESM), Fastify, PostgreSQL 16 + PostGIS 3.4, Drizzle ORM, BullMQ, Vitest.
 

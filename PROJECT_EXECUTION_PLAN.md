@@ -568,7 +568,7 @@ explícita (Decision Gate: nuevo proveedor de datos externo).
 PHASE 4 — REM@JU
 ============================================================
 
-STATUS: PLANNED
+STATUS: CURRENT
 
 OBJECTIVE:
 
@@ -577,7 +577,7 @@ legal y respetando mecanismos de acceso.
 
 Tasks:
 
-T4.1 discovery
+T4.1 discovery — ✅ DONE (2026-09-17)
 T4.2 parser
 T4.3 normalization
 T4.4 deduplication
@@ -588,6 +588,35 @@ T4.8 tests
 T4.9 monitoring
 
 No bypass CAPTCHA.
+
+T4.1 discovery — result:
+
+- Portal **REM@JU** (`https://remaju.pj.gob.pe/`, "Remate Electrónico
+  Judicial", Poder Judicial del Perú). Reporte completo en
+  `docs/REMATE_JUDICIAL.md` (2026-09-17).
+- Stack: JSF + PrimeFaces 8.0, app v3.7.1, contexto `/remaju`, WebLogic;
+  **Akamai WAF**; sesión por `jsessionid` + `javax.faces.ViewState`.
+- Superficie pública (sin login): home `/` y `/remaju/index.xhtml` (carrusel
+  "REMATE SIMPLE" con ubicación, fecha, ids `convocatoria`/`remate` e
+  `tipoConvocatoria`); `/remaju/pages/publico/informativo.xhtml`.
+  Listado/detalle público = AJAX PrimeFaces (sin URL GET estable; una URL
+  candidata devolvió 404). Zona autenticada (`faces/page/remaju.xhtml`) =
+  "No Autorizado".
+- **CAPTCHA en el login** (`/remaju/pages/seguridad/login.xhtml`,
+  `frmLogin:imgCaptcha`, input max 5 + "Refrescar"); "Con/Sin Casilla"
+  (SINOE); Términos y Condiciones en dialogs. Participación requiere login +
+  pago BN → **nunca automatizar**.
+- Marco legal: RA Nº 211-2016-CE-PJ / Directiva 008-2016-CE-PJ (REM@JU), arts.
+  729–740 CPC (publicidad del remate). Ley 29733 / D.S. 003-2013-JUS →
+  minimización de datos personales en lo que almacenemos.
+- **Veredicto de viabilidad**: la Fase 4 es viable en modo **solo público**
+  (sin CAPTCHA ni autenticación): parser del home + AJAX público con
+  ViewState si es alcanzable sin auth/captcha; `manual_actions` para pasos
+  autenticados; dedup por ids `remate`/`convocatoria`; linking fuerte por
+  partida registral (detalle) y débil por distrito/dirección.
+  Complemento oficial: El Peruano "Remates Judiciales" (nota).
+- Sandbox/capturas reales necesarias para confirmar el shape exacto del
+  detalle público antes de T4.5 (enlace por partida).
 
 ============================================================
 PHASE 5 — SUNARP

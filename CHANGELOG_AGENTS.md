@@ -417,3 +417,45 @@ Verified:
 Next:
 - Push pending local work to GitHub (autopush) and continue per plan: Phase 4 /
   T4.1 (REM@JU discovery) still requires explicit approval.
+
+## 2026-09-17 — OpenCode — Phase 4 / T4.1 (REM@JU discovery)
+
+Approved by the user ("aprobado, continua con la fase 4"). T4.1 was a research
++ documentation task (no code, no scraping).
+
+Investigated (live, only public pages):
+- **REM@JU** = Remate Electrónico Judicial, `https://remaju.pj.gob.pe/`
+  (Poder Judicial del Perú), v3.7.1, **JSF + PrimeFaces 8.0**, WebLogic,
+  contexto `/remaju`, **detrás de Akamai** (`stormcaster.js`,
+  `validate.perfdrive.com`).
+- **Public surface (no login)**: home `/` y `/remaju/index.xhtml` render
+  servidor-side — carrusel "REMATE SIMPLE" con ubicación, fecha y ids
+  `convocatoria` / `tipoConvocatoria` / `remate` para el botón "Detalle"
+  (AJAX); `/remaju/pages/publico/informativo.xhtml` (info).
+- Listado/detalle público = AJAX PrimeFaces con `ViewState` (no hay URL GET
+  estable; una URL candidata devolvió 404). Sin JSON/API pública.
+- **Log-in con CAPTCHA**: `/remaju/pages/seguridad/login.xhtml` —
+  `frmLogin:imgCaptcha` (base64, max 5), "Con Casilla"/"Sin Casilla" (SINOE),
+  "Términos y Condiciones" (dialogs). `faces/page/remaju.xhtml` =
+  "No Autorizado". Participación = login + pago Banco de la Nación.
+- Marco legal: RA Nº 211-2016-CE-PJ + Directiva 008-2016-CE-PJ (REM@JU),
+  arts. 729–740 CPC (publicidad obligatoria del aviso de remate), Ley 29733 /
+  D.S. 003-2013-JUS (minimización de datos personales).
+
+Deliverables/policy:
+- New **`docs/REMATE_JUDICIAL.md`**: reporte completo + viabilidad por tarea
+  T4.2–T4.9 + restricciones (sin bypass CAPTCHA, sin automatizar login,
+  frecuencia baja y sesión única frente a Akamai, `manual_actions` para pasos
+  autenticados) + mapeo a provenance/dataModel (linking fuerte por partida
+  registral, débil por distrito+dirección) + fuente complementaria oficial
+  (El Peruano "Remates Judiciales").
+- **Veredicto**: Fase 4 viable en modo "solo público"; T4.2 parser arranca por
+  el home/carrusel y evalúa el AJAX público sin auth.
+- Docs actualizados: `PROJECT_EXECUTION_PLAN.md` (Phase 4 → CURRENT, T4.1
+  DONE), `PROJECT_STATUS.md` (Current Phase/Task), `docs/CONNECTORS.md`
+  (fila `remaju`), `docs/RESEARCH_ENGINE.md` §6 (nota REM@JU),
+  `docs/NEXT_STEPS.md` (§5 → Fase 4 en curso), `AGENTS.md` (Estado Actual).
+
+Next:
+- **T4.2 — parser** (zona pública; fixtures offline + fetch stubbed como
+  `osm.test.ts`).

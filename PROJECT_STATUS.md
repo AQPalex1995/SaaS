@@ -46,12 +46,13 @@ Root:
 
 ## Current Phase
 
-Phase 3 — ✅ COMPLETE (T3.1–T3.9)
+Phase 4 — IN PROGRESS (REM@JU, T4.1 discovery done)
 
 ## Current Task
 
-Phase 4 / T4.1 (discovery) — ⏸️ requires approval (Decision Gate: new external
-data provider, REM@JU)
+Phase 4 / T4.2 (parser) — próximo paso; T4.1 discovery completado y
+documentado en `docs/REMATE_JUDICIAL.md` (portal público sin login viable,
+sin CAPTCHA; participación autenticada NO automatizable).
 
 ## Blockers
 

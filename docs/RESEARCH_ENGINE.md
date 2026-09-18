@@ -67,6 +67,15 @@ graph TD
 - **Entrada**: Nombres de titulares registrales y dirección del predio.
 - **Salida**: Registros en `judicial_cases` y `judicial_events`.
 - **Prioridad**: `high`.
+- **Nota REM@JU (Fase 4, T4.1 discovery)**: el portal (`remaju.pj.gob.pe`) es
+  JSF/PrimeFaces detrás de Akamai. La **información pública** (home: tipo de
+  convocatoria, ubicación, fechas, ids `convocatoria`/`remate`; detalle con
+  partida registral/expediente/tasación) es accesible **sin autenticación**, pero
+  el listado/detalle se sirve por **AJAX con ViewState** (sin URL GET estable).
+  La participación/inscripción exige **login + CAPTCHA** → nunca automatizar
+  (ver `docs/REMATE_JUDICIAL.md`). El conector consumirá solo la vía pública y
+  delegará a **acción manual** (`manual_actions`) cualquier paso que exija
+  CAPTCHA/login.
 
 ### Tarea 7: Valuación y Comparables de Mercado (`market`)
 - **Objetivo**: Analizar precios de terrenos en la misma zona o distrito dentro de un radio de 500m a 2km para calcular el valor promedio por m² y detectar si la publicación está bajo o sobre el precio de mercado.

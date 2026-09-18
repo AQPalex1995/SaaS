@@ -47,7 +47,7 @@ Los siguientes conectores se encuentran definidos y registrados en el `Connector
 | `sunarp` | SUNARP Conoce Aquí | Búsqueda por titular, documento o partida registral gratuita |
 | `sunarp_bgr` | SUNARP Base Gráfica Registral | Visor cartográfico de polígonos registrales oficiales |
 | `sunarp_sprl` | SUNARP Servicio de Publicidad Registral | Copias literales oficiales y certificados de gravamen (de pago) |
-| `remaju` | Remates Judiciales Electrónicos | Oportunidades de terrenos en remate judicial por deuda/ejecución |
+| `remaju` | Remates Judiciales Electrónicos (REM@JU) | Oportunidades de terrenos en remate judicial por deuda/ejecución; señal `judicial` de riesgo |
 | `google_maps` | Google Maps Platform | Geocodificación inversa, vistas satelitales y Street View |
 | `openstreetmap` | OpenStreetMap / Nominatim | Georreferenciación de código abierto y cálculo de distancias |
 | `impla` | Instituto Municipal de Planeamiento Arequipa | Planos de zonificación, áreas de riesgo y planes específicos |
