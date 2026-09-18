@@ -532,6 +532,18 @@ tbody td{padding:7px 10px;vertical-align:middle;color:#cbd5e1}
         </div>
       </div>
 
+      <!-- Research Results & Evidence -->
+      <div id="drawer-results-section" style="display:none;">
+        <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Resultados y Evidencia</div>
+        <div style="display:flex;flex-direction:column;gap:6px;" id="drawer-results-list"></div>
+      </div>
+
+      <!-- Warnings / Errors / Manual Actions -->
+      <div id="drawer-alerts-section" style="display:none;">
+        <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Avisos y Acciones Manuales</div>
+        <div style="display:flex;flex-direction:column;gap:6px;" id="drawer-alerts-list"></div>
+      </div>
+
       <!-- External Sources Status -->
       <div>
         <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Conectores Externos Registrados (14)</div>
@@ -676,6 +688,7 @@ function onSdayChange(val){
 }
 
 function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escAttr(s){return escH(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function fmt(v){return v==null||v===''?'\u2014':v;}
 function stamp(iso){return iso?iso.slice(11,19):'\u2014';}
 function fmtFechaPublicado(row){
@@ -957,6 +970,7 @@ function openIntelligenceDrawer(propJsonStr){
 
   overlay.classList.add('open');
   refreshDrawerSources();
+  resumePropertyResearch();
 }
 
 function closeIntelligenceDrawer(){
@@ -1003,16 +1017,51 @@ async function triggerPropertyResearch(){
 }
 
 let _researchPollTimer = null;
+let _researchCaseId = null;
+let _researchResultsLoaded = false;
+
+/* Reanuda el estado de investigación de una propiedad al abrir el Drawer */
+async function resumePropertyResearch(){
+  if(!currentDrawerProp || !currentDrawerProp.id) return;
+  const notice = $('drawer-research-notice');
+  try{
+    const res = await fetch(LAND_API_URL + '/api/v1/properties/' + encodeURIComponent(currentDrawerProp.id) + '/research');
+    if(!res.ok) return;
+    const data = await res.json();
+    const cases = data.data;
+    if(!Array.isArray(cases) || cases.length === 0) return;
+    const latest = cases[0];
+    if(notice) notice.innerHTML = '\uD83D\uDD0E Caso existente #' + escH(String(latest.id||'').slice(0,8)) + ' \u00B7 ' + escH(latest.status||'') + ' \u00B7 ' + (latest.completedTaskCount||0) + '/' + (latest.totalTaskCount||0) + ' tareas';
+    startResearchPolling(latest.id);
+  }catch(e){ /* servidor inactivo: se mantiene el estado por defecto */ }
+}
+
 function startResearchPolling(caseId){
   stopResearchPolling();
+  _researchCaseId = caseId;
+  _researchResultsLoaded = false;
   const poll = async () => {
     try{
-      const res = await fetch(LAND_API_URL + '/api/v1/research/' + encodeURIComponent(caseId) + '/tasks');
-      const data = await res.json();
-      if(data.data){
-        const running = renderResearchBadges(data.data);
-        if(running === 0) stopResearchPolling();
+      const [tRes, rRes] = await Promise.all([
+        fetch(LAND_API_URL + '/api/v1/research/' + encodeURIComponent(caseId) + '/tasks'),
+        fetch(LAND_API_URL + '/api/v1/research/' + encodeURIComponent(caseId) + '/results')
+      ]);
+      let running = 0;
+      if(tRes.ok){
+        const tData = await tRes.json();
+        if(Array.isArray(tData.data)){
+          running = renderResearchBadges(tData.data) || 0;
+          renderDrawerAlerts(tData.data);
+        }
       }
+      if(rRes.ok){
+        const rData = await rRes.json();
+        if(Array.isArray(rData.data)){
+          renderDrawerResults(rData.data);
+          _researchResultsLoaded = true;
+        }
+      }
+      if(running === 0 && _researchResultsLoaded) stopResearchPolling();
     }catch(e){ /* keep polling on transient errors */ }
   };
   poll();
@@ -1061,6 +1110,79 @@ function renderResearchBadges(tasks){
     if(notice) notice.innerHTML='\u2705 Investigaci\u00F3n completa: '+done+'/'+total+' tareas procesadas (geolocalizaci\u00F3n'+(done===1?'':'es')+' verificada'+(done>1?'s':'')+')';
   }
   return running;
+}
+
+const CONFIDENCE_COLOR = { high:'var(--green)', medium:'var(--yellow)', low:'var(--red)', unknown:'var(--muted)' };
+const DATA_TYPE_LABEL = {
+  identity:'Identidad', location:'Ubicaci\u00F3n', registry:'Registro', urbanism:'Urbanismo',
+  judicial:'Judicial', market:'Mercado', risk:'Riesgo', geocoding:'Geolocalizaci\u00F3n'
+};
+function renderDrawerResults(results){
+  const section = $('drawer-results-section');
+  const container = $('drawer-results-list');
+  if(!section || !container) return;
+  if(!results.length){ section.style.display = 'none'; container.innerHTML = ''; return; }
+  const groups = {};
+  for(const r of results){
+    const key = r.dataType || 'general';
+    (groups[key] = groups[key] || []).push(r);
+  }
+  container.innerHTML = Object.keys(groups).map(key => {
+    const items = groups[key];
+    const rows = items.map(r => {
+      let preview = '';
+      if(r.data && typeof r.data === 'object'){
+        const keys = Object.keys(r.data).slice(0, 5);
+        preview = keys.map(k => escH(k) + ': ' + escH(String(r.data[k])).slice(0, 80)).join(' \u00B7 ');
+      }
+      const when = r.retrievedAt ? new Date(r.retrievedAt).toLocaleString() : '';
+      const conf = (r.confidence || 'unknown').toLowerCase();
+      const confColor = CONFIDENCE_COLOR[conf] || 'var(--muted)';
+      const src = r.sourceUrl
+        ? '<a href="' + escAttr(r.sourceUrl) + '" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">' + escH(r.source) + '</a>'
+        : escH(r.source || '\u2014');
+      return '<div style="background:rgba(7,11,20,.6);border:1px solid var(--border);border-radius:8px;padding:8px 10px;">' +
+        '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">' +
+          '<span style="font-size:10.5px;color:#e2e8f0;font-weight:600;">' + src + '</span>' +
+          '<span style="font-size:9px;color:' + confColor + ';white-space:nowrap;">' + escH(conf) + ' \u00B7 ' + escH(r.verification || '') + '</span>' +
+        '</div>' +
+        (preview ? '<div style="font-size:10px;color:#94a3b8;margin-top:4px;line-height:1.4;">' + preview + '</div>' : '') +
+        '<div style="font-size:9px;color:var(--muted);margin-top:4px;">' + escH(when) + ' \u00B7 ' + escH(r.parserVersion || '') + '</div>' +
+      '</div>';
+    }).join('');
+    return '<div>' +
+      '<div style="font-size:10px;font-weight:700;color:#c7d2fe;margin:2px 0 4px;">' + escH(DATA_TYPE_LABEL[key] || key) + ' (' + items.length + ')</div>' +
+      '<div style="display:flex;flex-direction:column;gap:6px;">' + rows + '</div>' +
+    '</div>';
+  }).join('');
+  section.style.display = '';
+}
+
+function renderDrawerAlerts(tasks){
+  const section = $('drawer-alerts-section');
+  const container = $('drawer-alerts-list');
+  if(!section || !container) return;
+  const alerts = [];
+  for(const t of tasks){
+    if(t.status === 'failed'){
+      alerts.push({ kind:'error', label:'FALLIDA', color:'var(--red)', name:t.taskType, text:t.error || 'Error sin detalle' });
+    }else if(t.status === 'requires_manual_action'){
+      alerts.push({ kind:'manual', label:'ACCI\u00D3N MANUAL', color:'var(--yellow)', name:t.taskType, text:t.manualActionDescription || 'Requiere intervenci\u00F3n manual' });
+    }else if(t.status === 'unavailable'){
+      alerts.push({ kind:'info', label:'NO DISPONIBLE', color:'var(--muted)', name:t.taskType, text:t.error || 'Fuente no implementada (stub)' });
+    }
+  }
+  if(!alerts.length){ section.style.display = 'none'; container.innerHTML = ''; return; }
+  container.innerHTML = alerts.map(a =>
+    '<div style="background:rgba(7,11,20,.6);border:1px solid var(--border);border-left:3px solid ' + a.color + ';border-radius:8px;padding:8px 10px;">' +
+      '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">' +
+        '<span style="font-size:10.5px;color:#e2e8f0;font-weight:600;">' + escH(a.name) + '</span>' +
+        '<span style="font-size:9px;color:' + a.color + ';white-space:nowrap;">' + a.label + '</span>' +
+      '</div>' +
+      '<div style="font-size:10px;color:#94a3b8;margin-top:4px;line-height:1.4;">' + escH(a.text) + '</div>' +
+    '</div>'
+  ).join('');
+  section.style.display = '';
 }
 
 async function refreshDrawerSources(){

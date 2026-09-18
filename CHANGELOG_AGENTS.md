@@ -270,4 +270,32 @@ Verified:
 - Live smoke test NOT repeated (PostgreSQL 5433 / Redis 6380 / Docker down).
 
 Next:
-- Phase 3 / T3.7 (Research Drawer)
+- Phase 3 / T3.8 (Research tests)
+
+## 2026-09-17 — OpenCode — Phase 3 / T3.7 (Research Drawer)
+
+Completed:
+- Frontend-only task in `src/panel.html` (Scout Legacy). **Decision Gate 2.3**:
+  the user explicitly authorized editing `src/` for this task (option "solo
+  panel.html, sin endpoint manual").
+- Extended the Property Intelligence Drawer to show the full research state:
+  - `resumePropertyResearch()`: on drawer open, loads the latest case via
+    `GET /api/v1/properties/:id/research` and resumes polling.
+  - Polling now fetches `/research/:id/tasks` and `/research/:id/results` in
+    parallel and stops once tasks are terminal AND results were loaded.
+  - New "Resultados y Evidencia" section (`renderDrawerResults`): groups results
+    by `dataType` and shows source/link, confidence, verification, retrievedAt,
+    parserVersion and a preview of `data`.
+  - New "Avisos y Acciones Manuales" section (`renderDrawerAlerts`): lists
+    `failed` (error), `requires_manual_action` (read-only description) and
+    `unavailable` (stub) tasks.
+  - Added `escAttr()` to safely escape URLs in HTML attributes.
+- No server changes: manual actions remain read-only (no resolution HTTP route
+  exists yet). No new tests (UI in the legacy panel, not covered by Vitest).
+
+Verified:
+- Root typecheck OK; both inline `<script>` blocks pass `node --check`.
+- Server suite unchanged at 76/76 (not re-run as no server code changed).
+
+Next:
+- Phase 3 / T3.8 (Research tests)

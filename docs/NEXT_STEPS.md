@@ -2,7 +2,7 @@
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
 > El estado del repositorio refleja la **Fase 3 (Research Engine Hardening)** en curso.
-> Las fases 0–2.5 están implementadas en `main`; T3.1 (ResearchCase lifecycle), T3.2 (ResearchTask lifecycle), T3.3 (Research orchestration), T3.4 (Manual Action), T3.5 (Research Result provenance) y T3.6 (Research API) completadas el 2026-09-17.
+> Las fases 0–2.5 están implementadas en `main`; T3.1 (ResearchCase lifecycle), T3.2 (ResearchTask lifecycle), T3.3 (Research orchestration), T3.4 (Manual Action), T3.5 (Research Result provenance), T3.6 (Research API) y T3.7 (Research Drawer) completadas el 2026-09-17.
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
 > Lee atentamente este documento antes de escribir código.
 
@@ -276,6 +276,28 @@ Verificación y endurecimiento de los 5 endpoints de investigación.
 
 ---
 
+## 2.11. Fase 3 — T3.7 Research Drawer — ✅ COMPLETADA (2026‑09‑17)
+
+Frontend del panel Scout (cambio autorizado en `src/panel.html`).
+
+### Cambios
+- `resumePropertyResearch()`: al abrir el Drawer, carga el caso más reciente vía
+  `GET /api/v1/properties/:id/research` y reanuda el polling.
+- Polling extendido: `/research/:id/tasks` + `/research/:id/results` en paralelo;
+  se detiene cuando las tareas son terminales y los resultados ya cargaron.
+- Secciones nuevas: **Resultados y Evidencia** (agrupados por `dataType`, con
+  source/enlace, confidence, verification, retrievedAt, parserVersion) y
+  **Avisos y Acciones Manuales** (failed / requires_manual_action / unavailable).
+- `escAttr()` para escapar URLs en atributos HTML.
+- Las acciones manuales son de sólo lectura (no existe aún ruta HTTP de
+  resolución).
+
+### Verificación
+- Typecheck de la raíz OK; ambos bloques `<script>` validados con `node --check`.
+- Sin cambios en el servidor (76/76 sin cambios).
+
+---
+
 ## 3. Checklist de Verificación para el Agente
 
 Antes de dar por concluida cualquier sesión de trabajo, ejecuta siempre:
@@ -285,8 +307,7 @@ Antes de dar por concluida cualquier sesión de trabajo, ejecuta siempre:
 cd server
 npm.cmd run typecheck
 
-# 2. Ejecutar toda la suite de tests (76 tests)
-npm.cmd test
+# 2. Ejecutar toda la suite de tests (76 tests)npm.cmd test
 
 # 3. Build de producción del servidor
 npm.cmd run build
@@ -313,11 +334,11 @@ cd server && npm.cmd run sync:sqlite
 
 ---
 
-## 5. Siguientes Iteraciones (después de T3.6)
+## 5. Siguientes Iteraciones (después de T3.7)
 
-> **Siguiente tarea del plan**: **T3.7 — Research Drawer** (mostrar ResearchCase,
-> Tasks, Progress, Errors, Warnings, Sources, Manual actions y Results en el
-> Drawer del panel).
+> **Siguiente tarea del plan**: **T3.8 — Research tests** (tests de flujo
+> completo/parcial, tarea fallida, fuente no disponible, retry, investigación
+> duplicada, acción manual y timeout).
 > Ver `PROJECT_EXECUTION_PLAN.md`.
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.

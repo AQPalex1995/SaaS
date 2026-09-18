@@ -449,7 +449,7 @@ Resultado (2026-09-17):
 T3.7 — Research Drawer
 ------------------------------------------------------------
 
-STATUS: TODO
+STATUS: DONE
 
 Mostrar:
 
@@ -461,6 +461,29 @@ Warnings
 Sources
 Manual actions
 Results
+
+Resultado (2026-09-17):
+
+- `src/panel.html` (Scout Legacy, cambio autorizado explícitamente por el
+  usuario — Decision Gate 2.3): el Property Intelligence Drawer ahora muestra:
+  - **ResearchCase**: badge del caso con progreso `done/total`, y al abrir el
+    drawer se reanuda el caso más reciente vía
+    `GET /properties/:id/research` (`resumePropertyResearch`).
+  - **Tasks / Progress**: badges por tarea (ya existentes) actualizados por
+    polling de `GET /research/:id/tasks`.
+  - **Errors / Warnings / Manual actions**: nueva sección "Avisos y Acciones
+    Manuales" (`renderDrawerAlerts`) que lista tareas `failed` (error),
+    `requires_manual_action` (descripción de la acción, sólo lectura — no hay
+    ruta HTTP de resolución todavía) y `unavailable` (fuente stub).
+  - **Results**: nueva sección "Resultados y Evidencia" (`renderDrawerResults`)
+    agrupada por `dataType`, con `source`/`sourceUrl`, `confidence`,
+    `verification`, `retrievedAt`, `parserVersion` y vista previa de `data`.
+  - **Sources**: se mantiene el panel de conectores (`GET /sources`).
+- `startResearchPolling` consulta en paralelo `/tasks` y `/results` y se detiene
+  al terminar las tareas una vez cargados los resultados; se agregó `escAttr`
+  para escapar URLs en atributos.
+- Sin cambios en el servidor ni en tests (76/76 siguen pasando); typecheck de la
+  raíz OK y sintaxis de ambos bloques `<script>` validada con `node --check`.
 
 ------------------------------------------------------------
 T3.8 — Research tests
