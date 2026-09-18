@@ -2,7 +2,7 @@
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
 > El estado del repositorio refleja la **Fase 3 (Research Engine Hardening)** en curso.
-> Las fases 0–2.5 están implementadas en `main`; T3.1 (ResearchCase lifecycle), T3.2 (ResearchTask lifecycle), T3.3 (Research orchestration), T3.4 (Manual Action), T3.5 (Research Result provenance), T3.6 (Research API), T3.7 (Research Drawer) y T3.8 (Research tests) completadas el 2026-09-17.
+> Las fases 0–2.5 están implementadas en `main`; la Fase 3 (T3.1 ResearchCase lifecycle → T3.9 Research documentation) quedó completada el 2026-09-17.
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
 > Lee atentamente este documento antes de escribir código.
 
@@ -322,6 +322,23 @@ de Drizzle.
 
 ---
 
+## 2.13. Fase 3 — T3.9 Research documentation — ✅ COMPLETADA (2026‑09‑17)
+
+Cierre documental de la Fase 3.
+
+### Cambios
+- `docs/RESEARCH_ENGINE.md`: **§8 Cobertura de Pruebas (T3.8)** con tabla de
+  escenarios y limitaciones conocidas; correcciones en §2 (prioridad real),
+  §4 (`failed` no producido por `updateCaseProgress`) y §5 (`maxRetries` no
+  aplicado; comportamiento de timeout).
+- `docs/API.md` §4: corrección del tope `maxRetries` y enlaces a §5/§8.
+- `docs/NEXT_STEPS.md`: header, esta sección y próxima iteración.
+
+### Verificación
+- Cambio sólo de documentación; suite intacta (85/85).
+
+---
+
 ## 3. Checklist de Verificación para el Agente
 
 Antes de dar por concluida cualquier sesión de trabajo, ejecuta siempre:
@@ -358,12 +375,14 @@ cd server && npm.cmd run sync:sqlite
 
 ---
 
-## 5. Siguientes Iteraciones (después de T3.8)
+## 5. Siguientes Iteraciones (Fase 3 cerrada)
 
-> **Siguiente tarea del plan**: **T3.9 — Research documentation** (refrescar
-> `docs/RESEARCH_ENGINE.md`, `docs/API.md` y `docs/NEXT_STEPS.md` con el estado
-> final de la Fase 3, incluidas las limitaciones conocidas reveladas por T3.8).
-> Ver `PROJECT_EXECUTION_PLAN.md`.
+> **Fase 3 (Research Engine Hardening) COMPLETA** (T3.1–T3.9, 2026‑09‑17).
+>
+> **Siguiente tarea del plan**: **Fase 4 / T4.1 — REM@JU discovery**.
+> ⏸️ **Requiere aprobación explícita**: conectar un nuevo proveedor de datos
+> externo es un Decision Gate (AGENTS.md §2.1/§2.3). No iniciar sin autorización.
+> Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 4) y `docs/RESEARCH_ENGINE.md` §8.
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.
 - Implementar la verificación a nivel de caso: confirmar manualmente la identidad del property y la coordenada geocodificada (hoy `verification='inferred'`).

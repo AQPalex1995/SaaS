@@ -326,4 +326,27 @@ Verified:
 - Live smoke test NOT repeated (PostgreSQL 5433 / Redis 6380 / Docker down).
 
 Next:
-- Phase 3 / T3.9 (Research documentation)
+- Phase 4 / T4.1 (REM@JU discovery) — requires Decision Gate approval
+
+## 2026-09-17 — OpenCode — Phase 3 / T3.9 (Research documentation)
+
+Completed:
+- `docs/RESEARCH_ENGINE.md`:
+  - New **§8 Cobertura de Pruebas (T3.8)** with the scenario table and the known
+    limitations.
+  - §2 now states the priority actually persisted by `createResearch`
+    (`identity='high'`, rest `'medium'`) vs. the intended criticality.
+  - §4 clarifies that `updateCaseProgress()` never produces `failed` today.
+  - §5 fixes "reintentos agotados" and `maxRetries` (exposed but not enforced)
+    and documents the timeout behaviour.
+- `docs/API.md` §4: corrected the `maxRetries` wording and linked to
+  `RESEARCH_ENGINE.md` §5/§8.
+- `docs/NEXT_STEPS.md`: added §2.13 (Phase 3 close-out), refreshed the header and
+  pointed the next iteration at Phase 4 (subject to approval).
+
+Verified:
+- Documentation-only change; no code touched. Suite remains 85/85.
+
+Next:
+- Phase 4 / T4.1 (REM@JU discovery) — **requires explicit approval** (Decision
+  Gate 2.1/2.3: adding a new external data provider).

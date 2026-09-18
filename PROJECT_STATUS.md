@@ -41,11 +41,12 @@ Root:
 
 ## Current Phase
 
-Phase 3
+Phase 3 — ✅ COMPLETE (T3.1–T3.9)
 
 ## Current Task
 
-T3.9 Research documentation
+Phase 4 / T4.1 (discovery) — ⏸️ requires approval (Decision Gate: new external
+data provider, REM@JU)
 
 ## Blockers
 

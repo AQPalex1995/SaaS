@@ -540,13 +540,29 @@ tarea de tests):
 T3.9 — Research documentation
 ------------------------------------------------------------
 
-STATUS: TODO
+STATUS: DONE
 
 Actualizar:
 
 docs/RESEARCH_ENGINE.md
 docs/API.md
 docs/NEXT_STEPS.md
+
+Resultado (2026-09-17):
+
+- `docs/RESEARCH_ENGINE.md`: nueva **§8 Cobertura de Pruebas (T3.8)** con la
+  tabla de escenarios y las limitaciones conocidas; §2 referencia la prioridad
+  real asignada por `createResearch`; §4 aclara que `failed` no se produce hoy
+  desde `updateCaseProgress`; §5 corrige "reintentos agotados" / `maxRetries`
+  (no aplicado) y el caso de timeout.
+- `docs/API.md`: §4 corrige el tope `maxRetries` (expuesto, no aplicado) y
+  enlaza a `RESEARCH_ENGINE.md` §5/§8.
+- `docs/NEXT_STEPS.md`: sección 2.13 con el cierre de Fase 3, header actualizado
+  y próxima iteración apuntando a Fase 4 (sujeta a aprobación por Decision Gate
+  de nuevo proveedor externo).
+
+Fin de la Fase 3 (Research Engine Hardening). La Fase 4 requiere aprobación
+explícita (Decision Gate: nuevo proveedor de datos externo).
 
 ============================================================
 PHASE 4 — REM@JU

@@ -10,6 +10,12 @@ Cuando el usuario hace clic en **[INVESTIGAR]** en el panel o se dispara una ord
 
 ## 2. Las 8 Tareas de Investigación
 
+> **Nota de implementación (T3.9)**: `ResearchService.createResearch` crea las 8
+> tareas con `priority='high'` para `identity` y `priority='medium'` para el
+> resto (enum `task_priority`: `critical | high | medium | low`). La "prioridad"
+> indicada en cada tarea de esta sección es la **criticidad objetivo** de diseño,
+> aún no reflejada en la asignación automática.
+
 ```mermaid
 graph TD
     Trigger["Solicitud de Investigación"] --> Case["Crear ResearchCase (ID único)"]
@@ -147,7 +153,9 @@ Estados:
 - **completed**: todas las tareas llegaron a estado terminal y ninguna falló.
 - **partial**: todas las tareas terminaron, pero al menos una falló (una fuente
   caída no deja el caso colgado en `running`).
-- **failed**: el procesamiento del caso lanzó un error no recuperable.
+- **failed**: estado terminal definido para un error no recuperable del caso.
+  **Nota (T3.9)**: `updateCaseProgress()` hoy sólo produce `completed` o
+  `partial`; ningún camino automatizado transiciona a `failed` todavía.
 - **cancelled**: reservado para cancelación explícita.
 
 Reglas de integridad:
@@ -174,7 +182,7 @@ y vive en la columna `research_tasks.status` (enum PostgreSQL `task_status`).
 
 ```text
                ┌──▶ completed (éxito)
-               ├──▶ failed (error / reintentos agotados)
+               ├──▶ failed (error de la fuente / timeout)
 pending ──▶ running ──▶ requires_manual_action (pausa → running/completed)
    │           ├──▶ unavailable (fuente externa no accesible)
    │           ├──▶ blocked (bloqueado por otra tarea/estado)
@@ -190,7 +198,9 @@ Estados (enum `task_status`):
 - **running**: un worker la tomó en ejecución (`startedAt`).
 - **completed**: resultado obtenido y registrado (con `resultReference` cuando
   aplica). Estado **inmutable**.
-- **failed**: el intento falló (p. ej. geolocalización sin resultados).
+- **failed**: el intento falló (p. ej. geolocalización sin resultados, fuente
+  caída o timeout). **Nota (T3.9)**: no existe un timeout activo en el
+  orquestador; el timeout de un conector llega como excepción y se registra aquí.
 - **requires_manual_action**: el trabajo quedó pausado esperando acción humana
   (CAPTCHA, login, pago, dato manual). `requiresManualAction = true` con
   `manualActionDescription`. No se marca `completedAt` porque no terminó.
@@ -209,7 +219,8 @@ Reglas de integridad:
 - **Reintentables**: `failed`, `blocked`, `unavailable` y
   `requires_manual_action` pueden volver a `pending`/`running`
   (re-ejecución), lo que invalida `completedAt`, re-abre `startedAt` cuando
-  aplica y **suma 1 a `retryCount`** hasta `maxRetries`.
+  aplica y **suma 1 a `retryCount`**. **Nota (T3.8)**: `maxRetries` se expone en
+  el DTO pero **aún no se aplica** en `transitionTask`; no hay tope efectivo.
 - `startedAt` se fija al entrar en `running`, o al alcanzar un estado final sin
   haber pasado por `running` (ventana de trabajo implícita). `completedAt` se
   fija al concluir el trabajo automatizado (nunca en `requires_manual_action`).
