@@ -373,7 +373,7 @@ Resultado (2026-09-17):
 T3.5 — Research Result provenance
 ------------------------------------------------------------
 
-STATUS: TODO
+STATUS: DONE
 
 Asegurar:
 
@@ -385,6 +385,34 @@ verification_status
 raw_data
 normalized_data
 parser_version
+
+Resultado (2026-09-17):
+
+- Nuevo módulo `server/src/domain/research/result-provenance.ts`
+  (`recordResearchResult`): única ruta de código para TODOS los productores de
+  `research_results`. Normaliza/garantiza los 8 campos de provenance en cada
+  insert: `source`, `source_url`, `retrieved_at` (default now), `confidence`
+  (default `unknown`), `verification` (default `reported`), `raw_data` (default
+  null), `data` normalizado (default `{}`) y `parser_version` (default `v1`).
+- Refactorizado los 6 puntos de inserción para usar el helper:
+  1. `ResearchOrchestrator.executeIdentityTask` (source `system`, rawData ahora
+     con snapshot del property: status/prices/reportedSource).
+  2. `executeGeolocationTask` verificado (rawData con locationSource/
+     locationVerification).
+  3. `executeGeolocationTask` vía OSM real (rawData displayName + sourceUrl).
+  4. `executeConnectorTask` (ya usaba rawData).
+  5. `geocoding.worker.markGeolocationTask` (rawData sourceUrl).
+  6. `ManualActionService.completeManualAction` (rawData = resultado ingresado,
+     provenance `verified`/`high`, metadata manualActionId + externalSource).
+- DTO `ResearchResultDTO` ahora expone `rawData` y `metadata` (además de
+  `source`, `sourceUrl`, `retrievedAt`, `data`, `confidence`, `verification`,
+  `parserVersion`), y `service.toResultDTO` los mapea.
+- Sin migración: la tabla ya contenía todas las columnas de provenance
+  (`source_url`, `retrieved_at`, `raw_data`, `data`, `confidence`,
+  `verification`, `parser_version`).
+- Tests 69/69 (2 nuevos en `server/tests/provenance.test.ts` + aserciones de
+  provenance añadidas a orchestrator/manual-action/schema tests); typecheck
+  server + root y build del server OK.
 
 ------------------------------------------------------------
 T3.6 — Research API

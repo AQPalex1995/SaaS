@@ -107,9 +107,11 @@ export interface ResearchResultDTO {
   retrievedAt: string | null;
   dataType: string | null;
   data: Record<string, unknown> | null;
+  rawData: Record<string, unknown> | null;
   confidence: string;
   verification: string;
   parserVersion: string | null;
+  metadata: Record<string, unknown> | null;
   createdAt: string;
 }
 

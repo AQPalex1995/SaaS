@@ -3,12 +3,12 @@ import { getDb, type Database } from '../../db/connection.js';
 import {
   auditLogs,
   manualActions,
-  researchResults,
   researchTasks,
 } from '../../db/schema/index.js';
 import type { ManualActionDTO } from '../../dto/index.js';
 import { logger } from '../../logger.js';
 import { updateCaseProgress } from './lifecycle.js';
+import { recordResearchResult } from './result-provenance.js';
 import { transitionTask } from './task-lifecycle.js';
 
 /**
@@ -181,24 +181,22 @@ export class ManualActionService {
     if (taskRows.length > 0 && taskRows[0].status === 'requires_manual_action') {
       const task = taskRows[0];
 
-      const [resultRow] = await this.db
-        .insert(researchResults)
-        .values({
-          researchTaskId: task.id,
-          propertyId: action.propertyId,
-          source: 'manual',
-          sourceUrl: action.url ?? null,
-          dataType: task.taskType,
-          data: input.result ?? {},
-          confidence: 'high',
-          verification: 'verified',
-          parserVersion: 'manual-v1',
-          metadata: {
-            manualActionId: id,
-            externalSource: action.source,
-          },
-        })
-        .returning({ id: researchResults.id });
+      const resultReference = await recordResearchResult(this.db, {
+        researchTaskId: task.id,
+        propertyId: action.propertyId,
+        source: 'manual',
+        sourceUrl: action.url ?? null,
+        dataType: task.taskType,
+        data: input.result ?? {},
+        rawData: input.result ?? null,
+        confidence: 'high',
+        verification: 'verified',
+        parserVersion: 'manual-v1',
+        metadata: {
+          manualActionId: id,
+          externalSource: action.source,
+        },
+      });
 
       await this.db.insert(auditLogs).values({
         action: 'manual_result_entered',
@@ -213,12 +211,12 @@ export class ManualActionService {
       });
 
       await transitionTask(this.db, task.id, 'completed', {
-        resultReference: resultRow.id,
+        resultReference,
       });
       await updateCaseProgress(this.db, task.researchCaseId);
 
       logger.info(
-        { researchTaskId: task.id, manualActionId: id, resultReference: resultRow.id },
+        { researchTaskId: task.id, manualActionId: id, resultReference },
         'Manual action completed and research task settled',
       );
     }

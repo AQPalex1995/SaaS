@@ -11,7 +11,7 @@ Todo pipeline debe ejecutar, en este orden:
 1. **Instalar** deps (`npm ci` en `server/`, `npm ci` en la raíz para Scout).
 2. **Typecheck** del servidor: `cd server && npm run typecheck`.
 3. **Typecheck** de la raíz (Scout legacy): `npx tsc --noEmit` (raíz).
-4. **Tests**: `cd server && npx vitest run` (67 tests).
+4. **Tests**: `cd server && npx vitest run` (69 tests).
 5. **Build**: `cd server && npm run build` (valida `tsconfig.build.json`).
 6. **Imagen**: `docker build -f server/Dockerfile .` (valida el Dockerfile).
 

@@ -291,11 +291,15 @@ describe('T3.4 — Manual Action mechanism', () => {
     const res = mockDb._state.results[0];
     expect(res.researchTaskId).toBe(taskId);
     expect(res.source).toBe('manual');
+    expect(res.sourceUrl).toBeNull();
     expect(res.verification).toBe('verified');
     expect(res.confidence).toBe('high');
     expect(res.parserVersion).toBe('manual-v1');
     expect(res.dataType).toBe('geolocation');
     expect(res.data).toEqual({ address: 'Av. Ejército 400, Yanahuara' });
+    expect(res.rawData).toEqual({ address: 'Av. Ejército 400, Yanahuara' });
+    expect(res.retrievedAt).toBeInstanceOf(Date);
+    expect(res.metadata).toEqual({ manualActionId: 'ma-1', externalSource: 'system' });
 
     // Task settled as completed with result reference
     expect(mockDb._state.tasks[0].status).toBe('completed');

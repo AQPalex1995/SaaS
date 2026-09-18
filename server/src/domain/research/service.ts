@@ -195,9 +195,11 @@ export class ResearchService {
       retrievedAt: row.retrievedAt?.toISOString() ?? null,
       dataType: row.dataType,
       data: row.data as Record<string, unknown> | null,
+      rawData: row.rawData as Record<string, unknown> | null,
       confidence: row.confidence ?? 'unknown',
       verification: row.verification ?? 'reported',
       parserVersion: row.parserVersion,
+      metadata: row.metadata as Record<string, unknown> | null,
       createdAt: row.createdAt.toISOString(),
     };
   }

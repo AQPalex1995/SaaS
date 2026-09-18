@@ -257,15 +257,22 @@ ResearchResults
      - Si una o más tareas fallaron (`errorCount > 0`), el caso transiciona automáticamente a `partial`, con un resumen descriptivo (`Caso con ejecución parcial: X tarea(s) con error`).
      - El caso nunca queda suspendido en `running` indefinidamente.
 
-3. **Proveniencia y Creación de `ResearchResults`**:
-   - Cada tarea completada exitosamente genera un registro en la tabla `research_results` con sus metadatos de proveniencia:
-     - `source`: identificador de la fuente (`system`, `openstreetmap`, `sunarp`, etc.).
-     - `source_url`: URL de origen de los datos cuando aplica.
-     - `data_type`: tipo de datos (`identity`, `geolocation`, etc.).
-     - `data`: estructura normalizada JSON.
-     - `confidence`: nivel de confianza (`high`, `medium`, `low`, `unknown`).
-     - `verification`: estado de verificación (`inferred`, `verified`, `reported`).
-     - `parser_version`: versión del parser que procesó la información.
+3. **Proveniencia y Creación de `ResearchResults`** (endurecido en T3.5):
+   - Cada resultado se persiste mediante la ruta única
+     `recordResearchResult()` (`server/src/domain/research/result-provenance.ts`),
+     que garantiza los 8 campos de provenance (ver §7).
+   - `source`: identificador de la fuente (`system`, `openstreetmap`, `manual`,
+     `sunarp`, etc.).
+   - `source_url`: URL de origen de los datos cuando aplica.
+   - `retrieved_at`: cuándo se obtuvo/ingresó el dato (default `now`).
+   - `data_type`: tipo de datos (`identity`, `geolocation`, etc.).
+   - `data`: estructura normalizada JSON.
+   - `raw_data`: payload crudo de la fuente (snapshot del property para
+     `identity`; `null` cuando no existe fuente cruda).
+   - `confidence`: nivel de confianza (`high`, `medium`, `low`, `unknown`).
+   - `verification`: estado de verificación (`inferred`, `verified`, `reported`,
+     `conflicting`, `unknown`).
+   - `parser_version`: versión del parser que procesó la información.
    - El ID del resultado se enlaza en `research_tasks.result_reference`.
 
 4. **Multi-Task Results Querying**:
@@ -274,4 +281,34 @@ ResearchResults
 5. **Idempotencia**:
    - Casos ya terminales (`completed`, `partial`, `failed`, `cancelled`) son ignorados sin error ante re-entregas de jobs en BullMQ.
    - Tareas ya asentadas (`settled`) se omiten para evitar trabajo redundante o duplicación de datos.
+
+---
+
+## 7. Provenance de Resultados (Fase 3 / T3.5)
+
+Todo `research_results` se escribe a través de una **ruta única**
+(`recordResearchResult` en `server/src/domain/research/result-provenance.ts`),
+que normaliza y garantiza los campos de provenance para que ningún productor
+los omita:
+
+| Campo | Semántica | Default |
+|---|---|---|
+| `source` | Identificador de la fuente/conector | (requerido) |
+| `source_url` | URL del dato original | `null` |
+| `retrieved_at` | Cuándo se obtuvo/ingresó el dato | `now` |
+| `data_type` | Tipo de dato (`identity`, `geolocation`, `registry`, …) | `unknown` |
+| `data` | Estructura normalizada (parser) | `{}` |
+| `raw_data` | Payload crudo de la fuente | `null` |
+| `confidence` | `high` \| `medium` \| `low` \| `unknown` | `unknown` |
+| `verification` | `reported` \| `inferred` \| `verified` \| `conflicting` \| `unknown` | `reported` |
+| `parser_version` | Versión del parser | `v1` |
+| `metadata` | Contexto adicional (ej. `manualActionId`) | `null` |
+
+Productores cubiertos: `executeIdentityTask`, `executeGeolocationTask`
+(verificado y vía OSM), `executeConnectorTask`,
+`geocoding.worker.markGeolocationTask` y
+`ManualActionService.completeManualAction`.
+
+El DTO `ResearchResultDTO` expone `source`, `sourceUrl`, `retrievedAt`, `data`,
+`rawData`, `confidence`, `verification`, `parserVersion` y `metadata`.
 

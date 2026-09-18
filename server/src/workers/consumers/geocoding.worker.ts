@@ -8,13 +8,13 @@ import {
   propertyGeometries,
   researchCases,
   researchTasks,
-  researchResults,
   auditLogs,
 } from '../../db/schema/index.js';
 import { osmConnector } from '../../connectors/implementations/osm.js';
 import { logger } from '../../logger.js';
 import { updateCaseProgress } from '../../domain/research/lifecycle.js';
 import { transitionTask, type TaskStatus } from '../../domain/research/task-lifecycle.js';
+import { recordResearchResult } from '../../domain/research/result-provenance.js';
 import { ManualActionService } from '../../domain/research/manual-action.service.js';
 
 type DbLike = Pick<Database, 'update' | 'select'>;
@@ -64,27 +64,25 @@ export async function markGeolocationTask(
     let resultReference: string | undefined = undefined;
     if (completed && resultData && db.insert) {
       try {
-        const [res] = await db
-          .insert(researchResults)
-          .values({
-            researchTaskId: row.taskId,
-            propertyId,
-            source: 'openstreetmap',
-            sourceUrl: resultData.sourceUrl ?? 'https://nominatim.openstreetmap.org',
-            dataType: 'geolocation',
-            data: {
-              latitude: resultData.lat,
-              longitude: resultData.lng,
-              district: resultData.district,
-              address: resultData.address,
-              displayName: resultData.displayName,
-            },
-            confidence: 'medium',
-            verification: 'verified',
-            parserVersion: 'osm-v1',
-          })
-          .returning({ id: researchResults.id });
-        resultReference = res?.id;
+        const resultId = await recordResearchResult(db, {
+          researchTaskId: row.taskId,
+          propertyId,
+          source: 'openstreetmap',
+          sourceUrl: resultData.sourceUrl ?? 'https://nominatim.openstreetmap.org',
+          dataType: 'geolocation',
+          data: {
+            latitude: resultData.lat,
+            longitude: resultData.lng,
+            district: resultData.district,
+            address: resultData.address,
+            displayName: resultData.displayName,
+          },
+          rawData: { sourceUrl: resultData.sourceUrl ?? null },
+          confidence: 'medium',
+          verification: 'verified',
+          parserVersion: 'osm-v1',
+        });
+        resultReference = resultId;
       } catch (insertErr) {
         logger.warn(
           { taskId: row.taskId, err: insertErr },

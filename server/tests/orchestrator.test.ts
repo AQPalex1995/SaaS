@@ -162,10 +162,14 @@ describe('T3.3 — Research Orchestration', () => {
       expect(mockDb._state.results.length).toBe(1);
       const result = mockDb._state.results[0];
       expect(result.source).toBe('system');
+      expect(result.sourceUrl).toBeNull();
       expect(result.dataType).toBe('identity');
       expect(result.confidence).toBe('high');
       expect(result.verification).toBe('inferred');
       expect(result.parserVersion).toBe('identity-v1');
+      expect(result.retrievedAt).toBeInstanceOf(Date);
+      expect(result.rawData).toBeDefined();
+      expect(result.rawData.id).toBeDefined();
       expect(result.data.publicId).toBe('PROP-001');
       expect(result.data.verifiedCoordinates).toBe(true);
     });

@@ -195,7 +195,7 @@ d:\SaaS\fb-terreno-scout\
 │   ├── drizzle/               # Migraciones SQL generadas (0000_military_salo.sql … 0003_natural_mysterio.sql)
 │   ├── scripts/
 │   │   └── queue-health.mjs   # Healthcheck Redis para el worker en Docker
-│   ├── tests/                 # Suite de pruebas Vitest (67 tests pasando)
+│   ├── tests/                 # Suite de pruebas Vitest (69 tests pasando)
 │   │   ├── app.test.ts        # Tests de API Fastify, /health, /sources
 │   │   ├── connector.test.ts  # Tests de registro y conectores stubs
 │   │   ├── research.test.ts   # Tests del motor de investigación
@@ -203,6 +203,7 @@ d:\SaaS\fb-terreno-scout\
 │   │   ├── task-lifecycle.test.ts # Tests de transiciones del ResearchTask lifecycle
 │   │   ├── orchestrator.test.ts   # Tests de orquestación y aislamiento de fallos
 │   │   ├── manual-action.test.ts  # Tests de acciones manuales (T3.4)
+│   │   ├── provenance.test.ts     # Tests de provenance de resultados (T3.5)
 │   │   ├── schema.test.ts     # Tests de los 28 esquemas y 19 enums
 │   │   ├── sync.test.ts       # Tests de helpers de ingestión (contentHash, mapeos, etc.)
 │   │   └── osm.test.ts        # Tests del conector OpenStreetMap (fetch stubbed, sin red)
@@ -230,7 +231,7 @@ d:\SaaS\fb-terreno-scout\
 │       │   └── schema/        # 28 tablas Drizzle + 19 enums PostgreSQL
 │       ├── domain/            # Servicios de negocio
 │       │   ├── properties/    # PropertyService + rutas /api/v1/properties
-│       │   ├── research/      # ResearchService + lifecycle + task-lifecycle + orchestrator + manual-action (8 tareas)
+│       │   ├── research/      # ResearchService + lifecycle + task-lifecycle + orchestrator + manual-action + result-provenance (8 tareas)
 │       │   ├── ingestion/     # sync.ts: SQLite legacy → PostgreSQL (dedup, hash, audit)
 │       │   └── audit/         # AuditService para registro de eventos
 │       ├── dto/               # Tipos de transferencia de datos
@@ -320,7 +321,7 @@ npm.cmd run db:seed       # Inserta usuario de sistema, fuentes y datos de prueb
 ### Paso 5: Ejecutar la suite de tests
 ```bash
 cd server
-npm.cmd test               # Ejecuta Vitest (67 tests automáticos)
+npm.cmd test               # Ejecuta Vitest (69 tests automáticos)
 npm.cmd run typecheck      # Verifica que TypeScript esté al 100% sin errores
 ```
 

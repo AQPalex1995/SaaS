@@ -211,3 +211,39 @@ Verified:
 
 Next:
 - Phase 3 / T3.5 (Research Result provenance)
+
+## 2026-09-17 — OpenCode — Phase 3 / T3.5 (Research Result provenance)
+
+Completed:
+- Added `server/src/domain/research/result-provenance.ts`
+  (`recordResearchResult`): the single code path for ALL research_results
+  producers. It guarantees the 8 provenance fields on every insert — source,
+  source_url, retrieved_at (defaults to now), confidence (default 'unknown'),
+  verification (default 'reported'), raw_data (default null), normalized data
+  (default {}), parser_version (default 'v1') — so no producer can forget them.
+- Refactored all 6 insertion points to use it:
+  - orchestrator.executeIdentityTask: now persists rawData (snapshot of the
+    property: status / price + currency / priceSource).
+  - orchestrator.executeGeolocationTask (verified path): rawData carries
+    locationSource + locationVerification.
+  - orchestrator.executeGeolocationTask (live OSM): rawData carries
+    displayName + sourceUrl; retrieved_at set explicitly at fetch time.
+  - orchestrator.executeConnectorTask: unchanged behaviour, uses helper.
+  - geocoding.worker markGeolocationTask: rawData carries sourceUrl.
+  - ManualActionService.completeManualAction: rawData is the analyst-entered
+    result; provenance verification 'verified' / confidence 'high';
+    metadata {manualActionId, externalSource}.
+- DTO: `ResearchResultDTO` now exposes `rawData` and `metadata` (alongside
+  source, sourceUrl, retrievedAt, data, confidence, verification,
+  parserVersion); `ResearchService.toResultDTO` maps them.
+- No migration needed: research_results already had all provenance columns.
+
+Verified:
+- Tests 69/69 (2 new in `server/tests/provenance.test.ts`; provenance
+  assertions added to orchestrator.test / manual-action.test /
+  schema.test.ts — rawData, retrievedAt, sourceUrl, metadata).
+- Typecheck server + root; server build OK.
+- Live smoke test NOT repeated (PostgreSQL 5433 / Redis 6380 / Docker down).
+
+Next:
+- Phase 3 / T3.6 (Research API)

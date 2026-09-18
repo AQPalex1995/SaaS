@@ -101,9 +101,12 @@ describe('Database Schema Definitions', () => {
   it('should have provenance tracking on research_results table', () => {
     const table = schema.researchResults;
     expect(table.source).toBeDefined();
+    expect(table.sourceUrl).toBeDefined();
+    expect(table.retrievedAt).toBeDefined();
     expect(table.confidence).toBeDefined();
     expect(table.verification).toBeDefined();
     expect(table.rawData).toBeDefined();
+    expect(table.parserVersion).toBeDefined();
     expect(table.data).toBeDefined();
   });
 });

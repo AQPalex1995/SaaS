@@ -4,7 +4,6 @@ import {
   properties,
   researchCases,
   researchTasks,
-  researchResults,
 } from '../../db/schema/index.js';
 import {
   isCaseTerminal,
@@ -17,6 +16,7 @@ import {
   transitionTask,
   type TaskStatus,
 } from './task-lifecycle.js';
+import { recordResearchResult } from './result-provenance.js';
 import { ManualActionService } from './manual-action.service.js';
 import { connectorRegistry } from '../../connectors/registry.js';
 import type { SourceType } from '../../connectors/base.js';
@@ -257,31 +257,34 @@ export class ResearchOrchestrator {
       throw new Error(`Property ${propertyId} not found for identity task`);
     }
 
-    const [result] = await this.db
-      .insert(researchResults)
-      .values({
-        researchTaskId,
-        propertyId,
-        source: 'system',
-        dataType: 'identity',
-        data: {
-          publicId: prop.publicId,
-          title: prop.title,
-          propertyType: prop.propertyType ?? 'otro',
-          district: prop.district,
-          verifiedCoordinates: !!(prop.latitude && prop.longitude),
-        },
-        confidence: 'high',
-        verification: 'inferred',
-        parserVersion: 'identity-v1',
-      })
-      .returning({ id: researchResults.id });
-
-    await transitionTask(this.db, researchTaskId, 'completed', {
-      resultReference: result.id,
+    const resultId = await recordResearchResult(this.db, {
+      researchTaskId,
+      propertyId,
+      source: 'system',
+      dataType: 'identity',
+      data: {
+        publicId: prop.publicId,
+        title: prop.title,
+        propertyType: prop.propertyType ?? 'otro',
+        district: prop.district,
+        verifiedCoordinates: !!(prop.latitude && prop.longitude),
+      },
+      rawData: {
+        id: prop.id,
+        status: prop.status,
+        prices: { price: prop.price, currency: prop.currency },
+        reportedSource: prop.priceSource,
+      },
+      confidence: 'high',
+      verification: 'inferred',
+      parserVersion: 'identity-v1',
     });
 
-    return result.id;
+    await transitionTask(this.db, researchTaskId, 'completed', {
+      resultReference: resultId,
+    });
+
+    return resultId;
   }
 
   /**
@@ -304,30 +307,31 @@ export class ResearchOrchestrator {
 
     // Already verified coordinates?
     if (prop.latitude && prop.longitude && prop.locationVerification === 'verified') {
-      const [result] = await this.db
-        .insert(researchResults)
-        .values({
-          researchTaskId,
-          propertyId,
-          source: prop.locationSource ?? 'system',
-          dataType: 'geolocation',
-          data: {
-            latitude: Number(prop.latitude),
-            longitude: Number(prop.longitude),
-            district: prop.district,
-            verified: true,
-          },
-          confidence: 'high',
-          verification: 'verified',
-          parserVersion: 'geo-v1',
-        })
-        .returning({ id: researchResults.id });
+      const resultId = await recordResearchResult(this.db, {
+        researchTaskId,
+        propertyId,
+        source: prop.locationSource ?? 'system',
+        dataType: 'geolocation',
+        data: {
+          latitude: Number(prop.latitude),
+          longitude: Number(prop.longitude),
+          district: prop.district,
+          verified: true,
+        },
+        rawData: {
+          locationSource: prop.locationSource,
+          locationVerification: prop.locationVerification,
+        },
+        confidence: 'high',
+        verification: 'verified',
+        parserVersion: 'geo-v1',
+      });
 
       await transitionTask(this.db, researchTaskId, 'skipped', {
-        resultReference: result.id,
+        resultReference: resultId,
         error: 'Ya geolocalizada (coordenadas verificadas)',
       });
-      return result.id;
+      return resultId;
     }
 
     const query = prop.district
@@ -367,32 +371,34 @@ export class ResearchOrchestrator {
     const lat = Number(item.latitude);
     const lng = Number(item.longitude);
 
-    const [result] = await this.db
-      .insert(researchResults)
-      .values({
-        researchTaskId,
-        propertyId,
-        source: 'openstreetmap',
+    const resultId = await recordResearchResult(this.db, {
+      researchTaskId,
+      propertyId,
+      source: 'openstreetmap',
+      sourceUrl: item.sourceUrl ?? null,
+      dataType: 'geolocation',
+      data: {
+        latitude: lat,
+        longitude: lng,
+        district: item.district ?? prop.district,
+        displayName: item.title,
+        query,
+      },
+      rawData: {
+        displayName: item.title ?? null,
         sourceUrl: item.sourceUrl ?? null,
-        dataType: 'geolocation',
-        data: {
-          latitude: lat,
-          longitude: lng,
-          district: item.district ?? prop.district,
-          displayName: item.title,
-          query,
-        },
-        confidence: 'medium',
-        verification: 'verified',
-        parserVersion: 'osm-v1',
-      })
-      .returning({ id: researchResults.id });
-
-    await transitionTask(this.db, researchTaskId, 'completed', {
-      resultReference: result.id,
+      },
+      retrievedAt: new Date(),
+      confidence: 'medium',
+      verification: 'verified',
+      parserVersion: 'osm-v1',
     });
 
-    return result.id;
+    await transitionTask(this.db, researchTaskId, 'completed', {
+      resultReference: resultId,
+    });
+
+    return resultId;
   }
 
   /**
@@ -470,26 +476,23 @@ export class ResearchOrchestrator {
       return null;
     }
 
-    const [res] = await this.db
-      .insert(researchResults)
-      .values({
-        researchTaskId,
-        propertyId,
-        source: sourceId,
-        dataType: taskType,
-        data: details.data ?? {},
-        rawData: details.rawData ?? {},
-        confidence: 'medium',
-        verification: 'reported',
-        parserVersion: 'v1',
-      })
-      .returning({ id: researchResults.id });
-
-    await transitionTask(this.db, researchTaskId, 'completed', {
-      resultReference: res.id,
+    const resId = await recordResearchResult(this.db, {
+      researchTaskId,
+      propertyId,
+      source: sourceId,
+      dataType: taskType,
+      data: details.data ?? {},
+      rawData: details.rawData ?? {},
+      confidence: 'medium',
+      verification: 'reported',
+      parserVersion: 'v1',
     });
 
-    return res.id;
+    await transitionTask(this.db, researchTaskId, 'completed', {
+      resultReference: resId,
+    });
+
+    return resId;
   }
 }
 

@@ -2,7 +2,7 @@
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
 > El estado del repositorio refleja la **Fase 3 (Research Engine Hardening)** en curso.
-> Las fases 0–2.5 están implementadas en `main`; T3.1 (ResearchCase lifecycle), T3.2 (ResearchTask lifecycle), T3.3 (Research orchestration) y T3.4 (Manual Action) completadas el 2026-09-17.
+> Las fases 0–2.5 están implementadas en `main`; T3.1 (ResearchCase lifecycle), T3.2 (ResearchTask lifecycle), T3.3 (Research orchestration), T3.4 (Manual Action) y T3.5 (Research Result provenance) completadas el 2026-09-17.
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
 > Lee atentamente este documento antes de escribir código.
 
@@ -17,7 +17,7 @@
 - **Colas**: 6 colas BullMQ definidas en `server/src/workers/queue.ts`, con consumidores reales para `geocoding` y `research`.
 - **Ingesta**: Motor de sincronización `server/src/domain/ingestion/sync.ts` + CLI `server/src/scripts/sync-sqlite.ts`.
 - **UI**: Panel Scout intacto en puerto `8787` con botón `[INVESTIGAR]`, `Property Intelligence Drawer`, badges en tiempo real y lista dinámica de fuentes.
-- **Pruebas**: 67 tests automatizados pasando en Vitest (`cd server && npm.cmd test`).
+- **Pruebas**: 69 tests automatizados pasando en Vitest (`cd server && npm.cmd test`).
 
 > **Bugs conocidos y divergencias**: la base SQLite real es `data/scout.db` (no `data/terrenos.db` como cita la doc);
 > `node:sqlite` requiere import dinámico en Docker `node:22` (ya resuelto en `sync.ts`).
@@ -231,6 +231,32 @@ PAYMENT, USER ACTION) con datos concretos (`instructions`, `url`,
 
 ---
 
+## 2.9. Fase 3 — T3.5 Research Result provenance — ✅ COMPLETADA (2026‑09‑17)
+
+Garantiza los campos de provenance en **todos** los resultados de investigación:
+`source`, `source_url`, `retrieved_at`, `confidence`, `verification_status`,
+`raw_data`, `normalized_data` y `parser_version`.
+
+### Cambios
+- **`server/src/domain/research/result-provenance.ts`** (`recordResearchResult`):
+  única ruta de inserción para todos los productores de `research_results`;
+  normaliza los opcionales (`retrieved_at` → now, `confidence` →
+  `unknown`, `verification` → `reported`, `raw_data` → null, `data` → {},
+  `parser_version` → `v1`) para que ningún productor omita provenance.
+- **6 productores refactorizados**: `executeIdentityTask` (rawData con snapshot
+  del property), `executeGeolocationTask` (verificado y vía OSM real),
+  `executeConnectorTask`, `geocoding.worker.markGeolocationTask`,
+  `ManualActionService.completeManualAction` (rawData = resultado del analista).
+- **DTO**: `ResearchResultDTO` expone ahora `rawData` y `metadata`.
+- **Sin migración**: la tabla ya tenía todas las columnas de provenance.
+
+### Verificación
+- Tests 69/69 (2 nuevos en `server/tests/provenance.test.ts`; aserciones de
+  provenance añadidas a orchestrator/manual-action/schema tests).
+- Typecheck server + root, build del server.
+
+---
+
 ## 3. Checklist de Verificación para el Agente
 
 Antes de dar por concluida cualquier sesión de trabajo, ejecuta siempre:
@@ -240,7 +266,7 @@ Antes de dar por concluida cualquier sesión de trabajo, ejecuta siempre:
 cd server
 npm.cmd run typecheck
 
-# 2. Ejecutar toda la suite de tests (67 tests)
+# 2. Ejecutar toda la suite de tests (69 tests)
 npm.cmd test
 
 # 3. Build de producción del servidor
@@ -268,11 +294,11 @@ cd server && npm.cmd run sync:sqlite
 
 ---
 
-## 5. Siguientes Iteraciones (después de T3.4)
+## 5. Siguientes Iteraciones (después de T3.5)
 
-> **Siguiente tarea del plan**: **T3.5 — Research Result provenance** (asegurar
-> `source`, `source_url`, `retrieved_at`, `confidence`, `verification_status`,
-> `raw_data`, `normalized_data` en cada resultado de investigación).
+> **Siguiente tarea del plan**: **T3.6 — Research API** (verificar/afinar
+> `POST /properties/:id/research`, `GET /properties/:id/research`,
+> `GET /research/:id`, `GET /research/:id/tasks`, `GET /research/:id/results`).
 > Ver `PROJECT_EXECUTION_PLAN.md`.
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.
