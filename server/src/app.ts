@@ -10,11 +10,15 @@ import { researchRoutes } from './domain/research/routes.js';
 import { remateIntakeRoutes } from './domain/research/remate-intake.routes.js';
 import type { RemateIntakeService } from './domain/research/remate-intake.service.js';
 import { sourceRoutes } from './connectors/routes.js';
+import { monitoringRoutes } from './domain/monitoring/routes.js';
+import type { MonitoringService } from './domain/monitoring/monitoring.service.js';
 
 export interface AppOptions {
   enableLogging?: boolean;
   /** Injectable REM@JU intake service (tests). */
   remateIntakeService?: RemateIntakeService;
+  /** Injectable operations monitoring service (tests). */
+  monitoringService?: MonitoringService;
 }
 
 /**
@@ -89,6 +93,7 @@ export async function buildApp(options: AppOptions = {}) {
   await app.register(researchRoutes);
   await app.register(remateIntakeRoutes, { service: options.remateIntakeService });
   await app.register(sourceRoutes);
+  await app.register(monitoringRoutes, { service: options.monitoringService });
 
   // Global error handler
   app.setErrorHandler((error: any, _request, reply) => {

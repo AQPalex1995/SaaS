@@ -224,6 +224,32 @@ formulario, incluyendo subida de PDF (leído como base64 en el navegador).
 
 ---
 
+## 4.c Monitoreo Operacional (`/api/v1/monitoring`, Fase 4 / T4.9)
+
+### `GET /api/v1/monitoring/operations`
+Resumen operacional read-side (sin escrituras) sobre el pipeline de
+investigación:
+- **manualCycle**: `total`, `requested`, `completed`, `cancelled`, `stalePending`
+  (acciones pedidas hace más de `staleThresholdHours` — por defecto 168 h) y
+  `avgCompletionHours` (media requested→completed).
+- **judicialPipeline**: `tasks` por estado (`total`, `completed`,
+  `requiresManualAction`, `failed`, `cancelled`, `pending`, `running`) y
+  `resultsBySource` / `resultsByParser` de los resultados con
+  `data_type = 'judicial'` (REM@JU público + intake manual).
+- **stuck**: tareas que requieren atención, ordenadas por antigüedad:
+  `stale_pending_action` (acción pendiente vencida) y `orphan_task`
+  (tarea `requires_manual_action` sin acción pendiente).
+- **Respuesta 200**: `{ "data": OperationsSummary }`.
+
+### `GET /api/v1/monitoring/queues`
+Profundidad de las 6 colas BullMQ (`scraping`, `research`, `geocoding`, `gis`,
+`market`, `notifications`): `waiting`, `active`, `delayed`, `completed`,
+`failed`, `paused`.
+- Degrada con `connected: false` y todas las colas `null` cuando Redis no
+  responde (nunca lanza 500).
+
+---
+
 ## 5. Endpoints de Conectores & Fuentes (`/api/v1/sources`)
 
 ### `GET /api/v1/sources`

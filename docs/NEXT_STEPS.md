@@ -1,11 +1,10 @@
 # Próximos Pasos de Implementación (NEXT_STEPS.md)
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
-> El estado del repositorio refleja la **Fase 4 (REM@JU)** en curso.
-> Las fases 0–2.5 y la Fase 3 (T3.1 → T3.9) están implementadas en `main`
-> (Fase 3 completada el 2026-09-17); la Fase 4 fue aprobada por el usuario y
-> los T4.1 (discovery) y T4.2 (parser público) ya están completados
-> (ver §5, `docs/REMATE_JUDICIAL.md` y `server/src/connectors/implementations/remaju.ts`).
+> El estado del repositorio refleja la **Fase 4 (REM@JU) completada** y el
+> arranque de la **Fase 5 (SUNARP)**.
+> Las fases 0–2.5, la Fase 3 (T3.1 → T3.9) y la Fase 4 (T4.1 → T4.9)
+> están implementadas en `main`
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
 > Lee atentamente este documento antes de escribir código.
 > **Reglas operativas vigentes (AGENTS.md)**: el agente inicia **automáticamente** Docker/PostgreSQL
@@ -381,9 +380,9 @@ cd server && npm.cmd run sync:sqlite
 
 ---
 
-## 5. Siguientes Iteraciones (Fase 4 en curso)
+## 5. Siguientes Iteraciones (Fase 4 completada → Fase 5)
 
-> **Fase 4 (REM@JU) IN PROGRESS** — aprobada por el usuario (2026‑09‑17).
+> **Fase 4 (REM@JU) ✅ COMPLETED (2026‑09‑17)** — aprobada por el usuario.
 > **T4.1 discovery → ✅ DONE**: reporte en `docs/REMATE_JUDICIAL.md`
 > (portal público sin login viable, sin CAPTCHA; participación autenticada
 > NO automatizable; Akamai + JSF/ViewState; no hay JSON/API pública).
@@ -414,12 +413,19 @@ cd server && npm.cmd run sync:sqlite
 > **T4.8 tests → ✅ DONE**:
 > aceptación Fase 4 en `server/tests/phase4-acceptance.test.ts` (5 tests offline:
 > ciclo E2E manual→completed, fixture de payload, límites de `planRemajuMatches`
-> /intake/linking); suite **151/151 (22 archivos)**.
+> /intake/linking).
+> **T4.9 monitoring → ✅ DONE**:
+> `server/src/domain/monitoring/` (`MonitoringService`: ciclo manual + pipeline
+> judicial + stuck work `stale_pending_action`/`orphan_task`; `getQueueStatus`
+> con degradación elegante) y rutas `GET /api/v1/monitoring/operations` y
+> `GET /api/v1/monitoring/queues`; helper de tests `helpers/in-memory-db.ts`.
+> Suite **157/157 (24 archivos)**; typecheck server+root y build OK.
 >
-> **Siguiente tarea del plan**: **Fase 4 / T4.9 — monitoring**
-> (healthchecks de colas/workers, alertas de tareas stuck en
-> `requires_manual_action`, métricas del ciclo manual y del consumo REM@JU).
-> Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 4).
+> **Siguiente tarea del plan**: **Fase 5 — SUNARP / T5.1 (Conoce Aquí)**
+> (discovery público sin CAPTCHA, parser + conector real si es alcanzable,
+> aplicando el mismo patrón REM@JU: parser puro + linking + `manual_actions`
+> cuando haya CAPTCHA).
+> Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 5).
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.
 - Implementar la verificación a nivel de caso: confirmar manualmente la identidad del property y la coordenada geocodificada (hoy `verification='inferred'`).

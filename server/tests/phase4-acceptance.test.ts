@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { ResearchOrchestrator } from '../src/domain/research/orchestrator.js';
 import { ManualActionService } from '../src/domain/research/manual-action.service.js';
 import { planRemateIntake } from '../src/domain/research/remate-manual.js';
@@ -9,15 +9,7 @@ import { planRemajuMatches } from '../src/domain/research/remaju-research.js';
 import { linkRemateToProperties } from '../src/connectors/implementations/remaju-link.js';
 import { connectorRegistry } from '../src/connectors/registry.js';
 import { allStubConnectors } from '../src/connectors/stubs/index.js';
-import type { Database } from '../src/db/connection.js';
-import {
-  auditLogs,
-  manualActions,
-  properties,
-  researchCases,
-  researchResults,
-  researchTasks,
-} from '../src/db/schema/index.js';
+import { createInMemoryDb } from './helpers/in-memory-db.js';
 
 const CASE_ID = '00000000-0000-0000-0000-000000000001';
 const PROP_ID = '00000000-0000-0000-0000-000000000002';
@@ -29,136 +21,6 @@ const PROP_ID = '00000000-0000-0000-0000-000000000002';
  * candidates → requires_manual_action → operator completes (result + provenance)
  * → task settled and case completed. Plus fixtures and link/intake edge cases.
  */
-
-function isColumn(node: any): boolean {
-  return !!node && typeof node === 'object' && typeof node.name === 'string' && node.table !== undefined;
-}
-function isParam(node: any): boolean {
-  return (
-    !!node &&
-    (node.constructor?.name === 'Param' || (typeof node === 'object' && 'value' in node && 'column' in node))
-  );
-}
-function columnKey(col: any): string | null {
-  const table = col?.table as any;
-  if (table && typeof table === 'object') {
-    for (const key of Object.keys(table)) if (table[key] === col) return key;
-  }
-  return typeof col?.name === 'string' ? col.name : null;
-}
-function evalWhere(pred: any, row: Record<string, any>): boolean {
-  if (!pred || typeof pred !== 'object') return true;
-  const chunks = Array.isArray(pred.queryChunks) ? pred.queryChunks : null;
-  if (!chunks) return true;
-  const inner = chunks.filter((c: any) => c?.constructor?.name === 'SQL');
-  if (inner.length > 0) return inner.every((c: any) => evalWhere(c, row));
-  const col = chunks.find((c: any) => isColumn(c));
-  const param = chunks.find((c: any) => isParam(c));
-  if (col && param) {
-    const key = columnKey(col);
-    if (key) return row[key] === param.value;
-  }
-  return true;
-}
-
-function createInMemoryDb(seed: { property?: any; tasks?: any[]; cases?: any[] }) {
-  const now = new Date();
-  const state: any = {
-    properties: seed.property ? [{ ...seed.property }] : [],
-    tasks: (seed.tasks ?? []).map((t) => ({
-      status: 'pending',
-      requiresManualAction: false,
-      manualActionDescription: null,
-      retryCount: 0,
-      startedAt: null,
-      completedAt: null,
-      createdAt: now,
-      updatedAt: now,
-      ...t,
-    })),
-    cases: (seed.cases ?? []).map((c) => ({
-      status: 'created',
-      completedTaskCount: 0,
-      totalTaskCount: (seed.tasks ?? []).length,
-      errorCount: 0,
-      warningCount: 0,
-      summary: null,
-      ...c,
-    })),
-    results: [] as any[],
-    manualActions: [] as any[],
-    auditLogs: [] as any[],
-    registryProperties: [] as any[],
-  };
-  let seq = 0;
-  const nextId = (p: string) => `${p}-${++seq}`;
-  const tableData = (table: any): any[] => {
-    if (table === properties) return state.properties;
-    if (table === researchCases) return state.cases;
-    if (table === researchTasks) return state.tasks;
-    if (table === researchResults) return state.results;
-    if (table === manualActions) return state.manualActions;
-    if (table === auditLogs) return state.auditLogs;
-    return [];
-  };
-  const queryable = (data: any[]) => {
-    const promise = Promise.resolve(data);
-    const q: any = {
-      where: (pred: any) => queryable(data.filter((r) => evalWhere(pred, r))),
-      limit: (n: number) => Promise.resolve(data.slice(0, n)),
-      orderBy: () => Promise.resolve(data),
-      then: (onf: any, onr: any) => promise.then(onf, onr),
-      catch: (onc: any) => promise.catch(onc),
-    };
-    return q;
-  };
-  return {
-    db: {
-      select: () => ({ from: (table: any) => queryable(tableData(table)) }),
-      insert: (table: any) => ({
-        values: (values: any) => {
-          const prefix =
-            table === researchCases
-              ? 'case'
-              : table === researchTasks
-                ? 'task'
-                : table === researchResults
-                  ? 'res'
-                  : table === manualActions
-                    ? 'ma'
-                    : 'row';
-          const row = {
-            id: values.id ?? nextId(prefix),
-            createdAt: now,
-            updatedAt: now,
-            status: table === manualActions ? values.status ?? 'requested' : values.status,
-            ...values,
-          };
-          tableData(table).push(row);
-          const ret = [row];
-          return {
-            returning: () => Promise.resolve(ret),
-            then: (onf: any, onr: any) => Promise.resolve(ret).then(onf, onr),
-          };
-        },
-      }),
-      update: (table: any) => ({
-        set: (values: any) => ({
-          where: (pred: any) => {
-            const matched = tableData(table).filter((r: any) => evalWhere(pred, r));
-            for (const r of matched) Object.assign(r, values);
-            const ret = matched.map((r: any) => ({ ...r }));
-            return {
-              returning: () => Promise.resolve(ret),
-              then: (onf: any, onr: any) => Promise.resolve(ret).then(onf, onr),
-            };
-          },
-        }),
-      }),
-    } as unknown as Database,
-    state,
-  };
-}
 
 describe('Fase 4 acceptance (T4.8)', () => {
   beforeEach(() => {

@@ -39,22 +39,25 @@ PostGIS:
 ## Tests
 
 Server:
-✅ 151/151 (22 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` T4.2–T4.8)
+✅ 157/157 (24 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9)
 
 Root:
 ✅
 
 ## Current Phase
 
-Phase 4 — IN PROGRESS (REM@JU; T4.1 a T4.8 done: discovery, parser, normalization, dedup, linking/manual intake, research connector, manual action handling, tests)
+Phase 4 — ✅ COMPLETED (2026-09-17). Fase 5 — SUNARP (next)
 
 ## Current Task
 
-Phase 4 / T4.9 (monitoring) — próximo paso. T4.8 completado: batería de
-aceptación Fase 4 (`server/tests/phase4-acceptance.test.ts`, 5 tests offline —
-ciclo E2E manual→completed, fixture de payload, límites de `planRemajuMatches`/
-intake/linking). Suite **151/151 (22 archivos)**; typecheck server+root y build OK.
-Reporte T4.1 en `docs/REMATE_JUDICIAL.md`.
+Fase 5 / T5.1 (SUNARP Conoce Aquí) — próximo paso. T4.9 (monitoring) completado:
+nuevo módulo `server/src/domain/monitoring/` — `MonitoringService`
+(`getOperationsSummary`: ciclo manual + pipeline judicial + stuck work
+`stale_pending_action`/`orphan_task`; `getQueueStatus` con degradación elegante y
+reporter inyectable) y rutas `GET /api/v1/monitoring/operations` y
+`GET /api/v1/monitoring/queues`; helper de tests compartido
+`server/tests/helpers/in-memory-db.ts`. Suite **157/157 (24 archivos)**;
+typecheck server+root y build OK. Reporte T4.1 en `docs/REMATE_JUDICIAL.md`.
 
 ## Blockers
 
@@ -65,7 +68,7 @@ None
 - La suite completa de tests emitió ruido ambiental durante T3.4–T3.6:
   `osm.test.ts` falla una llamada real a Nominatim (`500`) y `app.test.ts`
   reporta `ECONNREFUSED` a PostgreSQL 5433 (servicios locales detenidos), pero
-  **todos los archivos de test pasan** (22/22, 151/151). El smoke test en vivo de
+  **todos los archivos de test pasan** (24/24, 157/157). El smoke test en vivo de
   REM@JU (T4.2) SÍ se repitió contra la página pública real: 276 remates
   parseados (MIRAFLORES/40451/25296, distrito "cusco" → 2 hits).
 - Limitaciones conocidas del motor de investigación (reveladas por T3.8, sin

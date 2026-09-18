@@ -9,7 +9,7 @@
 
 - **Objetivo**: Plataforma de inteligencia territorial e inmobiliaria para terrenos en Arequipa, Perú (con expansión nacional).
 - **Evolución**: De un scraper local básico de Facebook Marketplace/Grupos (`FB Terreno Scout`) hacia una plataforma modular de due diligence inmobiliario, valuación y análisis registral/urbano (`Land Intelligence`).
-- **Estado Actual**: **Fase 4 EN CURSO (REM@JU, aprobada por el usuario)** — T4.1 a T4.8 DONE (discovery, parser, normalization, dedup, linking + intake manual, research connector, manual action handling, tests); siguiente tarea **T4.9 monitoring**. Ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). Fases 0–3 completadas (infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ, Research Engine T3.x).
+- **Estado Actual**: **Fase 4 COMPLETED (2026-09-17) — REM@JU** (T4.1–T4.9 DONE: discovery, parser, normalization, dedup, linking + intake manual, research connector, manual action handling, tests, monitoring). **Fase 5 — SUNARP** PLANNED; siguiente tarea **T5.1 (Conoce Aquí)**. Ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). Fases 0–3 completadas (infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ, Research Engine T3.x).
 - **Gobernanza**: este documento contiene las **Checkpoint Rules**, **Decision Gates** y **reglas de ejecución autónoma** (sección 2). Todo agente DEBE leer `PROJECT_EXECUTION_PLAN.md`, `PROJECT_STATUS.md` y `CHANGELOG_AGENTS.md` antes de escribir código.
 - **Enfoque**: Modular Monolith en TypeScript (Node.js ESM), Fastify, PostgreSQL 16 + PostGIS 3.4, Drizzle ORM, BullMQ, Vitest.
 
@@ -231,7 +231,7 @@ d:\SaaS\fb-terreno-scout\
 │   ├── drizzle/               # Migraciones SQL generadas (0000_military_salo.sql … 0003_natural_mysterio.sql)
 │   ├── scripts/
 │   │   └── queue-health.mjs   # Healthcheck Redis para el worker en Docker
-│   ├── tests/                 # Suite de pruebas Vitest (151 tests pasando)
+│   ├── tests/                 # Suite de pruebas Vitest (157 tests pasando)
 │   │   ├── app.test.ts        # Tests de API Fastify, /health, /sources
 │   │   ├── connector.test.ts  # Tests de registro y conectores stubs
 │   │   ├── research.test.ts   # Tests del motor de investigación
@@ -284,6 +284,7 @@ d:\SaaS\fb-terreno-scout\
 │       ├── domain/            # Servicios de negocio
 │       │   ├── properties/    # PropertyService + rutas /api/v1/properties
 │       │   ├── research/      # ResearchService + lifecycle + task-lifecycle + orchestrator + manual-action + result-provenance + remate-manual/remate-intake/remaju-research (T4.5/T4.6)
+│       │   ├── monitoring/    # MonitoringService + rutas /api/v1/monitoring (operations|queues) (T4.9)
 │       │   ├── ingestion/     # sync.ts: SQLite legacy → PostgreSQL (dedup, hash, audit)
 │       │   └── audit/         # AuditService para registro de eventos
 │       ├── dto/               # Tipos de transferencia de datos
@@ -378,7 +379,7 @@ npm.cmd run db:seed       # Inserta usuario de sistema, fuentes y datos de prueb
 ### Paso 5: Ejecutar la suite de tests
 ```bash
 cd server
-npm.cmd test               # Ejecuta Vitest (151 tests automáticos)
+npm.cmd test               # Ejecuta Vitest (157 tests automáticos)
 npm.cmd run typecheck      # Verifica que TypeScript esté al 100% sin errores
 ```
 

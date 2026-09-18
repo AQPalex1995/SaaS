@@ -568,7 +568,7 @@ explícita (Decision Gate: nuevo proveedor de datos externo).
 PHASE 4 — REM@JU
 ============================================================
 
-STATUS: CURRENT
+STATUS: COMPLETED (2026-09-17)
 
 OBJECTIVE:
 
@@ -585,7 +585,7 @@ T4.5 Property linking + manual intake — ✅ DONE (2026-09-17)
 T4.6 research connector — ✅ DONE (2026-09-17)
 T4.7 manual action handling — ✅ DONE (2026-09-17)
 T4.8 tests — ✅ DONE (2026-09-17)
-T4.9 monitoring (en curso)
+T4.9 monitoring — ✅ DONE (2026-09-17)
 T4.7 manual action handling
 T4.8 tests
 T4.9 monitoring
@@ -815,6 +815,33 @@ T4.8 tests — result:
 Siguiente: **T4.9 monitoring** (healthchecks de colas/workers, alerts de tareas
 stuck en `requires_manual_action`, métricas del ciclo manual y del consumo
 REM@JU).
+
+T4.9 monitoring — result:
+
+- Nuevo módulo `server/src/domain/monitoring/`:
+  - `monitoring.service.ts` (`MonitoringService`, agregaciones read-side sobre
+    `manual_actions`, `research_tasks` y `research_results`, puro/offline-safe):
+    - `getOperationsSummary()` → ciclo manual (total/requested/completed/
+      cancelled, `stalePending` > 7 días, `avgCompletionHours`), pipeline
+      judicial/REM@JU (tareas por estado, resultados `dataType:'judicial'` por
+      fuente y por parser) y **stuck work**: `stale_pending_action` +
+      `orphan_task` (tareas `requires_manual_action` sin acción pendiente),
+      ordenadas por antigüedad.
+    - `getQueueStatus(report?)` → profundidades por cola BullMQ (waiting/active/
+      delayed/completed/failed/paused) con degradación elegante
+      (`connected:false`) cuando Redis no responde; reporter inyectable.
+  - `routes.ts` → `GET /api/v1/monitoring/operations` y
+    `GET /api/v1/monitoring/queues`; registradas en `app.ts`
+    (`AppOptions.monitoringService`).
+- Helper de tests compartido `server/tests/helpers/in-memory-db.ts` (extraído de
+  `phase4-acceptance.test.ts` para reutilización).
+- Tests: `monitoring.service.test.ts` (4: ciclo manual+stale+avg, pipeline
+  judicial por fuente/parser, orphan tasks, queue status degradado) y
+  `monitoring.routes.test.ts` (2: operations HTTP, queues HTTP con reporter
+  inyectado). Suite completa **157/157 (24 archivos)**; typecheck server+root y
+  build OK.
+
+siguiente tarea del plan: **Fase 5 — SUNARP** (T5.1 Conoce Aquí).
 
 ============================================================
 PHASE 5 — SUNARP

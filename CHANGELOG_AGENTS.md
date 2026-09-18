@@ -688,3 +688,29 @@ Next:
 Next:
 - **T4.9 — monitoring**: queue/worker healthchecks, alerts for stuck
   `requires_manual_action` tasks, manual-cycle and REM@JU consumption metrics.
+
+## 2026-09-17 — OpenCode — Phase 4 / T4.9 (operations monitoring)
+
+- New `server/src/domain/monitoring/`:
+  - `monitoring.service.ts` — `MonitoringService` read-side aggregates over
+    `manual_actions`/`research_tasks`/`research_results` (offline-safe):
+    - `getOperationsSummary()`: manual cycle (total/requested/completed/
+      cancelled, `stalePending` beyond 7 days, `avgCompletionHours`), judicial/
+      REM@JU pipeline (task statuses, `dataType:'judicial'` results per source
+      and parser), and stuck work: `stale_pending_action` + `orphan_task`
+      (requires_manual_action tasks with no pending resolution) by age.
+    - `getQueueStatus(report?)`: BullMQ queue depths per queue, graceful
+      degradation (`connected:false`) when Redis is unavailable; injectable
+      reporter.
+  - `routes.ts`: `GET /api/v1/monitoring/operations` and
+    `GET /api/v1/monitoring/queues`; wired in `app.ts`
+    (`AppOptions.monitoringService`).
+- Shared test helper `server/tests/helpers/in-memory-db.ts` extracted from
+  `phase4-acceptance.test.ts` and reused by the new suites.
+- Tests: `monitoring.service.test.ts` (4) + `monitoring.routes.test.ts` (2).
+- Suite **157/157 (24 files)**; server+root typecheck and build OK.
+
+Next:
+- **Fase 5 — SUNARP**: **T5.1 (Conoce Aquí)** — discovery público sin CAPTCHA,
+  parser + conector stub→real si es accesible; aplicar el mismo patrón
+  REM@JU (parser puro + linking + manual_actions cuando haya CAPTCHA).
