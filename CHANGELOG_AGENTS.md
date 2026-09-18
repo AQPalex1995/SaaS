@@ -506,3 +506,36 @@ Docs:
 Next:
 - **T4.3 — normalization** (typed fields, S/ values, districts; evaluate the
   public AJAX listing/detail reachable without auth).
+
+## 2026-09-17 — OpenCode — Phase 4 / T4.3 (REM@JU normalization)
+
+Normalized the raw carousel fields into a canonical, typed shape reusable as
+`research_results.data` (provenance T3.5) and by dedup (T4.4) / linking (T4.5).
+
+Code:
+- New pure module `server/src/connectors/implementations/remaju-normalize.ts`:
+  - `normalizeRemateSlide(slide, montoRaw?)` → `NormalizedRemate`
+    (`source`, `parserVersion`, `remateId`/`convocatoriaId` as numbers,
+    `tipo`, `tipoRaw`, `ubicacion` display + `ubicacionKey` accent-free,
+    `fechaISO`, `esUltimoDiaInscripcion`, `info`, `moneda`/`monto`).
+  - `normalizeTipoConvocatoria(codigo, label)`: canonical
+    `remate_simple | segunda_convocatoria | tercera_convocatoria | subasta |
+    desconocido` (label wins, then code 1..4).
+  - `normalizeUbicacion()`: Title Case display + accent-stripped uppercase key.
+  - `parseFechaRemaju()` moved here (basic day/month validation, `null` on
+    invalid) and re-exported from `remaju.ts` for compatibility.
+  - `parseMontoPEN()`: "S/ 1,234.56", "S/. 900", "1 234,56" (rejects
+    US$/EUR/€/$), groundwork for the T4.5 detail.
+- `remaju.ts`: `slideToItem` now maps via the normalizer (`district` = display
+  ubicacion; `rawData` = `{ ...slide, normalized }`); `fechaISO` typed
+  `string | null`.
+- Tests: new `server/tests/remaju-normalize.test.ts` (8 cases); adjusted two
+  T4.2 assertions (`parseFechaRemaju` returns `null`, district Title Case).
+  Suite **104/104 (15 files)**; server+root typecheck and build OK.
+
+Notes:
+- Kept the connector's public contract unchanged for consumers: `rawData` still
+  carries the raw slide fields (spread) plus `normalized`.
+
+Next:
+- **T4.4 — deduplication** (ids `remate`/`convocatoria` + content hash).

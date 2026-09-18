@@ -579,7 +579,7 @@ Tasks:
 
 T4.1 discovery — ✅ DONE (2026-09-17)
 T4.2 parser — ✅ DONE (2026-09-17)
-T4.3 normalization
+T4.3 normalization — ✅ DONE (2026-09-17)
 T4.4 deduplication
 T4.5 Property linking
 T4.6 research connector
@@ -644,6 +644,33 @@ T4.2 parser — result:
 - Smoke test en vivo (1? consultas a la página pública): **276 remates**
   parseados del home real (MIRAFLORES/40451/25296), filtro "cusco" → 2 hits,
   `getStatus` → `available`. Ninguna interacción con login/CAPTCHA.
+
+T4.3 normalization — result:
+
+- Nuevo módulo puro `server/src/connectors/implementations/remaju-normalize.ts`:
+  - `normalizeRemateSlide(slide, montoRaw?)` → `NormalizedRemate` con shape
+    canónico y tipado (apto como `data` de `research_results`, T3.5):
+    `remateId`/`convocatoriaId` (números), `tipo` (canónico), `tipoRaw`,
+    `ubicacion` (display) + `ubicacionKey` (sin acentos), `fechaISO`,
+    `esUltimoDiaInscripcion`, `info`, `moneda` (`PEN`|null), `monto`,
+    `parserVersion` (`REMAJU_PARSER_VERSION = 'v1'`).
+  - `normalizeTipoConvocatoria(codigo, label)`: canoniza a
+    `remate_simple | segunda_convocatoria | tercera_convocatoria | subasta |
+    desconocido`, priorizando la etiqueta visible y cayendo al código
+    (`1..4`).
+  - `normalizeUbicacion()`: Title Case para mostrar + clave sin acentos para
+    comparar/dedup.
+  - `parseFechaRemaju()` movido aquí con validación básica (día/mes) y `null`
+    como “inválido”; re-exportado desde `remaju.ts` por compatibilidad.
+  - `parseMontoPEN()`: "S/ 1,234.56", "S/. 900", "1 234,56", …
+    (rechaza US$/EUR/€), listo para el detalle T4.5.
+- `RemajuConnector.slideToItem` ahora usa el shape normalizado: `district` =
+  `ubicacion` display, y `rawData` = `{ ...slide, normalized }`.
+- Tests: nuevo `server/tests/remaju-normalize.test.ts` (8 casos). Suite
+  completa **104/104 (15 archivos)**; typecheck server+root y build OK.
+
+Siguiente: **T4.4 deduplication** (ids `remate`/`convocatoria` + hash de
+contenido normalizado).
 
 ============================================================
 PHASE 5 — SUNARP

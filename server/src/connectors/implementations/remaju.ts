@@ -8,6 +8,16 @@ import type {
 } from '../base.js';
 import { serverConfig } from '../../config.js';
 import { logger } from '../../logger.js';
+import {
+  normalizeRemateSlide,
+  parseFechaRemaju,
+  stripAccents,
+  type NormalizedRemate,
+  type RemateSlide,
+} from './remaju-normalize.js';
+
+export { parseFechaRemaju } from './remaju-normalize.js';
+export type { NormalizedRemate, RemateSlide } from './remaju-normalize.js';
 
 /**
  * REM@JU — Remate Electrónico Judicial (Poder Judicial del Perú).
@@ -32,36 +42,12 @@ interface PaRecord {
   [key: string]: string;
 }
 
-export interface RemateSlide {
-  convocatoria?: string;
-  tipoConvocatoria?: string;
-  remate?: string;
-  tipoLabel?: string;
-  ubicacion?: string;
-  fecha?: string;
-  fechaISO?: string;
-  info?: string;
-  esUltimoDiaInscripcion: boolean;
-}
-
 const PANEL_RE = /\s*<li class="ui-galleria-panel[^"]*"[^>]*>([\s\S]*?)<\/li>/g;
 const LABEL_RE = /<span class="text-bold">\s*([^<]+?)\s*<\/span>/;
 const UBICACION_RE = /<i class="fa fa-map-marker"[^>]*><\/i>\s*([^<\n]+)/;
 const FECHA_RE = /<div class="fecha">[\s\S]*?<i[^>]*><\/i>\s*(\d{2}\/\d{2}\/\d{4})/;
 const INFO_RE = /<div class="info">([\s\S]*?)<\/div>/;
 const PA_PAIR_RE = /\{name:(?:&quot;|")(\w+)(?:&quot;|"),value:(?:&quot;|")([^&"}\s]+)(?:&quot;|")\}/g;
-
-function stripAccents(value: string): string {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-}
-
-/** "27/09/2026" → "2026-09-27" (ISO). Devuelve undefined si el formato no cuadra. */
-export function parseFechaRemaju(raw: string | undefined): string | undefined {
-  if (!raw) return undefined;
-  const m = /^\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/.exec(raw);
-  if (!m) return undefined;
-  return `${m[3]}-${m[2]}-${m[1]}`;
-}
 
 /** Extrae el array `pa:[...]` (admitiendo `"` ó `&quot;`) a registros {name:value}. */
 function parsePaArray(block: string): PaRecord[] {
@@ -199,14 +185,15 @@ async function fetchRemajuHome(htmlOnly = true): Promise<string> {
 function slideToItem(slide: RemateSlide): SearchResultItem | null {
   const id = slide.remate ?? slide.convocatoria;
   if (id === undefined) return null;
-  const title = [slide.tipoLabel, slide.ubicacion].filter(Boolean).join(' · ');
+  const normalized: NormalizedRemate = normalizeRemateSlide(slide);
+  const title = [slide.tipoLabel, normalized.ubicacion].filter(Boolean).join(' · ');
   return {
     externalId: `remaju:remate:${id}`,
     sourceUrl: `${REMAJU_HOME_URL}?remate=${id}`,
     title: title || `Remate ${id}`,
-    district: slide.ubicacion,
+    district: normalized.ubicacion ?? slide.ubicacion,
     description: slide.info,
-    rawData: slide as unknown as Record<string, unknown>,
+    rawData: { ...slide, normalized } as unknown as Record<string, unknown>,
   };
 }
 

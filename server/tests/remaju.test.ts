@@ -39,9 +39,9 @@ describe('REM@JU public parser (offline fixture, fetch-stubbed)', () => {
   it('normaliza fechas dd/MM/yyyy → ISO', () => {
     expect(parseFechaRemaju('27/09/2026')).toBe('2026-09-27');
     expect(parseFechaRemaju('01/01/2025')).toBe('2025-01-01');
-    expect(parseFechaRemaju('2026-09-27')).toBeUndefined();
-    expect(parseFechaRemaju('')).toBeUndefined();
-    expect(parseFechaRemaju(undefined)).toBeUndefined();
+    expect(parseFechaRemaju('2026-09-27')).toBeNull();
+    expect(parseFechaRemaju('')).toBeNull();
+    expect(parseFechaRemaju(undefined)).toBeNull();
   });
 
   it('extrae remates del carrusel público (con entidades &quot;)', () => {
@@ -76,7 +76,7 @@ describe('REM@JU public parser (offline fixture, fetch-stubbed)', () => {
     expect(sinDetalle?.convocatoria).toBeUndefined();
     expect(sinDetalle?.remate).toBeUndefined();
     expect(sinDetalle?.fecha).toBeUndefined();
-    expect(sinDetalle?.fechaISO).toBeUndefined();
+    expect(sinDetalle?.fechaISO).toBeNull();
     expect(sinDetalle?.esUltimoDiaInscripcion).toBe(false);
   });
 
@@ -97,7 +97,7 @@ describe('REM@JU connector (public surface, no auth)', () => {
     const [first] = res.items;
     expect(first.externalId).toBe('remaju:remate:25296');
     expect(first.sourceUrl).toBe(`${REMAJU_HOME_URL}?remate=25296`);
-    expect(first.district).toBe('MIRAFLORES');
+    expect(first.district).toBe('Miraflores');
     expect(first.title).toContain('REMATE SIMPLE');
     expect(first.rawData).toMatchObject({ convocatoria: '40451' });
   });

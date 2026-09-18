@@ -231,7 +231,7 @@ d:\SaaS\fb-terreno-scout\
 │   ├── drizzle/               # Migraciones SQL generadas (0000_military_salo.sql … 0003_natural_mysterio.sql)
 │   ├── scripts/
 │   │   └── queue-health.mjs   # Healthcheck Redis para el worker en Docker
-│   ├── tests/                 # Suite de pruebas Vitest (96 tests pasando)
+│   ├── tests/                 # Suite de pruebas Vitest (104 tests pasando)
 │   │   ├── app.test.ts        # Tests de API Fastify, /health, /sources
 │   │   ├── connector.test.ts  # Tests de registro y conectores stubs
 │   │   ├── research.test.ts   # Tests del motor de investigación
@@ -246,6 +246,7 @@ d:\SaaS\fb-terreno-scout\
 │   │   ├── sync.test.ts       # Tests de helpers de ingestión (contentHash, mapeos, etc.)
 │   │   └── osm.test.ts        # Tests del conector OpenStreetMap (fetch stubbed, sin red)
 │   │   └── remaju.test.ts     # Tests del parser REM@JU (fetch stubbed + fixtures HTML) (Fase 4/T4.2)
+│   │   └── remaju-normalize.test.ts # Tests de normalización REM@JU (T4.3)
 │   └── fixtures/
 │       └── remaju-home.html   # Fixture offline del home público REM@JU (T4.2)
 │   └── src/
@@ -261,6 +262,8 @@ d:\SaaS\fb-terreno-scout\
 │       │   ├── stubs/         # 14 conectores stubs
 │       │   └── implementations/
 │       │       └── osm.ts     # Conector REAL OpenStreetMap/Nominatim (rate-limit 1req/s)
+│       │       ├── remaju.ts  # Conector REAL REM@JU (superficie pública, sin CAPTCHA) (T4.2)
+│       │       └── remaju-normalize.ts # Normalización canónica REM@JU (T4.3)
 │       ├── db/
 │       │   ├── connection.ts  # Pool pg + Drizzle DB + testConnection()
 │       │   ├── init.ts        # ensureExtensions() + migrationsFolder() robusto
@@ -367,7 +370,7 @@ npm.cmd run db:seed       # Inserta usuario de sistema, fuentes y datos de prueb
 ### Paso 5: Ejecutar la suite de tests
 ```bash
 cd server
-npm.cmd test               # Ejecuta Vitest (96 tests automáticos)
+npm.cmd test               # Ejecuta Vitest (104 tests automáticos)
 npm.cmd run typecheck      # Verifica que TypeScript esté al 100% sin errores
 ```
 
