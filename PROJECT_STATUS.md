@@ -12,13 +12,14 @@ Land Intelligence API:
 ⏸️ 3001 (detenido al cierre de esta sesión)
 
 PostgreSQL:
-⏸️ 5433 (detenido al cierre de esta sesión)
+▶️ 5433 (docker `land-intel-postgres`, healthy)
 
 Redis:
-⏸️ 6380 (detenido al cierre de esta sesión)
+▶️ 6380 (docker `land-intel-redis`, healthy)
 
-> Nota: todos los servicios locales estaban detenidos durante T3.1–T3.8; el smoke
-> test en vivo no se repitió desde T3.2 (ver CHANGELOG_AGENTS.md).
+> Nota: los contenedores `land-intel-postgres`/`land-intel-redis` se levantaron
+> al final de la sesión para aplicar la migración `0003`. La API y el Scout
+> permanecen detenidos (ver CHANGELOG_AGENTS.md).
 
 ## Database
 
@@ -67,5 +68,8 @@ None
   - No hay timeout activo en el orquestador; un timeout del conector se
     registra como tarea `failed`.
   - `updateCaseProgress` nunca marca un caso como `failed` (usa `partial`).
-- Migración `0003_natural_mysterio.sql` (manual actions) generada pero **no
-  aplicada** a ninguna base viva todavía.
+- ~~Migración `0003_natural_mysterio.sql` (manual actions) generada pero **no
+  aplicada** a ninguna base viva todavía.~~ **Resuelto (2026-09-17)**: migración
+  aplicada a `land_intelligence` en PostgreSQL 5433 (`manual_actions` + enums
+  `manual_action_kind`/`manual_action_status`; 4 migraciones registradas; datos
+  intactos: 4025 properties).

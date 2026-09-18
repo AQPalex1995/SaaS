@@ -106,3 +106,7 @@ En `server/src/db/schema/geo.ts` se implementaron tipos de columna personalizado
 - Comando para generar: `npm.cmd run db:generate`
 - Comando para aplicar: `npm.cmd run db:migrate`
 - Comando para sembrar: `npm.cmd run db:seed`
+- **Estado (2026-09-17)**: las migraciones `0000`–`0003` están **aplicadas** en
+  la base viva `land_intelligence` (PostgreSQL 5433, contenedor
+  `land-intel-postgres`); `drizzle.__drizzle_migrations` registra 4 entradas y
+  `manual_actions` (15 columnas) existe con datos intactos (4025 properties).

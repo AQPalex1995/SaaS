@@ -350,3 +350,34 @@ Verified:
 Next:
 - Phase 4 / T4.1 (REM@JU discovery) — **requires explicit approval** (Decision
   Gate 2.1/2.3: adding a new external data provider).
+
+## 2026-09-17 — OpenCode — Operations (apply migration 0003)
+
+Context:
+- The user requested applying the pending `0003_natural_mysterio.sql` migration.
+
+What was needed / done:
+- PostgreSQL 5433 was down. Local Windows PostgreSQL runs on 5432 (CAST ERP,
+  must NOT be touched). Started Docker Desktop and ran
+  `docker compose up -d postgres redis` (containers `land-intel-postgres` on
+  5433 and `land-intel-redis` on 6380; both healthy).
+- Ran `npm.cmd run db:migrate` in `server/` → extensions ensured, migrations
+  completed successfully.
+- Verified against the live DB:
+  - `drizzle.__drizzle_migrations` = 4 entries (0000–0003 applied).
+  - `manual_actions` table exists with 15 columns; enums `manual_action_kind`
+    (captcha|login|payment|user_action|other) and `manual_action_status`
+    (requested|completed|cancelled) exist.
+  - Existing data intact: 4025 properties, table is `property_listings`.
+- Live smoke test (built `dist/`, `node dist/index.js`): `GET /health` →
+  status `healthy` (database connected, postgis true, redis connected);
+  `GET /api/v1/sources` → 14 connectors. Server stopped afterwards.
+
+Verified:
+- Suite remains 85/85 (no code changed). Typecheck server + root.
+- Docs updated: `PROJECT_STATUS.md` (runtime up, migration no longer pending),
+  `docs/DATABASE.md` §5 (migrations applied note).
+
+Next:
+- Phase 4 / T4.1 (REM@JU discovery) — **requires explicit approval** (Decision
+  Gate: new external data provider).
