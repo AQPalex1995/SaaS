@@ -84,6 +84,12 @@ export interface SearchResult {
   totalFound: number;
   source: SourceType;
   searchedAt: Date;
+  /**
+   * Fuentes que requieren identidad personal/CAPTCHA (p. ej. SUNARP) pueden
+   * señalar que la búsqueda no es automatizable y requiere acción humana.
+   */
+  requiresManualAction?: boolean;
+  manualActionDescription?: string;
 }
 
 export interface DetailResult {

@@ -49,14 +49,15 @@ graph TD
 - **Entrada**: DNI/RUC del vendedor, nombre del titular o número de partida si fue mencionado en el anuncio.
 - **Salida**: Registro en `registry_properties`, `registry_owners` y `registry_charges`.
 - **Prioridad**: `high`.
-- **Nota (Fase 5, T5.1 discovery)**: SUNARP **no ofrece ninguna superficie
+- **Nota (Fase 5, T5.1–T5.2 discovery)**: SUNARP **no ofrece ninguna superficie
   consultable sin identidad (DNI + fecha de emisión) + CAPTCHA** (Ley 29733,
-  vía web de Conoce Aquí/Consulta de Propiedad). Por tanto el conector `sunarp`
+  vía web de Conoce Aquí / Consulta de Propiedad). Por tanto el conector `sunarp`
   reporta `requires_auth` + `requiresManualAction` y la tarea `registry`
   transiciona a **`requires_manual_action`** (manual action kind `login` con
-  instrucciones para el operador) en lugar de `unavailable` o `completed`. El
-  dato capturado manualmente se persiste vía el intake de `registry_properties`
-  existente (T4.5) / flujo general (T5.10). Ver `docs/SUNARP.md`.
+  instrucciones combinadas: localizar la partida por NOMBRE del propietario en
+  Consulta de Propiedad y ver su contenido en Conoce Aquí). El dato capturado
+  manualmente se persiste vía el intake de `registry_properties` existente
+  (T4.5) / flujo general (T5.10). Ver `docs/SUNARP.md`.
 
 ### Tarea 4: Base Gráfica Registral (`bgr`)
 - **Objetivo**: Consultar la cartografía registral de SUNARP para verificar la existencia del polígono del predio en la base gráfica y descartar superposiciones de partidas o linderos superpuestos.

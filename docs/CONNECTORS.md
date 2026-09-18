@@ -52,15 +52,18 @@ Los siguientes conectores se encuentran definidos y registrados en el `Connector
 > **Estado real (Fase 4/5)**: desde T4.2 existe una implementación REAL del
 > conector `remaju` en `server/src/connectors/implementations/remaju.ts`
 > (parser de la superficie **pública** del home, sin login ni CAPTCHA,
-> ver `docs/REMATE_JUDICIAL.md`). Desde **T5.1** existe una implementación REAL
-> de postura del conector `sunarp` en
+> ver `docs/REMATE_JUDICIAL.md`). Desde **T5.1–T5.2** existe una implementación
+> REAL de postura del conector `sunarp` en
 > `server/src/connectors/implementations/sunarp.ts`: SUNARP **no ofrece ninguna
-> superficie consultable sin identidad (DNI + fecha de emisión) + CAPTCHA**, por
-> lo que el conector **no hace peticiones de red** y reporta `requires_auth` +
-> `requiresManualAction` con instrucciones para el operador (ver `docs/SUNARP.md`).
+> superficie consultable sin identidad (DNI + fecha de emisión) + CAPTCHA**
+> (Conoce Aquí y Consulta de Propiedad), por lo que el conector **no hace
+> peticiones de red**, reporta `requires_auth` + `requiresManualAction` y
+> `search()` devuelve vacío señalando la acción manual (nunca datos simulados,
+> ver `docs/SUNARP.md`).
 > El contrato de 14 fuentes en `/api/v1/sources` se mantiene: los tres reales
 > (`openstreetmap`, `remaju`, `sunarp`) se registran en `index.ts` DESPUÉS de los
-> 14 stubs.
+> 14 stubs. `SearchResult` admite campos opcionales `requiresManualAction`/
+> `manualActionDescription` (T5.2).
 | `google_maps` | Google Maps Platform | Geocodificación inversa, vistas satelitales y Street View |
 | `openstreetmap` | OpenStreetMap / Nominatim | Georreferenciación de código abierto y cálculo de distancias |
 | `impla` | Instituto Municipal de Planeamiento Arequipa | Planos de zonificación, áreas de riesgo y planes específicos |

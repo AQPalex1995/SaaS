@@ -2,7 +2,7 @@
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
 > El estado del repositorio refleja la **Fase 4 (REM@JU) completada** y la
-> **Fase 5 (SUNARP) en progreso (T5.1 DONE)**.
+> **Fase 5 (SUNARP) en progreso (T5.1 + T5.2 DONE)**.
 > Las fases 0–2.5, la Fase 3 (T3.1 → T3.9), la Fase 4 (T4.1 → T4.9) y el
 > arranque de la Fase 5 (T5.1) están implementadas en `main`
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
@@ -421,24 +421,27 @@ cd server && npm.cmd run sync:sqlite
 > `GET /api/v1/monitoring/queues`; helper de tests `helpers/in-memory-db.ts`.
 > Suite **157/157 (24 archivos)**; typecheck server+root y build OK.
 >
-> **Fase 5 — SUNARP / T5.1 (Conoce Aquí) ✅ DONE (2026‑09‑17)**:
+> **Fase 5 — SUNARP / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ (2026‑09‑18)**:
 > **Discovery** (`docs/SUNARP.md`): SUNARP **no ofrece superficie consultable sin
 > identidad personal (DNI + fecha de emisión) + CAPTCHA** (Conoce Aquí 3–5/día,
-> 30 min; Consulta de Propiedad con validación por correo; SPRL de pago; BGR +
-> CAPTCHA) → **ninguna consulta automatizable** (Ley 29733, minimización de
-> datos, no bypass CAPTCHA).
+> 30 min; Consulta de Propiedad = localizar partidas por NOMBRE del propietario,
+> con validación de correo OTP y homonimia; SPRL de pago; BGR + CAPTCHA) →
+> **ninguna consulta automatizable** (Ley 29733, minimización de datos, no bypass
+> CAPTCHA).
 > **Conector real de postura**: `server/src/connectors/implementations/sunarp.ts`
 > (`SunarpConnector`: `getStatus()` → `requires_auth` + `requiresManualAction`
-> con instrucciones; `search()`/`getDetails()` vacíos y SIN peticiones de red),
-> registrado en `index.ts` (bloque 1d). Efecto: tareas `registry`/`bgr`
-> transicionan a `requires_manual_action` (manual action kind `login`) en vez de
-> `unavailable`. Tests `server/tests/sunarp.test.ts` (5). Suite **162/162
-> (25 archivos)**; typecheck server+root y build OK.
+> con guía combinada; `search()` señala `requiresManualAction` orientado a
+> Consulta de Propiedad; `getDetails()` → Conoce Aquí; **SIN peticiones de red**),
+> registrado en `index.ts` (bloque 1d). `SearchResult` ganó campos opcionales
+> `requiresManualAction`/`manualActionDescription` (aditivo). Efecto: tareas
+> `registry`/`bgr` transicionan a `requires_manual_action` (manual action kind
+> `login`) en vez de `unavailable`. Tests `server/tests/sunarp.test.ts` (5).
+> Suite **162/162 (25 archivos)**; typecheck server+root y build OK.
 >
-> **Siguiente tarea del plan**: **Fase 5 — SUNARP / T5.2 (Consulta de Propiedad)**
-> — aplicar la misma postura `requires_auth`/manual sobre la otra superficie
-> pública (búsqueda de partidas por nombre del propietario): decidir si se integra
-> en el conector `sunarp` existente y actualizar `docs/SUNARP.md` + tests.
+> **Siguiente tarea del plan**: **Fase 5 — SUNARP / T5.3 (SPRL)** — decidir la
+> postura del servicio de publicidad registral en línea (de pago): previsiblemente
+> `requires_auth` + kind `payment` para copias legales/certificados, sin
+> automatización de la compra; documentar + tests si aplica.
 > Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 5).
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.

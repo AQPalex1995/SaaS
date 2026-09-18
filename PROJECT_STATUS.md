@@ -39,28 +39,31 @@ PostGIS:
 ## Tests
 
 Server:
-✅ 162/162 (25 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1)
+✅ 162/162 (25 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2)
 
 Root:
 ✅
 
 ## Current Phase
 
-Phase 5 — ✅ SUNARP EN PROGRESO (T5.1 DONE, 2026-09-17). Fase 4 — REM@JU COMPLETED.
+Phase 5 — ✅ SUNARP EN PROGRESO (T5.1 + T5.2 DONE, 2026-09-18). Fase 4 — REM@JU COMPLETED.
 
 ## Current Task
 
-Fase 5 / T5.2 (SUNARP Consulta de Propiedad) — próximo paso. T5.1 (Conoce Aquí) completado:
-discovery SUNARP completo (`docs/SUNARP.md`): **ninguna superficie consultable sin
-identidad (DNI + fecha de emisión) + CAPTCHA** → no automatizable (Ley 29733, no bypass
-CAPTCHA, 3–5 consultas/día). Conector real de postura `SunarpConnector`
-(`server/src/connectors/implementations/sunarp.ts`) registrado en `index.ts` (1d):
-`getStatus()` → `requires_auth` + `requiresManualAction` (instrucciones); `search()`/
-`getDetails()` vacíos y sin peticiones de red. Tareas `registry`/`bgr` ahora transicionan
-a `requires_manual_action` (manual action kind `login`) en lugar de `unavailable`.
-Tests `server/tests/sunarp.test.ts` (5: status, search vacío, getDetails, instrucción,
-E2E offline registry→manual action). Suite **162/162 (25 archivos)**; typecheck
-server+root y build OK.
+Fase 5 / T5.3 (SUNARP SPRL) — próximo paso. T5.1 + T5.2 completados:
+- **T5.1 Conoce Aquí**: discovery (`docs/SUNARP.md`): **ninguna superficie consultable
+  sin identidad (DNI + fecha de emisión) + CAPTCHA** → no automatizable (Ley 29733, no
+  bypass CAPTCHA, 3–5 consultas/día). Conector real de postura `SunarpConnector`
+  (`server/src/connectors/implementations/sunarp.ts`) registrado en `index.ts` (1d).
+- **T5.2 Consulta de Propiedad**: segunda superficie (localizar partidas por NOMBRE del
+  propietario; DNI + fecha emisión + CAPTCHA + correo OTP; homonimia) anexada al mismo
+  conector: `search()` → `requiresManualAction` con instrucciones de Consulta de
+  Propiedad; `getStatus()` → guía combinada (localizar→Consulta de Propiedad; ver
+  contenido→Conoce Aquí). `SearchResult` ganó campos opcionales
+  `requiresManualAction`/`manualActionDescription` (aditivo, contrato intacto).
+Tareas `registry`/`bgr` → `requires_manual_action` (manual action kind `login`) con la
+guía combinada. Tests `server/tests/sunarp.test.ts` (5). Suite **162/162 (25 archivos)**;
+typecheck server+root y build OK.
 
 ## Blockers
 

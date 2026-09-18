@@ -1,6 +1,6 @@
 # SUNARP — Registro y Titularidad (Fase 5)
 
-> **Estado**: Fase 5 / T5.1 (Conoce Aquí) — ✅ DONE (2026‑09‑18).
+> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ — DONE (2026‑09‑18).
 > Reporte de discovery y postura del conector `sunarp`.
 
 ## 1. Qué es SUNARP
@@ -21,7 +21,7 @@ Todas las gratuitas exigen además **CAPTCHA**; la de valor legal es de pago.
 | Servicio | URL | Acceso | Alcance | Costo |
 |---|---|---|---|---|
 | **Conoce Aquí** | `https://conoce-aqui.sunarp.gob.pe/conoce-aqui/inicio` | DNI + fecha de emisión + **CAPTCHA** | Contenido de la partida (4 registros); asientos con tramado "no constituye publicidad registral"; no imprimible | Gratis |
-| **Consulta de Propiedad** | `https://www2.sunarp.gob.pe/consulta-propiedad` | DNI/carnet de extranjería + fecha de emisión + **CAPTCHA** (+ validación de correo OTP) | Búsqueda de partidas a nombre del titular (busca por nombres, con homonimia) | Gratis |
+| **Consulta de Propiedad** | `https://www2.sunarp.gob.pe/consulta-propiedad` | DNI/carnet de extranjería + fecha de emisión + **CAPTCHA** (+ validación de correo OTP) | Localización de partidas a **nombre del propietario** (busca por nombres, con **homonimia**); vista simple: titular, partida, cargas vigentes | Gratis |
 | **SPRL (Publicidad Registral en Línea)** | `https://sprl.sunarp.gob.pe` | Usuario y clave (suscripción gratuita; consulta pagada) | Visualización/imprevisto de partida, copias literales, certificados (valor legal) | S/ 6.90/página; copia literal ~ S/ 14 (2 hojas) + S/ 7 extra |
 | **Visor BGR** | visor de la Base Gráfica Registral | DNI + fecha de emisión + **CAPTCHA** | Mapas de predios incorporados a la BGR; búsqueda por ubicación/partida/coordenadas | Gratis (3 accesos/día, 45 min) |
 | **Consulta Verificadores** | `https://www.sunarp.gob.pe/ConsultaVerificadores/` | Apellido paterno + primer nombre + **CAPTCHA** obligatorio | Verificación de registradores públicos | Gratis |
@@ -36,6 +36,20 @@ Detalle de **Conoce Aquí** (objetivo de T5.1):
 - Excepción legal: información de acceso restringido (p. ej. **testamentos**)
   solo visible para el titular.
 
+Detalle de **Consulta de Propiedad** (T5.2):
+
+- Es la vía para **localizar la(s) partida(s) a nombre de un propietario**
+  cuando no se conoce el número de partida (entrada natural de la tarea
+  `registry` del Research Engine: DNI/RUC del vendedor o nombre del titular).
+- Formulario: tipo de documento (DNI / carnet de extranjería) + número +
+  **fecha de emisión** + correo electrónico + **verificación de seguridad
+  (CAPTCHA)**; el código se envía al correo (validación OTP).
+- Resultado: lista de partidas coincidentes por nombre (a veces varias por
+  **homonimia**); la "Vista Simple" muestra titular, partida y cargas vigentes.
+- Igual que Conoce Aquí: **no automatizable** (identidad + CAPTCHA + correo OTP;
+  Ley 29733, minimización de datos). El conector `search()` lo señala con
+  `requiresManualAction` y la URL oficial.
+
 ## 3. Veredicto de automatización
 
 > **No existe superficie pública SUNARP sin identidad + CAPTCHA** (a diferencia
@@ -48,9 +62,13 @@ Detalle de **Conoce Aquí** (objetivo de T5.1):
    - hay límites diarios por identidad (3–5 consultas/día).
 2. **Postura honesta del conector `sunarp`** (`SunarpConnector`):
    - `getStatus()` → `requires_auth` + `requiresManualAction: true` con
-     instrucciones para el operador;
-   - `search()` → resultado vacío (nunca datos simulados);
-   - `getDetails()` → `found:false` + `requiresManualAction: true`.
+     instrucciones para el operador (guía combinada: localizar partida por
+     nombre en **Consulta de Propiedad** y ver contenido en **Conoce Aquí**);
+   - `search()` → resultado vacío (nunca datos simulados) + señala
+     `requiresManualAction` con las instrucciones de **Consulta de Propiedad**
+     (búsqueda por propietario);
+   - `getDetails()` → `found:false` + `requiresManualAction: true` orientado a
+     **Conoce Aquí** (contenido de partida conocida).
 3. **Impacto en el Research Engine**: la tarea `registry` (Tarea 3) y `bgr`
    transicionan a `requires_manual_action` creando una `manual_actions`
    (kind `login`) con la descripción, en lugar de `unavailable`. El operador
@@ -60,9 +78,13 @@ Detalle de **Conoce Aquí** (objetivo de T5.1):
 
 ## 4. Recomendaciones por servicio (plan Fase 5)
 
-- **T5.2 Consulta de Propiedad** → igual que Conoce Aquí: `requires_auth`
-  (manual). Sirve para localizar la partida por nombre del propietario cuando
-  no se conoce el número.
+- **T5.1 Conoce Aquí** → ✅ DONE: conector `sunarp` reporta `requires_auth`
+  (manual) para el contenido de partidas conocidas.
+- **T5.2 Consulta de Propiedad** → ✅ DONE: misma postura en `search()`
+  (`requiresManualAction`, instrucciones de búsqueda por propietario). Sirve para
+  localizar la partida por nombre del propietario cuando no se conoce el número;
+  el Research Engine incluye la guía combinada (Consulta de Propiedad + Conoce
+  Aquí) en la manual action de la tarea `registry`.
 - **T5.3 SPRL** → `requires_auth` + pago (kind `payment`). Solo operador con
   cuenta suscrita; útiles solo para copias legales/certificados.
 - **T5.4 Registry normalization** → la normalización de partidas (formato

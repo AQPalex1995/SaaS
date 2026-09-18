@@ -841,17 +841,17 @@ T4.9 monitoring — result:
   inyectado). Suite completa **157/157 (24 archivos)**; typecheck server+root y
   build OK.
 
-siguiente tarea del plan: **Fase 5 — SUNARP** (T5.2 Consulta de Propiedad).
+siguiente tarea del plan: **Fase 5 — SUNARP** (T5.3 SPRL).
 
 ============================================================
 PHASE 5 — SUNARP
 ============================================================
 
-STATUS: IN PROGRESS (T5.1 DONE)
+STATUS: IN PROGRESS (T5.1–T5.2 DONE)
 
 Dividir:
 
-- T5.1 Conoce Aquí — DONE (2026-09-17). Discovery completo y postura honesta:
+- T5.1 Conoce Aquí — DONE (2026-09-18). Discovery completo y postura honesta:
   SUNARP NO ofrece superficie consultable sin identidad personal (DNI + fecha
   de emisión) + CAPTCHA → ninguna consulta automatizable (Ley 29733, minimize
   datos, no bypass CAPTCHA). Conector real `SunarpConnector`
@@ -863,7 +863,16 @@ Dividir:
   `server/tests/sunarp.test.ts` (5) — suite completa **162/162 (25 archivos)**;
   typecheck server+root y build OK. Ver `docs/SUNARP.md` (reporte completo).
 
-T5.2 Consulta de Propiedad
+- T5.2 Consulta de Propiedad — DONE (2026-09-18). Segunda superficie pública
+  (localizar partidas por NOMBRE del propietario: DNI/carnet + fecha de emisión
+  + CAPTCHA + validación de correo OTP; homonimia) anexada al conector con la
+  misma postura: `search()` → `requiresManualAction` con instrucciones de
+  Consulta de Propiedad; `getStatus()` → guía combinada (localizar partida →
+  Consulta de Propiedad; ver contenido → Conoce Aquí). `SearchResult` ganó
+  campos opcionales `requiresManualAction`/`manualActionDescription` (aditivo,
+  sin romper el contrato). Tests actualizados (5) — suite **162/162**;
+  typecheck server+root y build OK.
+
 T5.3 SPRL
 T5.4 Registry normalization
 T5.5 Owners

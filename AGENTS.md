@@ -9,7 +9,7 @@
 
 - **Objetivo**: Plataforma de inteligencia territorial e inmobiliaria para terrenos en Arequipa, Perú (con expansión nacional).
 - **Evolución**: De un scraper local básico de Facebook Marketplace/Grupos (`FB Terreno Scout`) hacia una plataforma modular de due diligence inmobiliario, valuación y análisis registral/urbano (`Land Intelligence`).
-- **Estado Actual**: **Fase 5 — SUNARP EN PROGRESO (2026‑09‑18, T5.1 Conoce Aquí DONE)**. Fase 4 — REM@JU COMPLETED (T4.1–T4.9: discovery, parser, normalization, dedup, linking + intake manual, research connector, manual action handling, tests, monitoring). Siguiente tarea **T5.2 (Consulta de Propiedad)**. SUNARP no tiene superficie consultable sin identidad + CAPTCHA → postura `requires_auth` (conector real de postura, ver §3.4). Ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). Fases 0–3 completadas (infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ, Research Engine T3.x).
+- **Estado Actual**: **Fase 5 — SUNARP EN PROGRESO (2026‑09‑18, T5.1 Conoce Aquí + T5.2 Consulta de Propiedad DONE)**. Fase 4 — REM@JU COMPLETED (T4.1–T4.9: discovery, parser, normalization, dedup, linking + intake manual, research connector, manual action handling, tests, monitoring). Siguiente tarea **T5.2 (Consulta de Propiedad)**. SUNARP no tiene superficie consultable sin identidad + CAPTCHA → postura `requires_auth` (conector real de postura, ver §3.4). Ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). Fases 0–3 completadas (infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ, Research Engine T3.x).
 - **Gobernanza**: este documento contiene las **Checkpoint Rules**, **Decision Gates** y **reglas de ejecución autónoma** (sección 2). Todo agente DEBE leer `PROJECT_EXECUTION_PLAN.md`, `PROJECT_STATUS.md` y `CHANGELOG_AGENTS.md` antes de escribir código.
 - **Enfoque**: Modular Monolith en TypeScript (Node.js ESM), Fastify, PostgreSQL 16 + PostGIS 3.4, Drizzle ORM, BullMQ, Vitest.
 
@@ -256,7 +256,7 @@ d:\SaaS\fb-terreno-scout\
 │   │   └── remate-intake.service.test.ts # Tests del servicio de intake manual (T4.5)
 │   │   └── remate-intake.routes.test.ts # Tests HTTP de /api/v1/manual-actions (T4.5)
 │   │   └── remaju-research.test.ts # Tests de matching REM@JU→property para research (T4.6)
-│   │   └── sunarp.test.ts  # Tests del conector SUNARP postura requires_auth (T5.1)
+│   │   └── sunarp.test.ts  # Tests del conector SUNARP postura requires_auth (T5.1–T5.2)
 │   └── fixtures/
 │       └── remaju-home.html   # Fixture offline del home público REM@JU (T4.2)
 │   └── src/
@@ -276,7 +276,7 @@ d:\SaaS\fb-terreno-scout\
 │       │       └── remaju-normalize.ts # Normalización canónica REM@JU (T4.3)
 │       │       └── remaju-dedup.ts # Deduplicación REM@JU (hash + ids) (T4.4)
 │       │       ├── remaju-link.ts # Linking REM@JU → properties (T4.5)
-│       │       └── sunarp.ts  # Conector REAL SUNARP (postura honesta requires_auth, sin fetch) (T5.1)
+│       │       └── sunarp.ts  # Conector REAL SUNARP (postura requires_auth; Conoce Aquí + Consulta de Propiedad, sin fetch) (T5.1–T5.2)
 │       ├── db/
 │       │   ├── connection.ts  # Pool pg + Drizzle DB + testConnection()
 │       │   ├── init.ts        # ensureExtensions() + migrationsFolder() robusto

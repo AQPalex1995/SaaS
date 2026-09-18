@@ -733,3 +733,18 @@ Next:
 
 Next:
 - **T5.2 - SUNARP Consulta de Propiedad**: aplicar misma postura requires_auth/manual sobre la segunda superficie publica (busqueda por nombre de propietario); decidir integracion en `sunarp` existente; actualizar docs/SUNARP.md + tests.
+
+## 2026-09-18 - OpenCode - Fase 5 / T5.2 (SUNARP Consulta de Propiedad)
+
+- Discovery adicional (docs/SUNARP.md): "Consulta de Propiedad" (www2.sunarp.gob.pe/consulta-propiedad) localiza partidas a NOMBRE del propietario; formulario DNI/carnet + numero + fecha de emision + correo + verificación de seguridad (CAPTCHA), validación por correo OTP; resultados con homonimia; Vista Simple = titular/partida/cargas vigentes. Igual que Conoce Aqui: NO automatizable (identidad + CAPTCHA + OTP; Ley 29733).
+- Conector sunarp ampliado (T5.2):
+  - `SearchResult` (base.ts) gano campos opcionales `requiresManualAction`/`manualActionDescription` (aditivo, contrato de conectores intacto).
+  - `search()` ahora devuelve vacio + `requiresManualAction: true` con instrucciones orientadas a Consulta de Propiedad (busqueda por propietario), via helper `sunarpOwnerSearchManualActionDescription()`.
+  - `getStatus()` usa `sunarpRegistryManualActionDescription()` (guia combinada: localizar partida -> Consulta de Propiedad; ver contenido -> Conoce Aqui) que alimenta la manual action de las tareas registry/bgr.
+  - `getDetails()` mantiene orientacion a Conoce Aqui.
+- Tests `sunarp.test.ts` actualizados (5): search señala Consulta de Propiedad; getStatus incluye ambas URLs; guia combinada; E2E offline registry->requires_manual_action con instructions que contienen ambas superficies.
+- Suite **162/162 (25 files)**; typecheck server+root y build OK.
+- Docs: SUNARP.md (detalle Consulta de Propiedad + secciones T5.1/T5.2 DONE), PROJECT_EXECUTION_PLAN (T5.2 DONE, next T5.3), PROJECT_STATUS (Current Task T5.3, 162/162), NEXT_STEPS.md, AGENTS.md, CONNECTORS.md, RESEARCH_ENGINE.md (T3 nota).
+
+Next:
+- **T5.3 - SUNARP SPRL** (sprl.sunarp.gob.pe, de pago): decidir postura (previsiblemente requires_auth + kind payment sin automatizar compras); documentar + tests si aplica.

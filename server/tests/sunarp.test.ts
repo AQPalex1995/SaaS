@@ -3,7 +3,10 @@ import {
   SunarpConnector,
   sunarpConnector,
   sunarpManualActionDescription,
+  sunarpOwnerSearchManualActionDescription,
+  sunarpRegistryManualActionDescription,
   SUNARP_CONOCE_AQUI_URL,
+  SUNARP_CONSULTA_PROPERTY_URL,
 } from '../src/connectors/implementations/sunarp.js';
 import { ResearchOrchestrator } from '../src/domain/research/orchestrator.js';
 import { connectorRegistry } from '../src/connectors/registry.js';
@@ -14,54 +17,68 @@ const CASE_ID = '00000000-0000-0000-0000-000000000003';
 const PROP_ID = '00000000-0000-0000-0000-000000000004';
 
 /**
- * Fase 5 / T5.1 — SUNARP "Conoce Aquí" (offline).
+ * Fase 5 / T5.1–T5.2 — SUNARP "Conoce Aquí" y "Consulta de Propiedad" (offline).
  *
  * Para Verdad: SUNARP NO ofrece ninguna superficie consultable sin identidad
  * personal (DNI + fecha de emisión) + CAPTCHA. El conector `sunarp` adopta una
  * postura honesta: requires_auth + manual action, sin peticiones de red y sin
- * datos simulados.
+ * datos simulados. T5.2 añade la superficie "Consulta de Propiedad" (búsqueda
+ * de partidas por NOMBRE del propietario) al mismo estándar.
  */
-describe('Fase 5 / T5.1 — SUNARP Conoce Aquí', () => {
+describe('Fase 5 / T5.1–T5.2 — SUNARP Conoce Aquí + Consulta de Propiedad', () => {
   beforeEach(() => {
     for (const c of allStubConnectors) connectorRegistry.register(c);
     connectorRegistry.register(sunarpConnector);
   });
 
-  it('getStatus reporta requires_auth + requiresManualAction con instrucciones', async () => {
+  it('getStatus reporta requires_auth + requiere ambas vías de investigación', async () => {
     const connector = new SunarpConnector();
     const status = await connector.getStatus();
 
     expect(status.status).toBe('requires_auth');
     expect(status.requiresManualAction).toBe(true);
-    expect(status.manualActionDescription).toContain('DNI');
-    expect(status.manualActionDescription).toContain('CAPTCHA');
+    expect(status.message).toContain('CAPTCHA');
+    // El operador debe poder localizar la partida (Consulta de Propiedad) y
+    // luego ver su contenido (Conoce Aquí).
+    expect(status.manualActionDescription).toContain(SUNARP_CONSULTA_PROPERTY_URL);
+    expect(status.manualActionDescription).toContain(SUNARP_CONOCE_AQUI_URL);
   });
 
-  it('search devuelve resultados vacíos (nunca datos simulados)', async () => {
+  it('search (por titular) señala Consulta de Propiedad — nunca datos simulados', async () => {
     const connector = new SunarpConnector();
     const result = await connector.search({ query: 'P12345678' });
 
     expect(result.items).toHaveLength(0);
     expect(result.totalFound).toBe(0);
     expect(result.source).toBe('sunarp');
+    expect(result.requiresManualAction).toBe(true);
+    expect(result.manualActionDescription).toContain(SUNARP_CONSULTA_PROPERTY_URL);
+    expect(result.manualActionDescription).toMatch(/denominación|propietario|DNI/i);
   });
 
-  it('getDetails devuelve found=false + requiere acción manual', async () => {
+  it('getDetails (contenido de partida) apunta a Conoce Aquí', async () => {
     const connector = new SunarpConnector();
     const detail = await connector.getDetails('P12345678');
 
     expect(detail.found).toBe(false);
     expect(detail.requiresManualAction).toBe(true);
-    expect(detail.manualActionDescription).toContain('Conoce Aquí');
+    expect(detail.manualActionDescription).toContain(SUNARP_CONOCE_AQUI_URL);
   });
 
-  it('la instrucción del operador cita el servicio público oficial sin bypass', () => {
-    const description = sunarpManualActionDescription();
-    expect(description).toContain(SUNARP_CONOCE_AQUI_URL);
-    expect(description).toMatch(/no? automatizable|No automatizable/);
+  it('la guía del operador cubre ambas superficies oficiales (sin bypass)', () => {
+    const owner = sunarpOwnerSearchManualActionDescription();
+    expect(owner).toContain(SUNARP_CONSULTA_PROPERTY_URL);
+    expect(owner).toMatch(/No automatizable/);
+
+    const detail = sunarpManualActionDescription();
+    expect(detail).toContain(SUNARP_CONOCE_AQUI_URL);
+
+    const registry = sunarpRegistryManualActionDescription();
+    expect(registry).toContain(SUNARP_CONSULTA_PROPERTY_URL);
+    expect(registry).toContain(SUNARP_CONOCE_AQUI_URL);
   });
 
-  it('E2E offline: tarea registry → requires_manual_action + manual action (login)', async () => {
+  it('E2E offline: tarea registry → requires_manual_action + manual action (login) con guía combinada', async () => {
     const { db, state } = createInMemoryDb({
       property: {
         id: PROP_ID,
@@ -88,13 +105,16 @@ describe('Fase 5 / T5.1 — SUNARP Conoce Aquí', () => {
     const task = state.tasks[0];
     expect(task.status).toBe('requires_manual_action');
     expect(task.requiresManualAction).toBe(true);
-    expect(task.manualActionDescription).toContain('Conoce Aquí');
+    expect(task.manualActionDescription).toContain('Consulta de Propiedad');
 
     expect(state.manualActions).toHaveLength(1);
     expect(state.manualActions[0]).toMatchObject({
       actionKind: 'login',
       source: 'sunarp',
     });
-    expect(state.manualActions[0].instructions).toContain('DNI');
+    const instructions = state.manualActions[0].instructions;
+    expect(instructions).toContain('DNI');
+    expect(instructions).toContain(SUNARP_CONSULTA_PROPERTY_URL);
+    expect(instructions).toContain(SUNARP_CONOCE_AQUI_URL);
   });
 });
