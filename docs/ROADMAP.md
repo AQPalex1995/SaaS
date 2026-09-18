@@ -36,7 +36,7 @@
 
 ## Fase 3: Inteligencia Territorial & Registral
 
-- [ ] Conector para consulta pública de SUNARP (Conoce Aquí) con resolución de captchas o APIs oficiales.
+- [x] Conector para consulta pública de SUNARP (Conoce Aquí). **Estado (T5.1)**: SUNARP no permite consulta sin identidad + CAPTCHA → sin automatización; conector real de postura `requires_auth` (`server/src/connectors/implementations/sunarp.ts`) + operación manual. Ver `docs/SUNARP.md`.
 - [ ] Ingesta de shapefiles / GeoJSON del PDM Arequipa (capas de zonificación IMPLA).
 - [ ] Algoritmo de intersección espacial para clasificar predios según zonificación y riesgo no mitigable.
 - [ ] Conector para la plataforma de Remates Judiciales (REM@JU).

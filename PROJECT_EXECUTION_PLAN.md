@@ -841,17 +841,28 @@ T4.9 monitoring — result:
   inyectado). Suite completa **157/157 (24 archivos)**; typecheck server+root y
   build OK.
 
-siguiente tarea del plan: **Fase 5 — SUNARP** (T5.1 Conoce Aquí).
+siguiente tarea del plan: **Fase 5 — SUNARP** (T5.2 Consulta de Propiedad).
 
 ============================================================
 PHASE 5 — SUNARP
 ============================================================
 
-STATUS: PLANNED
+STATUS: IN PROGRESS (T5.1 DONE)
 
 Dividir:
 
-T5.1 Conoce Aquí
+- T5.1 Conoce Aquí — DONE (2026-09-17). Discovery completo y postura honesta:
+  SUNARP NO ofrece superficie consultable sin identidad personal (DNI + fecha
+  de emisión) + CAPTCHA → ninguna consulta automatizable (Ley 29733, minimize
+  datos, no bypass CAPTCHA). Conector real `SunarpConnector`
+  (`server/src/connectors/implementations/sunarp.ts`) registrado en `index.ts`
+  (1d): `getStatus()` → `requires_auth` + `requiresManualAction` con
+  instrucciones; `search()`/`getDetails()` NO devuelven datos (nunca simulados)
+  y NO hacen peticiones de red. Tareas `registry`/`bgr` transicionan a
+  `requires_manual_action` (kind `login`) en vez de `unavailable`. Tests
+  `server/tests/sunarp.test.ts` (5) — suite completa **162/162 (25 archivos)**;
+  typecheck server+root y build OK. Ver `docs/SUNARP.md` (reporte completo).
+
 T5.2 Consulta de Propiedad
 T5.3 SPRL
 T5.4 Registry normalization

@@ -9,7 +9,7 @@
 
 - **Objetivo**: Plataforma de inteligencia territorial e inmobiliaria para terrenos en Arequipa, Perú (con expansión nacional).
 - **Evolución**: De un scraper local básico de Facebook Marketplace/Grupos (`FB Terreno Scout`) hacia una plataforma modular de due diligence inmobiliario, valuación y análisis registral/urbano (`Land Intelligence`).
-- **Estado Actual**: **Fase 4 COMPLETED (2026-09-17) — REM@JU** (T4.1–T4.9 DONE: discovery, parser, normalization, dedup, linking + intake manual, research connector, manual action handling, tests, monitoring). **Fase 5 — SUNARP** PLANNED; siguiente tarea **T5.1 (Conoce Aquí)**. Ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). Fases 0–3 completadas (infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ, Research Engine T3.x).
+- **Estado Actual**: **Fase 5 — SUNARP EN PROGRESO (2026‑09‑18, T5.1 Conoce Aquí DONE)**. Fase 4 — REM@JU COMPLETED (T4.1–T4.9: discovery, parser, normalization, dedup, linking + intake manual, research connector, manual action handling, tests, monitoring). Siguiente tarea **T5.2 (Consulta de Propiedad)**. SUNARP no tiene superficie consultable sin identidad + CAPTCHA → postura `requires_auth` (conector real de postura, ver §3.4). Ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). Fases 0–3 completadas (infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ, Research Engine T3.x).
 - **Gobernanza**: este documento contiene las **Checkpoint Rules**, **Decision Gates** y **reglas de ejecución autónoma** (sección 2). Todo agente DEBE leer `PROJECT_EXECUTION_PLAN.md`, `PROJECT_STATUS.md` y `CHANGELOG_AGENTS.md` antes de escribir código.
 - **Enfoque**: Modular Monolith en TypeScript (Node.js ESM), Fastify, PostgreSQL 16 + PostGIS 3.4, Drizzle ORM, BullMQ, Vitest.
 
@@ -178,8 +178,11 @@ Cualquier agente que modifique este repositorio **DEBE RESPETAR ESTRICTAMENTE** 
    - `worker.ts`: proceso separado consumiendo colas BullMQ (`geocoding`, `research` con handlers reales; el resto ack+log).
 4. **NO inventar datos ni crear integraciones falsas**:
    - Los conectores externos (SUNARP, IMPLA, CEJ, etc.) son **stubs** que devuelven estado `'unavailable'`.
-   - **Únicas excepciones**: el conector `openstreetmap` es real (Nominatim) y el conector `remaju` es real pero SOLO consume la superficie pública (sin CAPTCHA); se registran en `index.ts` DESPUÉS de los 14 stubs, manteniendo el contrato de 14 fuentes.
-   - Si una fuente requiere auth o no está implementada, devuelve status `not_implemented` o `unavailable`. Nunca simules scraping exitoso con datos inventados. Las tareas de investigación apoyadas en stubs terminan como `unavailable`, no como `completed`.
+   - **Únicas excepciones** (se registran en `index.ts` DESPUÉS de los 14 stubs, manteniendo el contrato de 14 fuentes):
+     - `openstreetmap` es real (Nominatim);
+     - `remaju` es real pero SOLO consume la superficie pública (sin CAPTCHA);
+     - `sunarp` es real SOLO como **postura honesta** (T5.1): NO hace peticiones de red, reporta `requires_auth` + `requiresManualAction` (SUNARP exige DNI + fecha de emisión + CAPTCHA; no automatizable, Ley 29733).
+   - Si una fuente requiere auth o no está implementada, devuelve status `not_implemented`, `unavailable` o `requires_auth`. Nunca simules scraping exitoso con datos inventados. Las tareas de investigación apoyadas en stubs terminan como `unavailable`, no como `completed`; las que requieren auth/acción manual terminan como `requires_manual_action`.
 5. **Trazabilidad y Proveniencia Obligatoria**:
    - Todo dato externo almacenado debe registrar: `source`, `source_url`, `retrieved_at`, `confidence` ('high' | 'medium' | 'low' | 'unknown') y `verification` ('reported' | 'inferred' | 'verified' | 'conflicting').
 6. **Ejecución en Windows / PowerShell**:
@@ -231,7 +234,7 @@ d:\SaaS\fb-terreno-scout\
 │   ├── drizzle/               # Migraciones SQL generadas (0000_military_salo.sql … 0003_natural_mysterio.sql)
 │   ├── scripts/
 │   │   └── queue-health.mjs   # Healthcheck Redis para el worker en Docker
-│   ├── tests/                 # Suite de pruebas Vitest (157 tests pasando)
+│   ├── tests/                 # Suite de pruebas Vitest (162 tests pasando)
 │   │   ├── app.test.ts        # Tests de API Fastify, /health, /sources
 │   │   ├── connector.test.ts  # Tests de registro y conectores stubs
 │   │   ├── research.test.ts   # Tests del motor de investigación
@@ -253,6 +256,7 @@ d:\SaaS\fb-terreno-scout\
 │   │   └── remate-intake.service.test.ts # Tests del servicio de intake manual (T4.5)
 │   │   └── remate-intake.routes.test.ts # Tests HTTP de /api/v1/manual-actions (T4.5)
 │   │   └── remaju-research.test.ts # Tests de matching REM@JU→property para research (T4.6)
+│   │   └── sunarp.test.ts  # Tests del conector SUNARP postura requires_auth (T5.1)
 │   └── fixtures/
 │       └── remaju-home.html   # Fixture offline del home público REM@JU (T4.2)
 │   └── src/
@@ -271,7 +275,8 @@ d:\SaaS\fb-terreno-scout\
 │       │       ├── remaju.ts  # Conector REAL REM@JU (superficie pública, sin CAPTCHA) (T4.2)
 │       │       └── remaju-normalize.ts # Normalización canónica REM@JU (T4.3)
 │       │       └── remaju-dedup.ts # Deduplicación REM@JU (hash + ids) (T4.4)
-│       │       └── remaju-link.ts # Linking REM@JU → properties (T4.5)
+│       │       ├── remaju-link.ts # Linking REM@JU → properties (T4.5)
+│       │       └── sunarp.ts  # Conector REAL SUNARP (postura honesta requires_auth, sin fetch) (T5.1)
 │       ├── db/
 │       │   ├── connection.ts  # Pool pg + Drizzle DB + testConnection()
 │       │   ├── init.ts        # ensureExtensions() + migrationsFolder() robusto
@@ -309,6 +314,7 @@ d:\SaaS\fb-terreno-scout\
     ├── DOMAIN_MODEL.md        # Entidades, invariantes y estados
     ├── API.md                 # Especificación de endpoints Fastify
     ├── CONNECTORS.md          # Arquitectura de conectores
+    ├── SUNARP.md              # Reporte de discovery SUNARP + Fase 5 (T5.1)
     ├── RESEARCH_ENGINE.md     # Motor de 8 tareas de investigación
     ├── GIS.md                 # Inteligencia geoespacial y PDM Arequipa
     ├── QUEUES.md              # Infraestructura BullMQ y Redis
@@ -379,7 +385,7 @@ npm.cmd run db:seed       # Inserta usuario de sistema, fuentes y datos de prueb
 ### Paso 5: Ejecutar la suite de tests
 ```bash
 cd server
-npm.cmd test               # Ejecuta Vitest (157 tests automáticos)
+npm.cmd test               # Ejecuta Vitest (162 tests automáticos)
 npm.cmd run typecheck      # Verifica que TypeScript esté al 100% sin errores
 ```
 

@@ -39,25 +39,28 @@ PostGIS:
 ## Tests
 
 Server:
-✅ 157/157 (24 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9)
+✅ 162/162 (25 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1)
 
 Root:
 ✅
 
 ## Current Phase
 
-Phase 4 — ✅ COMPLETED (2026-09-17). Fase 5 — SUNARP (next)
+Phase 5 — ✅ SUNARP EN PROGRESO (T5.1 DONE, 2026-09-17). Fase 4 — REM@JU COMPLETED.
 
 ## Current Task
 
-Fase 5 / T5.1 (SUNARP Conoce Aquí) — próximo paso. T4.9 (monitoring) completado:
-nuevo módulo `server/src/domain/monitoring/` — `MonitoringService`
-(`getOperationsSummary`: ciclo manual + pipeline judicial + stuck work
-`stale_pending_action`/`orphan_task`; `getQueueStatus` con degradación elegante y
-reporter inyectable) y rutas `GET /api/v1/monitoring/operations` y
-`GET /api/v1/monitoring/queues`; helper de tests compartido
-`server/tests/helpers/in-memory-db.ts`. Suite **157/157 (24 archivos)**;
-typecheck server+root y build OK. Reporte T4.1 en `docs/REMATE_JUDICIAL.md`.
+Fase 5 / T5.2 (SUNARP Consulta de Propiedad) — próximo paso. T5.1 (Conoce Aquí) completado:
+discovery SUNARP completo (`docs/SUNARP.md`): **ninguna superficie consultable sin
+identidad (DNI + fecha de emisión) + CAPTCHA** → no automatizable (Ley 29733, no bypass
+CAPTCHA, 3–5 consultas/día). Conector real de postura `SunarpConnector`
+(`server/src/connectors/implementations/sunarp.ts`) registrado en `index.ts` (1d):
+`getStatus()` → `requires_auth` + `requiresManualAction` (instrucciones); `search()`/
+`getDetails()` vacíos y sin peticiones de red. Tareas `registry`/`bgr` ahora transicionan
+a `requires_manual_action` (manual action kind `login`) en lugar de `unavailable`.
+Tests `server/tests/sunarp.test.ts` (5: status, search vacío, getDetails, instrucción,
+E2E offline registry→manual action). Suite **162/162 (25 archivos)**; typecheck
+server+root y build OK.
 
 ## Blockers
 
@@ -68,7 +71,7 @@ None
 - La suite completa de tests emitió ruido ambiental durante T3.4–T3.6:
   `osm.test.ts` falla una llamada real a Nominatim (`500`) y `app.test.ts`
   reporta `ECONNREFUSED` a PostgreSQL 5433 (servicios locales detenidos), pero
-  **todos los archivos de test pasan** (24/24, 157/157). El smoke test en vivo de
+  **todos los archivos de test pasan** (25/25, 162/162). El smoke test en vivo de
   REM@JU (T4.2) SÍ se repitió contra la página pública real: 276 remates
   parseados (MIRAFLORES/40451/25296, distrito "cusco" → 2 hits).
 - Limitaciones conocidas del motor de investigación (reveladas por T3.8, sin

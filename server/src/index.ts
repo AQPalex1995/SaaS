@@ -5,6 +5,7 @@ import { connectorRegistry } from './connectors/registry.js';
 import { allStubConnectors } from './connectors/stubs/index.js';
 import { osmConnector as realOsmConnector } from './connectors/implementations/osm.js';
 import { remajuConnector as realRemajuConnector } from './connectors/implementations/remaju.js';
+import { sunarpConnector as realSunarpConnector } from './connectors/implementations/sunarp.js';
 import { closePool, testConnection } from './db/connection.js';
 import { closeQueues } from './workers/queue.js';
 import { closeStorage } from './storage/index.js';
@@ -30,6 +31,15 @@ async function main() {
   logger.info(
     { homeUrl: serverConfig.remajuHomeUrl },
     'Real REM@JU public connector registered'
+  );
+
+  // 1d. Override the SUNARP stub with the real posture connector (Fase 5/T5.1).
+  // SUNARP no ofrece superficie consultable sin identidad + CAPTCHA; el conector
+  // reporta requires_auth + manual action sin realizarpeticiones de red.
+  connectorRegistry.register(realSunarpConnector);
+  logger.info(
+    { servicio: realSunarpConnector.sourceName },
+    'Real SUNARP posture connector registered (requires_auth, sin fetch)'
   );
 
   // 2. Build Fastify app

@@ -714,3 +714,22 @@ Next:
 - **Fase 5 — SUNARP**: **T5.1 (Conoce Aquí)** — discovery público sin CAPTCHA,
   parser + conector stub→real si es accesible; aplicar el mismo patrón
   REM@JU (parser puro + linking + manual_actions cuando haya CAPTCHA).
+## 2026-09-18 - OpenCode - Fase 5 / T5.1 (SUNARP Conoce Aqui - discovery y postura honesta)
+
+- Discovery completo de SUNARP (docs/SUNARP.md, web oficial gob.pe 2026):
+  - **Conoce Aqui** (conoce-aqui.sunarp.gob.pe): login DNI + fecha de emision + CAPTCHA, 3-5 consultas/dia por DNI, vista 30 min con tramado "no constituye publicidad registral", no imprimible.
+  - **Consulta de Propiedad** (www2.sunarp.gob.pe/consulta-propiedad): busqueda de partidas por nombre del titular; exige DNI/carnet + fecha de emision + CAPTCHA + validacion de correo OTP.
+  - **SPRL** (sprl.sunarp.gob.pe): de pago (copias literales ~S/14, certificados); suscripcion gratuita.
+  - **Visor BGR** y **Consulta Verificadores**: DNI + CAPTCHA obligatorio.
+  - **Veredicto**: SUNARP NO ofrece superficie consultable sin identidad personal + CAPTCHA (a diferencia del home publico de REM@JU). Ninguna consulta automatizable: Ley 29733 (minimizacion de datos: DNI + fecha de emision no se almacenan) + politica dura no-bypass CAPTCHA.
+- Conector real de POSTURA `server/src/connectors/implementations/sunarp.ts`:
+  - `SunarpConnector` (sourceId 'sunarp'): `getStatus()` -> requires_auth + requiresManualAction con instrucciones del operador; `search()`/`getDetails()` devuelven vacio/not-found; **NO realiza peticiones de red** (nunca datos simulados).
+  - Constantes de URLs publicas + helper `sunarpManualActionDescription()`.
+  - Registrado en `index.ts` (bloque 1d, tras OSM y REM@JU; contrato de 14 fuentes intacto).
+- Efecto en Research Engine: `executeConnectorTask` ya traduciera requires_auth -> `requires_manual_action` (kind 'login'); las tareas registry/bgr ahora terminan en requires_manual_action con manual action (antes 'unavailable').
+- Tests `server/tests/sunarp.test.ts` (5): status requires_auth, search vacio, getDetails not-found, descripcion con URL oficial, E2E offline registry -> requires_manual_action + manual action kind login.
+- Suite **162/162 (25 files)**; typecheck server+root y build OK.
+- Docs: AGENTS.md (estado, excepciones 3.4, arbol, counts 162), PROJECT_EXECUTION_PLAN (PHASE 5 STATUS IN PROGRESS, T5.1 DONE), PROJECT_STATUS (Current Task T5.2, 162/162), CONNECTORS.md (sunarp real de postura), RESEARCH_ENGINE.md (T3 nota), API.md (ejemplo requires_auth), ROADMAP.md, NEXT_STEPS.md, CHANGELOG.
+
+Next:
+- **T5.2 - SUNARP Consulta de Propiedad**: aplicar misma postura requires_auth/manual sobre la segunda superficie publica (busqueda por nombre de propietario); decidir integracion en `sunarp` existente; actualizar docs/SUNARP.md + tests.

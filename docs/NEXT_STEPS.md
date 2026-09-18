@@ -1,10 +1,10 @@
 # Próximos Pasos de Implementación (NEXT_STEPS.md)
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
-> El estado del repositorio refleja la **Fase 4 (REM@JU) completada** y el
-> arranque de la **Fase 5 (SUNARP)**.
-> Las fases 0–2.5, la Fase 3 (T3.1 → T3.9) y la Fase 4 (T4.1 → T4.9)
-> están implementadas en `main`
+> El estado del repositorio refleja la **Fase 4 (REM@JU) completada** y la
+> **Fase 5 (SUNARP) en progreso (T5.1 DONE)**.
+> Las fases 0–2.5, la Fase 3 (T3.1 → T3.9), la Fase 4 (T4.1 → T4.9) y el
+> arranque de la Fase 5 (T5.1) están implementadas en `main`
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
 > Lee atentamente este documento antes de escribir código.
 > **Reglas operativas vigentes (AGENTS.md)**: el agente inicia **automáticamente** Docker/PostgreSQL
@@ -421,10 +421,24 @@ cd server && npm.cmd run sync:sqlite
 > `GET /api/v1/monitoring/queues`; helper de tests `helpers/in-memory-db.ts`.
 > Suite **157/157 (24 archivos)**; typecheck server+root y build OK.
 >
-> **Siguiente tarea del plan**: **Fase 5 — SUNARP / T5.1 (Conoce Aquí)**
-> (discovery público sin CAPTCHA, parser + conector real si es alcanzable,
-> aplicando el mismo patrón REM@JU: parser puro + linking + `manual_actions`
-> cuando haya CAPTCHA).
+> **Fase 5 — SUNARP / T5.1 (Conoce Aquí) ✅ DONE (2026‑09‑17)**:
+> **Discovery** (`docs/SUNARP.md`): SUNARP **no ofrece superficie consultable sin
+> identidad personal (DNI + fecha de emisión) + CAPTCHA** (Conoce Aquí 3–5/día,
+> 30 min; Consulta de Propiedad con validación por correo; SPRL de pago; BGR +
+> CAPTCHA) → **ninguna consulta automatizable** (Ley 29733, minimización de
+> datos, no bypass CAPTCHA).
+> **Conector real de postura**: `server/src/connectors/implementations/sunarp.ts`
+> (`SunarpConnector`: `getStatus()` → `requires_auth` + `requiresManualAction`
+> con instrucciones; `search()`/`getDetails()` vacíos y SIN peticiones de red),
+> registrado en `index.ts` (bloque 1d). Efecto: tareas `registry`/`bgr`
+> transicionan a `requires_manual_action` (manual action kind `login`) en vez de
+> `unavailable`. Tests `server/tests/sunarp.test.ts` (5). Suite **162/162
+> (25 archivos)**; typecheck server+root y build OK.
+>
+> **Siguiente tarea del plan**: **Fase 5 — SUNARP / T5.2 (Consulta de Propiedad)**
+> — aplicar la misma postura `requires_auth`/manual sobre la otra superficie
+> pública (búsqueda de partidas por nombre del propietario): decidir si se integra
+> en el conector `sunarp` existente y actualizar `docs/SUNARP.md` + tests.
 > Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 5).
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.

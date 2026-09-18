@@ -254,16 +254,21 @@ Profundidad de las 6 colas BullMQ (`scraping`, `research`, `geocoding`, `gis`,
 
 ### `GET /api/v1/sources`
 Lista el catálogo de los 14 conectores registrados y el estado actual de cada uno.
-- El conector `openstreetmap` es **real** (Nominatim) en el servidor en ejecución, por lo que su estado aparece como `available`; los otros 13 permanecen `unavailable` (stubs).
+- Los conectores `openstreetmap` (real/Nominatim) y `remaju` (real/superficie
+  pública) aparecen como `available`; `sunarp` (real/solo postura, T5.1) aparece
+  como **`requires_auth`** con `requiresManualAction: true` e instrucciones para
+  el operador (SUNARP no ofrece superficie consultable sin identidad + CAPTCHA);
+  los 11 restantes permanecen `unavailable` (stubs). Ningún conector simula datos.
 - **Respuesta 200**:
   ```json
   {
     "data": [
       {
         "sourceId": "sunarp",
-        "status": "unavailable",
-        "message": "SUNARP Conoce Aquí connector is not yet implemented",
-        "lastChecked": "2026-09-15T21:48:30.257Z"
+        "status": "requires_auth",
+        "requiresManualAction": true,
+        "message": "SUNARP Conoce Aquí requiere login DNI + fecha de emisión + CAPTCHA (no automatizable)",
+        "lastChecked": "2026-09-17T00:00:00.000Z"
       },
       ...
     ]
