@@ -2,7 +2,7 @@
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
 > El estado del repositorio refleja la **Fase 3 (Research Engine Hardening)** en curso.
-> Las fases 0–2.5 están implementadas en `main`; T3.1 (ResearchCase lifecycle), T3.2 (ResearchTask lifecycle), T3.3 (Research orchestration), T3.4 (Manual Action), T3.5 (Research Result provenance), T3.6 (Research API) y T3.7 (Research Drawer) completadas el 2026-09-17.
+> Las fases 0–2.5 están implementadas en `main`; T3.1 (ResearchCase lifecycle), T3.2 (ResearchTask lifecycle), T3.3 (Research orchestration), T3.4 (Manual Action), T3.5 (Research Result provenance), T3.6 (Research API), T3.7 (Research Drawer) y T3.8 (Research tests) completadas el 2026-09-17.
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
 > Lee atentamente este documento antes de escribir código.
 
@@ -17,7 +17,7 @@
 - **Colas**: 6 colas BullMQ definidas en `server/src/workers/queue.ts`, con consumidores reales para `geocoding` y `research`.
 - **Ingesta**: Motor de sincronización `server/src/domain/ingestion/sync.ts` + CLI `server/src/scripts/sync-sqlite.ts`.
 - **UI**: Panel Scout intacto en puerto `8787` con botón `[INVESTIGAR]`, `Property Intelligence Drawer`, badges en tiempo real y lista dinámica de fuentes.
-- **Pruebas**: 76 tests automatizados pasando en Vitest (`cd server && npm.cmd test`).
+- **Pruebas**: 85 tests automatizados pasando en Vitest (`cd server && npm.cmd test`).
 
 > **Bugs conocidos y divergencias**: la base SQLite real es `data/scout.db` (no `data/terrenos.db` como cita la doc);
 > `node:sqlite` requiere import dinámico en Docker `node:22` (ya resuelto en `sync.ts`).
@@ -298,6 +298,30 @@ Frontend del panel Scout (cambio autorizado en `src/panel.html`).
 
 ---
 
+## 2.12. Fase 3 — T3.8 Research tests — ✅ COMPLETADA (2026‑09‑17)
+
+Cobertura de los 8 escenarios de flujo del plan contra el código real
+(orchestrator / lifecycle / service) con una base in-memory que evalúa los WHERE
+de Drizzle.
+
+### Cambios
+- **`server/tests/research-flows.test.ts`** (9 tests): full, partial, failed
+  task, unavailable source, retry, duplicate research, manual action, timeout y
+  el caso "todas las tareas fallidas".
+- Mock de DB in-memory con evaluación de predicados (mismo enfoque que T3.4),
+  capaz de mutar filas de tareas/casos y soportar transiciones condicionales.
+
+### Limitaciones conocidas (documentadas, no corregidas)
+- `createResearch` no deduplica investigaciones activas del mismo inmueble.
+- `transitionTask` no aplica `maxRetries`.
+- No hay timeout activo en el orquestador.
+- `updateCaseProgress` nunca marca un caso como `failed` (usa `partial`).
+
+### Verificación
+- Tests 85/85 (13 archivos); typecheck server + root; build del server.
+
+---
+
 ## 3. Checklist de Verificación para el Agente
 
 Antes de dar por concluida cualquier sesión de trabajo, ejecuta siempre:
@@ -307,7 +331,7 @@ Antes de dar por concluida cualquier sesión de trabajo, ejecuta siempre:
 cd server
 npm.cmd run typecheck
 
-# 2. Ejecutar toda la suite de tests (76 tests)npm.cmd test
+# 2. Ejecutar toda la suite de tests (85 tests)npm.cmd test
 
 # 3. Build de producción del servidor
 npm.cmd run build
@@ -334,11 +358,11 @@ cd server && npm.cmd run sync:sqlite
 
 ---
 
-## 5. Siguientes Iteraciones (después de T3.7)
+## 5. Siguientes Iteraciones (después de T3.8)
 
-> **Siguiente tarea del plan**: **T3.8 — Research tests** (tests de flujo
-> completo/parcial, tarea fallida, fuente no disponible, retry, investigación
-> duplicada, acción manual y timeout).
+> **Siguiente tarea del plan**: **T3.9 — Research documentation** (refrescar
+> `docs/RESEARCH_ENGINE.md`, `docs/API.md` y `docs/NEXT_STEPS.md` con el estado
+> final de la Fase 3, incluidas las limitaciones conocidas reveladas por T3.8).
 > Ver `PROJECT_EXECUTION_PLAN.md`.
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.

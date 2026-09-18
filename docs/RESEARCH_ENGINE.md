@@ -312,3 +312,29 @@ Productores cubiertos: `executeIdentityTask`, `executeGeolocationTask`
 El DTO `ResearchResultDTO` expone `source`, `sourceUrl`, `retrievedAt`, `data`,
 `rawData`, `confidence`, `verification`, `parserVersion` y `metadata`.
 
+## 8. Cobertura de Pruebas (Fase 3 / T3.8)
+
+`server/tests/research-flows.test.ts` ejecuta el código real
+(orchestrator / lifecycle / service) contra una base in-memory que evalúa los
+`WHERE` de Drizzle, cubriendo los flujos del plan:
+
+| Escenario | Qué valida | Resultado esperado del caso |
+|---|---|---|
+| Full research | 8 tareas, sin fallos | `completed` (8/8, 6 warnings) |
+| Partial research | una tarea falla, el resto completa | `partial`, `errorCount=1` |
+| Failed task | error de fuente persistido en la tarea | `partial` |
+| Unavailable source | conector stub | `unavailable` (warning, no error) |
+| Retry | `failed → running` | `retryCount+1`, `completedAt=null` |
+| Duplicate research | dos `createResearch` | 2 casos independientes, 8 tareas c/u |
+| Manual action | geolocalización sin dirección | tarea `requires_manual_action` + fila en `manual_actions` |
+| Timeout | fuente expira (`ETIMEDOUT`) | `partial`, las demás tareas continúan |
+
+### Limitaciones conocidas (reveladas por T3.8)
+
+- `createResearch` **no deduplica** investigaciones activas del mismo inmueble.
+- `transitionTask` **no aplica `maxRetries`** (el tope sólo se expone en el DTO).
+- **No hay timeout activo** en el orquestador; un timeout del conector llega
+  como error y se registra como tarea `failed`.
+- `updateCaseProgress` **nunca marca un caso como `failed`**: usa `partial`.
+
+

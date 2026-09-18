@@ -270,7 +270,7 @@ Verified:
 - Live smoke test NOT repeated (PostgreSQL 5433 / Redis 6380 / Docker down).
 
 Next:
-- Phase 3 / T3.8 (Research tests)
+- Phase 3 / T3.7 (Research Drawer)
 
 ## 2026-09-17 — OpenCode — Phase 3 / T3.7 (Research Drawer)
 
@@ -299,3 +299,31 @@ Verified:
 
 Next:
 - Phase 3 / T3.8 (Research tests)
+
+## 2026-09-17 — OpenCode — Phase 3 / T3.8 (Research tests)
+
+Completed:
+- Added `server/tests/research-flows.test.ts` (9 tests) running the real
+  orchestrator / lifecycle / service against an in-memory drizzle-like DB that
+  evaluates WHERE predicates, covering the 8 planned scenarios: full research,
+  partial research, failed task, unavailable source, retry, duplicate research,
+  manual action and timeout — plus an edge case where every task failed.
+- Key assertions: a full case ends `completed` (8/8, 6 warnings); a failing or
+  timed-out source leaves the case `partial` while other tasks still complete;
+  stub connectors land as `unavailable` (warning, not error); `failed → running`
+  bumps `retryCount` and clears `completedAt`; two `createResearch` calls create
+  two independent cases with 8 tasks each.
+
+Findings (documented, intentionally NOT fixed in a tests-only task):
+- `createResearch` has no dedup for active cases of the same property.
+- `transitionTask` does not enforce `maxRetries`.
+- There is no active timeout in the orchestrator (a timeout surfaces as a task
+  failure).
+- `updateCaseProgress` never marks a case `failed` (it uses `partial`).
+
+Verified:
+- Tests 85/85 (13 files). Typecheck server + root; server build OK.
+- Live smoke test NOT repeated (PostgreSQL 5433 / Redis 6380 / Docker down).
+
+Next:
+- Phase 3 / T3.9 (Research documentation)

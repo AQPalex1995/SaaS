@@ -489,7 +489,7 @@ Resultado (2026-09-17):
 T3.8 — Research tests
 ------------------------------------------------------------
 
-STATUS: TODO
+STATUS: DONE
 
 Tests:
 
@@ -501,6 +501,40 @@ Tests:
 - duplicate research
 - manual action
 - timeout
+
+Resultado (2026-09-17):
+
+- Nuevo `server/tests/research-flows.test.ts` (9 tests) que ejecuta el código
+  real (orchestrator, lifecycle, service) contra una base in-memory que evalúa
+  los WHERE de Drizzle:
+  - **full research**: 8 tareas → case `completed`, 8/8, warningCount 6
+    (conectores stub + market + risk), 2 resultados con provenance.
+  - **partial research**: una tarea falla y el resto completa → case `partial`,
+    errorCount 1, el identity sigue `completed`.
+  - **failed task**: el error de la fuente queda persistido en la tarea
+    (`status=failed`, `error`, `completedAt`) y el caso no aborta.
+  - **unavailable source**: conector stub → tarea `unavailable`, cuenta como
+    warning, no como error.
+  - **retry**: `failed → running` incrementa `retryCount`, limpia `completedAt`
+    y fija `startedAt`.
+  - **duplicate research**: dos `createResearch` producen dos casos
+    independientes con 8 tareas cada uno (no hay dedup implícito).
+  - **manual action**: geolocalización sin dirección/distrito → tarea
+    `requires_manual_action` + fila en `manual_actions`; el caso igualmente
+    termina `completed` con warning (una acción pendiente no lo deja colgado).
+  - **timeout**: una fuente que expira (`ETIMEDOUT`) no detiene las demás
+    tareas; el caso queda `partial`.
+  - Extra: un caso con **todas** las tareas fallidas queda `partial` (no existe
+    transición a `failed` desde `updateCaseProgress`).
+- Suite 85/85 (13 archivos); typecheck server + root y build del server OK.
+
+Hallazgos (documentados, NO corregidos para no inventar comportamiento en una
+tarea de tests):
+- `createResearch` no deduplica investigaciones activas del mismo inmueble.
+- `transitionTask` no aplica `maxRetries` (el tope sólo se expone en el DTO).
+- No hay timeout activo en el orquestador; un timeout llega como error del
+  conector y se registra como tarea fallida.
+- `updateCaseProgress` nunca marca un caso como `failed` (usa `partial`).
 
 ------------------------------------------------------------
 T3.9 — Research documentation
