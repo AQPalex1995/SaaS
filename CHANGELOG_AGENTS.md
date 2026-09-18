@@ -570,3 +570,46 @@ Notes:
 Next:
 - **T4.5 — property linking** (partida registral strong key; district+address
   weak; candidates without hard-match).
+
+## 2026-09-17 — OpenCode — Phase 4 / T4.5 (REM@JU linking + manual intake)
+
+Completed the human-in-the-loop path for REM@JU: pure linking module, manual
+intake planner/service, HTTP routes and a minimal operator UI served by the API
+(no changes to the Scout Legacy).
+
+Code:
+- New pure module `server/src/connectors/implementations/remaju-link.ts`:
+  `normalizePartida()`, `addressTokens()` (accent/stopword aware),
+  `overlapRatio()`, `linkRemateToProperties()` (exact partida → `high`/score 1;
+  address fuzzy → `medium`/`low`; district-only → `0.3`/`low`) and
+  `pickHardLink()` (only exact partida; never auto-links weak matches).
+- New pure module `server/src/domain/research/remate-manual.ts`
+  (`planRemateIntake`, `composeDireccion`): normalizes the human payload and
+  plans the `registry_properties` row, the `properties` location update and the
+  geocoding fallback — no DB/network effects.
+- New `server/src/domain/research/remate-intake.service.ts`
+  (`RemateIntakeService`, injectable db/manualActions/storage/geocode): completes
+  a `manual_action`, persists partida, applies location (manual or OSM/Nominatim
+  fallback at `confidence:'low'`), stores the aviso PDF and records
+  `external_links` (`linkType:'remate_pdf'`), delegating closure to
+  `ManualActionService`.
+- New `server/src/domain/research/remate-intake.routes.ts`, registered in
+  `app.ts` with an injectable service: `GET /api/v1/manual-actions` (+`/:id`),
+  `POST /api/v1/manual-actions/:id/complete` (JSON + base64 PDF, 12 MB
+  `bodyLimit`, no new deps) and the minimal HTML UI at `GET /manual-actions`.
+- Privacy: only partida, address, coordinates and public auction data; never
+  personal data (Ley 29733 / D.S. 003-2013-JUS).
+- Tests: `remaju-link.test.ts` (6), `remate-manual.test.ts` (7),
+  `remate-intake.service.test.ts` (6), `remate-intake.routes.test.ts` (4).
+  Suite **136/136 (20 files)**; server+root typecheck and build OK.
+
+Notes:
+- PDF upload uses base64 JSON instead of `@fastify/multipart` to avoid new
+  dependencies/network in tests; `bodyLimit` raised only on the complete route.
+- The UI is served by the Land Intelligence API (`/manual-actions`) because
+  modifying the Scout Legacy `src/` requires explicit approval (T3.7 precedent).
+
+Next:
+- **T4.6 — research connector**: wire `RemajuConnector` + `RemateIntakeService`
+  into the Research Engine (`TASK_SOURCE_MAP`, `recordResearchResult`,
+  `requestManualAction` when the CAPTCHA-gated detail is required).

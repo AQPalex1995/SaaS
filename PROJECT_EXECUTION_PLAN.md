@@ -581,7 +581,7 @@ T4.1 discovery — ✅ DONE (2026-09-17)
 T4.2 parser — ✅ DONE (2026-09-17)
 T4.3 normalization — ✅ DONE (2026-09-17)
 T4.4 deduplication — ✅ DONE (2026-09-17)
-T4.5 Property linking
+T4.5 Property linking + manual intake — ✅ DONE (2026-09-17)
 T4.6 research connector
 T4.7 manual action handling
 T4.8 tests
@@ -689,10 +689,50 @@ T4.4 deduplication — result:
   mapea; los duplicados descartados se registran en `logger.debug`.
 - Tests: `server/tests/remaju-dedup.test.ts` (9 casos: hash determinista y
   sensible, prioridad de claves, fusión, alias cruzados, conector deduplicado).
-  Suite completa **113/113 (16 archivos)**; typecheck server+root y build OK.
+   Suite completa **113/113 (16 archivos)**; typecheck server+root y build OK.
 
-Siguiente: **T4.5 property linking** (partida registral como clave fuerte,
-distrito+dirección como débil; candidatos sin hard-match).
+T4.5 property linking + manual intake — result:
+
+- **T4.5a linking puro**: nuevo
+  `server/src/connectors/implementations/remaju-link.ts`:
+  - `normalizePartida()` (mayúsculas, sin espacios/guiones/puntos),
+    `addressTokens()` (sin acentos, sin stopwords), `overlapRatio()`.
+  - `linkRemateToProperties(query, candidates)`: **partida exacta** →
+    `matchType: 'partida'`, `confidence: 'high'`, `score: 1`; dirección fuzzy
+    (distrito + ratio de tokens ≥ 0.6) → `medium`, si no `low`; solo distrito →
+    `0.3`/`low`. Ordenado por score descendente.
+  - `pickHardLink()`: solo devuelve enlace si hay partida exacta; **nunca**
+    auto-enlaza coincidencias débiles (quedan como candidatos).
+- **T4.5b intake manual**: nuevo módulo puro
+  `server/src/domain/research/remate-manual.ts` (`planRemateIntake`,
+  `composeDireccion`) que normaliza el payload humano (partida, dirección,
+  montos, convocatoria, fecha, origen de ubicación y coordenadas) y planifica:
+  fila de `registry_properties` (`source: 'remaju'`, `confidence: 'medium'`,
+  `verification: 'reported'`), actualización de `properties`
+  (`latitude`/`longitude`, `locationSource`/`Confidence`/`Verification`) y
+  geocodificación pendiente si no hay coordenadas.
+- **Servicio** `server/src/domain/research/remate-intake.service.ts`
+  (`RemateIntakeService`, deps inyectables db/manualActions/storage/geocode):
+  completa una `manual_action`, persiste partida, aplica ubicación (manual o
+  fallback OSM/Nominatim con `confidence: 'low'`), guarda el PDF del aviso en
+  storage y registra `external_links` (`linkType: 'remate_pdf'`), y delega el
+  cierre en `ManualActionService.completeManualAction()`.
+- **Rutas** `server/src/domain/research/remate-intake.routes.ts` + registro en
+  `app.ts` (servicio inyectable para tests): `GET /api/v1/manual-actions`
+  (+`/:id`), `POST /api/v1/manual-actions/:id/complete` (JSON con PDF base64,
+  `bodyLimit` 12 MB, sin nuevas dependencias) y **UI mínima** en
+  `GET /manual-actions` (servida por el API, no toca el Scout Legacy).
+- **Privacidad**: solo partida, dirección, coordenadas y datos públicos del
+  remate; **nunca** datos personales (Ley 29733 / D.S. 003-2013-JUS).
+- Tests: `server/tests/remaju-link.test.ts` (6),
+  `server/tests/remate-manual.test.ts` (7),
+  `server/tests/remate-intake.service.test.ts` (6),
+  `server/tests/remate-intake.routes.test.ts` (4). Suite completa
+  **136/136 (20 archivos)**; typecheck server+root y build OK.
+
+Siguiente: **T4.6 research connector** (integrar `RemajuConnector` +
+`RemateIntakeService` al Research Engine: `TASK_SOURCE_MAP`, `recordResearchResult`,
+`requestManualAction` cuando el detalle requiere CAPTCHA).
 
 ============================================================
 PHASE 5 — SUNARP

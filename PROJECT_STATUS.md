@@ -39,22 +39,23 @@ PostGIS:
 ## Tests
 
 Server:
-✅ 113/113 (16 files — incl. `remaju.test.ts` + `remaju-normalize.test.ts` + `remaju-dedup.test.ts` T4.2/T4.3/T4.4)
+✅ 136/136 (20 files — incl. `remaju*.test.ts` T4.2–T4.5 y `remate-*` de intake manual T4.5)
 
 Root:
 ✅
 
 ## Current Phase
 
-Phase 4 — IN PROGRESS (REM@JU; T4.1 discovery + T4.2 parser + T4.3 normalization + T4.4 deduplication done)
+Phase 4 — IN PROGRESS (REM@JU; T4.1 discovery + T4.2 parser + T4.3 normalization + T4.4 deduplication + T4.5 linking/manual intake done)
 
 ## Current Task
 
-Phase 4 / T4.5 (property linking) — próximo paso. T4.4 deduplication completado:
-`server/src/connectors/implementations/remaju-dedup.ts` (hash SHA-256 +
-claves `remate`/`convocatoria` con alias cruzados, fusión y conteo de
-duplicados) integrado en `RemajuConnector.search()`; suite 113/113 (16 archivos).
-Reporte T4.1 en `docs/REMATE_JUDICIAL.md`.
+Phase 4 / T4.6 (research connector) — próximo paso. T4.5 completado:
+`remaju-link.ts` (linking por partida fuerte / dirección-distrito débil),
+`remate-manual.ts` + `remate-intake.service.ts` (intake manual con privacidad),
+`remate-intake.routes.ts` (`GET/POST /api/v1/manual-actions`, UI mínima en
+`/manual-actions`, PDF base64 a storage) integrado en `app.ts`; suite
+136/136 (20 archivos). Reporte T4.1 en `docs/REMATE_JUDICIAL.md`.
 
 ## Blockers
 
@@ -65,7 +66,7 @@ None
 - La suite completa de tests emitió ruido ambiental durante T3.4–T3.6:
   `osm.test.ts` falla una llamada real a Nominatim (`500`) y `app.test.ts`
   reporta `ECONNREFUSED` a PostgreSQL 5433 (servicios locales detenidos), pero
-  **todos los archivos de test pasan** (16/16, 113/113). El smoke test en vivo de
+  **todos los archivos de test pasan** (20/20, 136/136). El smoke test en vivo de
   REM@JU (T4.2) SÍ se repitió contra la página pública real: 276 remates
   parseados (MIRAFLORES/40451/25296, distrito "cusco" → 2 hits).
 - Limitaciones conocidas del motor de investigación (reveladas por T3.8, sin

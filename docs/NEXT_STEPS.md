@@ -398,11 +398,18 @@ cd server && npm.cmd run sync:sqlite
 > **T4.4 deduplication → ✅ DONE**:
 > `server/src/connectors/implementations/remaju-dedup.ts`
 > (hash SHA-256 + claves `remate`/`convocatoria` con alias cruzados y fusión),
-> integrado en `search()`; suite **113/113 (16 archivos)**.
+> integrado en `search()`.
+> **T4.5 property linking + manual intake → ✅ DONE**:
+> `server/src/connectors/implementations/remaju-link.ts` (partida fuerte,
+> dirección/distrito débil), `server/src/domain/research/remate-manual.ts` +
+> `remate-intake.service.ts` + `remate-intake.routes.ts` (intake manual, PDF a
+> storage y UI en `/manual-actions`), integrado en `app.ts`; suite
+> **136/136 (20 archivos)**.
 >
-> **Siguiente tarea del plan**: **Fase 4 / T4.5 — property linking**
-> (partida registral como clave fuerte; distrito+dirección como débil;
-> candidatos sin hard-match). Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 4).
+> **Siguiente tarea del plan**: **Fase 4 / T4.6 — research connector**
+> (integrar `RemajuConnector` + `RemateIntakeService` al Research Engine:
+> `TASK_SOURCE_MAP`, `recordResearchResult`, `requestManualAction`).
+> Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 4).
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.
 - Implementar la verificación a nivel de caso: confirmar manualmente la identidad del property y la coordenada geocodificada (hoy `verification='inferred'`).

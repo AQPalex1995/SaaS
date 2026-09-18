@@ -7,10 +7,14 @@ import { testConnection } from './db/connection.js';
 import { testRedis } from './workers/queue.js';
 import { propertyRoutes } from './domain/properties/routes.js';
 import { researchRoutes } from './domain/research/routes.js';
+import { remateIntakeRoutes } from './domain/research/remate-intake.routes.js';
+import type { RemateIntakeService } from './domain/research/remate-intake.service.js';
 import { sourceRoutes } from './connectors/routes.js';
 
 export interface AppOptions {
   enableLogging?: boolean;
+  /** Injectable REM@JU intake service (tests). */
+  remateIntakeService?: RemateIntakeService;
 }
 
 /**
@@ -83,6 +87,7 @@ export async function buildApp(options: AppOptions = {}) {
   // Register domain routes
   await app.register(propertyRoutes);
   await app.register(researchRoutes);
+  await app.register(remateIntakeRoutes, { service: options.remateIntakeService });
   await app.register(sourceRoutes);
 
   // Global error handler

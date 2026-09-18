@@ -9,7 +9,7 @@
 
 - **Objetivo**: Plataforma de inteligencia territorial e inmobiliaria para terrenos en Arequipa, Perú (con expansión nacional).
 - **Evolución**: De un scraper local básico de Facebook Marketplace/Grupos (`FB Terreno Scout`) hacia una plataforma modular de due diligence inmobiliario, valuación y análisis registral/urbano (`Land Intelligence`).
-- **Estado Actual**: **Fase 4 EN CURSO (REM@JU, aprobada por el usuario)** — T4.1 discovery y T4.2 parser (superficie pública, sin CAPTCHA) DONE; siguiente tarea T4.3 normalization. Ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). Fases 0–3 completadas (infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ, Research Engine T3.x).
+- **Estado Actual**: **Fase 4 EN CURSO (REM@JU, aprobada por el usuario)** — T4.1 discovery, T4.2 parser, T4.3 normalization, T4.4 deduplication y T4.5 linking + intake manual DONE; siguiente tarea **T4.6 research connector**. Ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). Fases 0–3 completadas (infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ, Research Engine T3.x).
 - **Gobernanza**: este documento contiene las **Checkpoint Rules**, **Decision Gates** y **reglas de ejecución autónoma** (sección 2). Todo agente DEBE leer `PROJECT_EXECUTION_PLAN.md`, `PROJECT_STATUS.md` y `CHANGELOG_AGENTS.md` antes de escribir código.
 - **Enfoque**: Modular Monolith en TypeScript (Node.js ESM), Fastify, PostgreSQL 16 + PostGIS 3.4, Drizzle ORM, BullMQ, Vitest.
 
@@ -231,7 +231,7 @@ d:\SaaS\fb-terreno-scout\
 │   ├── drizzle/               # Migraciones SQL generadas (0000_military_salo.sql … 0003_natural_mysterio.sql)
 │   ├── scripts/
 │   │   └── queue-health.mjs   # Healthcheck Redis para el worker en Docker
-│   ├── tests/                 # Suite de pruebas Vitest (113 tests pasando)
+│   ├── tests/                 # Suite de pruebas Vitest (136 tests pasando)
 │   │   ├── app.test.ts        # Tests de API Fastify, /health, /sources
 │   │   ├── connector.test.ts  # Tests de registro y conectores stubs
 │   │   ├── research.test.ts   # Tests del motor de investigación
@@ -248,6 +248,10 @@ d:\SaaS\fb-terreno-scout\
 │   │   └── remaju.test.ts     # Tests del parser REM@JU (fetch stubbed + fixtures HTML) (Fase 4/T4.2)
 │   │   └── remaju-normalize.test.ts # Tests de normalización REM@JU (T4.3)
 │   │   └── remaju-dedup.test.ts # Tests de deduplicación REM@JU (T4.4)
+│   │   └── remaju-link.test.ts # Tests de linking REM@JU (partida/dirección) (T4.5)
+│   │   └── remate-manual.test.ts # Tests del planner de intake manual REM@JU (T4.5)
+│   │   └── remate-intake.service.test.ts # Tests del servicio de intake manual (T4.5)
+│   │   └── remate-intake.routes.test.ts # Tests HTTP de /api/v1/manual-actions (T4.5)
 │   └── fixtures/
 │       └── remaju-home.html   # Fixture offline del home público REM@JU (T4.2)
 │   └── src/
@@ -266,6 +270,7 @@ d:\SaaS\fb-terreno-scout\
 │       │       ├── remaju.ts  # Conector REAL REM@JU (superficie pública, sin CAPTCHA) (T4.2)
 │       │       └── remaju-normalize.ts # Normalización canónica REM@JU (T4.3)
 │       │       └── remaju-dedup.ts # Deduplicación REM@JU (hash + ids) (T4.4)
+│       │       └── remaju-link.ts # Linking REM@JU → properties (T4.5)
 │       ├── db/
 │       │   ├── connection.ts  # Pool pg + Drizzle DB + testConnection()
 │       │   ├── init.ts        # ensureExtensions() + migrationsFolder() robusto
@@ -277,7 +282,7 @@ d:\SaaS\fb-terreno-scout\
 │       │   └── schema/        # 28 tablas Drizzle + 19 enums PostgreSQL
 │       ├── domain/            # Servicios de negocio
 │       │   ├── properties/    # PropertyService + rutas /api/v1/properties
-│       │   ├── research/      # ResearchService + lifecycle + task-lifecycle + orchestrator + manual-action + result-provenance (8 tareas)
+│       │   ├── research/      # ResearchService + lifecycle + task-lifecycle + orchestrator + manual-action + result-provenance + remate-manual/remate-intake (T4.5)
 │       │   ├── ingestion/     # sync.ts: SQLite legacy → PostgreSQL (dedup, hash, audit)
 │       │   └── audit/         # AuditService para registro de eventos
 │       ├── dto/               # Tipos de transferencia de datos
@@ -372,7 +377,7 @@ npm.cmd run db:seed       # Inserta usuario de sistema, fuentes y datos de prueb
 ### Paso 5: Ejecutar la suite de tests
 ```bash
 cd server
-npm.cmd test               # Ejecuta Vitest (113 tests automáticos)
+npm.cmd test               # Ejecuta Vitest (136 tests automáticos)
 npm.cmd run typecheck      # Verifica que TypeScript esté al 100% sin errores
 ```
 

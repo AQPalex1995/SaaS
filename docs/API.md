@@ -166,6 +166,56 @@ Lista todos los resultados y evidencias acumuladas para el expediente, con prove
 
 ---
 
+## 4.b Acciones Manuales REM@JU (`/api/v1/manual-actions`, Fase 4 / T4.5)
+
+Flujo humano-en-el-bucle: el motor deja acciones manuales pendientes (p. ej.
+captcha/filtros/PDF de REM@JU) y el operador las completa con un payload
+normalizado. Los endpoints existen para cubrir el caso REM@JU; la UI mínima se
+sirve desde el propio API. Política de privacidad: solo se guardan partida,
+dirección, coordenadas y datos públicos del remate; **nunca** datos personales.
+
+### `GET /api/v1/manual-actions`
+Lista acciones manuales. Query opcional `status` (`requested` | `completed` |
+`cancelled` | `all`; por defecto todas las de `?status` indicado, o todas si se
+omite).
+- **Respuesta 200**: `{ "data": [ManualActionDTO, ...] }`.
+
+### `GET /api/v1/manual-actions/:id`
+Detalle de una acción manual.
+- **Respuesta 200**: `{ "data": ManualActionDTO }`; inexistente → 404.
+
+### `POST /api/v1/manual-actions/:id/complete`
+Completa la acción con los datos extraídos manualmente (opcionalmente el PDF del
+aviso en base64). `bodyLimit` de 12 MB.
+- **Body**:
+  ```json
+  {
+    "payload": {
+      "partida": "P-12345678",
+      "distrito": "Arequipa",
+      "direccion": { "urb": "Los Álamos", "avenida": "Ejército", "numero": "400", "lote": "12", "referencia": "frente al parque" },
+      "valorDeuda": "S/ 150,000.50",
+      "tasacion": 200000,
+      "precioRemate": 180000,
+      "convocatoria": "primera",
+      "fechaRemate": "2026-10-01",
+      "origenUbicacion": "partida",
+      "latitude": -16.409,
+      "longitude": -71.537
+    },
+    "completedBy": "analista",
+    "pdf": { "name": "aviso.pdf", "contentType": "application/pdf", "base64": "JVBERi0..." }
+  }
+  ```
+- **Respuesta 200**: `{ "data": ManualActionDTO, "plan": {...}, "registryId", "pdfKey", "locationApplied" }`.
+- **Errores**: 400 payload/PDF inválido; 404 acción inexistente; 409 acción ya completada.
+
+### `GET /manual-actions`
+UI HTML mínima (servida por el API) para listar pendientes y completar el
+formulario, incluyendo subida de PDF (leído como base64 en el navegador).
+
+---
+
 ## 5. Endpoints de Conectores & Fuentes (`/api/v1/sources`)
 
 ### `GET /api/v1/sources`
