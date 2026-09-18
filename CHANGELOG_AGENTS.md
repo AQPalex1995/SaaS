@@ -748,3 +748,17 @@ Next:
 
 Next:
 - **T5.3 - SUNARP SPRL** (sprl.sunarp.gob.pe, de pago): decidir postura (previsiblemente requires_auth + kind payment sin automatizar compras); documentar + tests si aplica.
+
+## 2026-09-18 - OpenCode - Fase 5 / T5.3 (SUNARP SPRL - postura de pago con valor legal)
+
+- Discovery (docs/SUNARP.md): SPRL (sprl.sunarp.gob.pe) = Servicio de Publicidad Registral en Linea con VALOR LEGAL (unico camino a copias literales / certificados oficiales). Suscripcion gratuita (usuario/clave) pero CADA consulta de pago: visualizacion de partida ~S/ 6.90/pagina; copia literal ~S/ 14.00 (2 primeras hojas) + S/ 7.00 por hoja adicional.
+- Conector real de postura `server/src/connectors/implementations/sunarp-sprl.ts`:
+  - `SunarpSprlConnector` (sourceId 'sunarp_sprl'): getStatus() -> requires_auth + requiresManualAction con guia que documenta suscripcion gratuita + pago por servicio; search()/getDetails() vacios + requiresManualAction; NO hace peticiones de red; no se automatiza la compra ni se almacenan credenciales.
+  - Constante `SUNARP_SPRL_URL` + helper `sunarpSprlManualActionDescription()`.
+  - Registrado en index.ts (bloque 1e, tras sunarp; contrato de 14 fuentes intacto -> 4 reales: openstreetmap/remaju/sunarp/sunarp_sprl).
+- Tests `server/tests/sunarp-sprl.test.ts` (5): getStatus requires_auth + pago, search vacio + manual action, getDetails found=false + copia literal, guia con montos, instancia singleton.
+- Suite **167/167 (26 files)**; typecheck server+root y build OK.
+- Docs: SUNARP.md (detalle SPRL + T5.3 DONE), PROJECT_EXECUTION_PLAN (T5.3 DONE, next T5.4), PROJECT_STATUS (Current Task T5.4, 167/167/26), NEXT_STEPS.md, AGENTS.md (estado, excepciones 3.4, arbol, counts 167), CONNECTORS.md.
+
+Next:
+- **T5.4 - Registry normalization**: normalizar formato de partida de la Zona Registral XII (Arequipa, P-XXXXXXXX) y campos del registro capturados manualmente (titular, cargas) antes de persistir en registry_properties/registry_owners/registry_charges; parser puro + fixtures + tests offline.

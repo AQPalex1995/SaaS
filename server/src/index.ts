@@ -6,6 +6,7 @@ import { allStubConnectors } from './connectors/stubs/index.js';
 import { osmConnector as realOsmConnector } from './connectors/implementations/osm.js';
 import { remajuConnector as realRemajuConnector } from './connectors/implementations/remaju.js';
 import { sunarpConnector as realSunarpConnector } from './connectors/implementations/sunarp.js';
+import { sunarpSprlConnector as realSunarpSprlConnector } from './connectors/implementations/sunarp-sprl.js';
 import { closePool, testConnection } from './db/connection.js';
 import { closeQueues } from './workers/queue.js';
 import { closeStorage } from './storage/index.js';
@@ -40,6 +41,15 @@ async function main() {
   logger.info(
     { servicio: realSunarpConnector.sourceName },
     'Real SUNARP posture connector registered (requires_auth, sin fetch)'
+  );
+
+  // 1e. Override the SUNARP SPRL stub with the real posture connector (Fase 5/T5.3).
+  // SPRL es el servicio de publicidad registral con valor legal: suscripción
+  // gratuita + pago por consulta — no automatizable (postura estática, sin fetch).
+  connectorRegistry.register(realSunarpSprlConnector);
+  logger.info(
+    { servicio: realSunarpSprlConnector.sourceName },
+    'Real SUNARP SPRL posture connector registered (requires_auth + pago, sin fetch)'
   );
 
   // 2. Build Fastify app

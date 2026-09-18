@@ -1,6 +1,6 @@
 # SUNARP — Registro y Titularidad (Fase 5)
 
-> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ — DONE (2026‑09‑18).
+> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ + T5.3 (SPRL) ✅ — DONE (2026‑09‑18).
 > Reporte de discovery y postura del conector `sunarp`.
 
 ## 1. Qué es SUNARP
@@ -50,6 +50,18 @@ Detalle de **Consulta de Propiedad** (T5.2):
   Ley 29733, minimización de datos). El conector `search()` lo señala con
   `requiresManualAction` y la URL oficial.
 
+Detalle de **SPRL** (T5.3):
+
+- **Servicio de Publicidad Registral en Línea** con **valor legal** (el único
+  camino a copias literales / certificados de gravamen oficiales).
+- Suscripción **gratuita** (usuario + clave), pero **cada consulta es de pago**:
+  visualización de partida (~S/ 6.90/página); copia literal ~S/ 14.00 (las dos
+  primeras hojas) + S/ 7.00 por hoja adicional; certificados varios.
+- No automatizable: requiere credenciales personales, **pago por servicio** y
+  CAPTCHA; no se automatiza la compra ni se almacenan credenciales. El conector
+  `sunarp_sprl` (`SunarpSprlConnector`) reporta `requires_auth` +
+  `requiresManualAction` con la guía de pago (visión en `docs/CONNECTORS.md`).
+
 ## 3. Veredicto de automatización
 
 > **No existe superficie pública SUNARP sin identidad + CAPTCHA** (a diferencia
@@ -85,8 +97,11 @@ Detalle de **Consulta de Propiedad** (T5.2):
   localizar la partida por nombre del propietario cuando no se conoce el número;
   el Research Engine incluye la guía combinada (Consulta de Propiedad + Conoce
   Aquí) en la manual action de la tarea `registry`.
-- **T5.3 SPRL** → `requires_auth` + pago (kind `payment`). Solo operador con
-  cuenta suscrita; útiles solo para copias legales/certificados.
+- **T5.3 SPRL** → ✅ DONE: conector `sunarp_sprl` real de postura
+  (`server/src/connectors/implementations/sunarp-sprl.ts`, registrado en
+  `index.ts` 1e): `requires_auth` + `requiresManualAction` que documenta
+  suscripción gratuita + **pago por servicio** (kind `payment` en el flujo
+  manual del operador; copias legales/certificados). No se automatiza la compra.
 - **T5.4 Registry normalization** → la normalización de partidas (formato
   `P-XXXXXXXX` de la Zona XII) se hace sobre datos que captura el operador.
 - **T5.6/5.7 cargas y asientos** → se rellenan desde el detalle manual.

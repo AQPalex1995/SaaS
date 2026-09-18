@@ -2,7 +2,7 @@
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
 > El estado del repositorio refleja la **Fase 4 (REM@JU) completada** y la
-> **Fase 5 (SUNARP) en progreso (T5.1 + T5.2 DONE)**.
+> **Fase 5 (SUNARP) en progreso (T5.1 + T5.2 + T5.3 DONE)**.
 > Las fases 0–2.5, la Fase 3 (T3.1 → T3.9), la Fase 4 (T4.1 → T4.9) y el
 > arranque de la Fase 5 (T5.1) están implementadas en `main`
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
@@ -438,10 +438,22 @@ cd server && npm.cmd run sync:sqlite
 > `login`) en vez de `unavailable`. Tests `server/tests/sunarp.test.ts` (5).
 > Suite **162/162 (25 archivos)**; typecheck server+root y build OK.
 >
-> **Siguiente tarea del plan**: **Fase 5 — SUNARP / T5.3 (SPRL)** — decidir la
-> postura del servicio de publicidad registral en línea (de pago): previsiblemente
-> `requires_auth` + kind `payment` para copias legales/certificados, sin
-> automatización de la compra; documentar + tests si aplica.
+> **Fase 5 — SUNARP / T5.3 (SPRL) ✅ DONE (2026‑09‑18)**: conector real de
+> postura `SunarpSprlConnector` (`server/src/connectors/implementations/
+> sunarp-sprl.ts`, `index.ts` 1e). SPRL (sprl.sunarp.gob.pe) = publicidad
+> registral con VALOR LEGAL: suscripción gratuita (usuario/clave) pero **pago por
+> consulta** (visualización ~S/ 6.90/página; copia literal ~S/ 14 las 2 primeras
+> hojas + S/ 7 adicionales). Postura `requires_auth` + `requiresManualAction`
+> (guía documenta el pago; no se automatiza la compra ni se almacenan
+> credenciales; sin peticiones de red ni datos simulados). Tests
+> `server/tests/sunarp-sprl.test.ts` (5). Suite **167/167 (26 archivos)**;
+> typecheck server+root y build OK.
+>
+> **Siguiente tarea del plan**: **Fase 5 — SUNARP / T5.4 (Registry normalization)**
+> — normalizar el formato de partida de la Zona Registral XII (Arequipa,
+> `P-XXXXXXXX`) y los campos del registro capturados manualmente (titular,
+> cargas) antes de persistir en `registry_properties`/`registry_owners`/
+> `registry_charges`; parser puro + fixtures + tests offline.
 > Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 5).
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.

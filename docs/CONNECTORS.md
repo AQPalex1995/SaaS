@@ -59,11 +59,13 @@ Los siguientes conectores se encuentran definidos y registrados en el `Connector
 > (Conoce Aquí y Consulta de Propiedad), por lo que el conector **no hace
 > peticiones de red**, reporta `requires_auth` + `requiresManualAction` y
 > `search()` devuelve vacío señalando la acción manual (nunca datos simulados,
-> ver `docs/SUNARP.md`).
-> El contrato de 14 fuentes en `/api/v1/sources` se mantiene: los tres reales
-> (`openstreetmap`, `remaju`, `sunarp`) se registran en `index.ts` DESPUÉS de los
-> 14 stubs. `SearchResult` admite campos opcionales `requiresManualAction`/
-> `manualActionDescription` (T5.2).
+> ver `docs/SUNARP.md`). Desde **T5.3** `sunarp_sprl` (SPRL, valor legal, de
+> pago) también es real SOLO como postura
+> (`server/src/connectors/implementations/sunarp-sprl.ts`).
+> El contrato de 14 fuentes en `/api/v1/sources` se mantiene: los cuatro reales
+> (`openstreetmap`, `remaju`, `sunarp`, `sunarp_sprl`) se registran en
+> `index.ts` DESPUÉS de los 14 stubs. `SearchResult` admite campos opcionales
+> `requiresManualAction`/`manualActionDescription` (T5.2).
 | `google_maps` | Google Maps Platform | Geocodificación inversa, vistas satelitales y Street View |
 | `openstreetmap` | OpenStreetMap / Nominatim | Georreferenciación de código abierto y cálculo de distancias |
 | `impla` | Instituto Municipal de Planeamiento Arequipa | Planos de zonificación, áreas de riesgo y planes específicos |

@@ -841,13 +841,13 @@ T4.9 monitoring — result:
   inyectado). Suite completa **157/157 (24 archivos)**; typecheck server+root y
   build OK.
 
-siguiente tarea del plan: **Fase 5 — SUNARP** (T5.3 SPRL).
+siguiente tarea del plan: **Fase 5 — SUNARP** (T5.4 Registry normalization).
 
 ============================================================
 PHASE 5 — SUNARP
 ============================================================
 
-STATUS: IN PROGRESS (T5.1–T5.2 DONE)
+STATUS: IN PROGRESS (T5.1–T5.3 DONE)
 
 Dividir:
 
@@ -873,7 +873,17 @@ Dividir:
   sin romper el contrato). Tests actualizados (5) — suite **162/162**;
   typecheck server+root y build OK.
 
-T5.3 SPRL
+- T5.3 SPRL — DONE (2026-09-18). Conector real de postura `SunarpSprlConnector`
+  (`server/src/connectors/implementations/sunarp-sprl.ts`, registrado en
+  `index.ts` 1e): SPRL (sprl.sunarp.gob.pe) es el servicio con VALOR LEGAL —
+  suscripción gratuita pero **pago por consulta** (visualización ~S/ 6.90/página;
+  copia literal ~S/ 14 las 2 primeras hojas + S/ 7 adicionales). Postura
+  `requires_auth` + `requiresManualAction` (guía documenta el pago; no se
+  automatiza la compra ni se guardan credenciales). Tests
+  `server/tests/sunarp-sprl.test.ts` (5) — suite completa **167/167
+  (26 archivos)**; typecheck server+root y build OK.
+
+T5.4 Registry normalization
 T5.4 Registry normalization
 T5.5 Owners
 T5.6 Charges

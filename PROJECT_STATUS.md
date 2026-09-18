@@ -39,30 +39,33 @@ PostGIS:
 ## Tests
 
 Server:
-✅ 162/162 (25 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2)
+✅ 167/167 (26 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3)
 
 Root:
 ✅
 
 ## Current Phase
 
-Phase 5 — ✅ SUNARP EN PROGRESO (T5.1 + T5.2 DONE, 2026-09-18). Fase 4 — REM@JU COMPLETED.
+Phase 5 — ✅ SUNARP EN PROGRESO (T5.1 + T5.2 + T5.3 DONE, 2026-09-18). Fase 4 — REM@JU COMPLETED.
 
 ## Current Task
 
-Fase 5 / T5.3 (SUNARP SPRL) — próximo paso. T5.1 + T5.2 completados:
+Fase 5 / T5.4 (Registry normalization) — próximo paso. T5.1–T5.3 completados:
 - **T5.1 Conoce Aquí**: discovery (`docs/SUNARP.md`): **ninguna superficie consultable
   sin identidad (DNI + fecha de emisión) + CAPTCHA** → no automatizable (Ley 29733, no
   bypass CAPTCHA, 3–5 consultas/día). Conector real de postura `SunarpConnector`
   (`server/src/connectors/implementations/sunarp.ts`) registrado en `index.ts` (1d).
-- **T5.2 Consulta de Propiedad**: segunda superficie (localizar partidas por NOMBRE del
-  propietario; DNI + fecha emisión + CAPTCHA + correo OTP; homonimia) anexada al mismo
-  conector: `search()` → `requiresManualAction` con instrucciones de Consulta de
-  Propiedad; `getStatus()` → guía combinada (localizar→Consulta de Propiedad; ver
-  contenido→Conoce Aquí). `SearchResult` ganó campos opcionales
-  `requiresManualAction`/`manualActionDescription` (aditivo, contrato intacto).
-Tareas `registry`/`bgr` → `requires_manual_action` (manual action kind `login`) con la
-guía combinada. Tests `server/tests/sunarp.test.ts` (5). Suite **162/162 (25 archivos)**;
+- **T5.2 Consulta de Propiedad**: localizar partidas por NOMBRE del propietario (DNI +
+  fecha emisión + CAPTCHA + correo OTP; homonimia) anexada al mismo conector:
+  `search()` → `requiresManualAction`; `getStatus()` → guía combinada.
+  `SearchResult` ganó campos opcionales `requiresManualAction`/`manualActionDescription`
+  (aditivo, contrato intacto).
+- **T5.3 SPRL**: conector real de postura `SunarpSprlConnector`
+  (`server/src/connectors/implementations/sunarp-sprl.ts`, index.ts 1e) — servicio con
+  valor legal, suscripción gratuita + **pago por consulta**; `requires_auth` +
+  `requiresManualAction` (no se automatiza compra ni se guardan credenciales).
+Tareas `registry`/`bgr` → `requires_manual_action` (manual action kind `login`).
+Tests: `sunarp.test.ts` (5) + `sunarp-sprl.test.ts` (5). Suite **167/167 (26 archivos)**;
 typecheck server+root y build OK.
 
 ## Blockers
