@@ -9,7 +9,7 @@
 
 - **Objetivo**: Plataforma de inteligencia territorial e inmobiliaria para terrenos en Arequipa, Perú (con expansión nacional).
 - **Evolución**: De un scraper local básico de Facebook Marketplace/Grupos (`FB Terreno Scout`) hacia una plataforma modular de due diligence inmobiliario, valuación y análisis registral/urbano (`Land Intelligence`).
-- **Estado Actual**: **Fase 4 EN CURSO (REM@JU, aprobada por el usuario)** — T4.1 discovery DONE (`docs/REMATE_JUDICIAL.md`); siguiente tarea T4.2 parser (zona pública, sin CAPTCHA). Ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). Fases 0–3 completadas (infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ, Research Engine T3.x).
+- **Estado Actual**: **Fase 4 EN CURSO (REM@JU, aprobada por el usuario)** — T4.1 discovery y T4.2 parser (superficie pública, sin CAPTCHA) DONE; siguiente tarea T4.3 normalization. Ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). Fases 0–3 completadas (infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ, Research Engine T3.x).
 - **Gobernanza**: este documento contiene las **Checkpoint Rules**, **Decision Gates** y **reglas de ejecución autónoma** (sección 2). Todo agente DEBE leer `PROJECT_EXECUTION_PLAN.md`, `PROJECT_STATUS.md` y `CHANGELOG_AGENTS.md` antes de escribir código.
 - **Enfoque**: Modular Monolith en TypeScript (Node.js ESM), Fastify, PostgreSQL 16 + PostGIS 3.4, Drizzle ORM, BullMQ, Vitest.
 
@@ -231,7 +231,7 @@ d:\SaaS\fb-terreno-scout\
 │   ├── drizzle/               # Migraciones SQL generadas (0000_military_salo.sql … 0003_natural_mysterio.sql)
 │   ├── scripts/
 │   │   └── queue-health.mjs   # Healthcheck Redis para el worker en Docker
-│   ├── tests/                 # Suite de pruebas Vitest (85 tests pasando)
+│   ├── tests/                 # Suite de pruebas Vitest (96 tests pasando)
 │   │   ├── app.test.ts        # Tests de API Fastify, /health, /sources
 │   │   ├── connector.test.ts  # Tests de registro y conectores stubs
 │   │   ├── research.test.ts   # Tests del motor de investigación
@@ -245,6 +245,9 @@ d:\SaaS\fb-terreno-scout\
 │   │   ├── schema.test.ts     # Tests de los 28 esquemas y 19 enums
 │   │   ├── sync.test.ts       # Tests de helpers de ingestión (contentHash, mapeos, etc.)
 │   │   └── osm.test.ts        # Tests del conector OpenStreetMap (fetch stubbed, sin red)
+│   │   └── remaju.test.ts     # Tests del parser REM@JU (fetch stubbed + fixtures HTML) (Fase 4/T4.2)
+│   └── fixtures/
+│       └── remaju-home.html   # Fixture offline del home público REM@JU (T4.2)
 │   └── src/
 │       ├── config.ts          # Configuración cloud-agnostic por env (incl. NOMINATIM_URL/OSM_USER_AGENT/SCOUT_DB_PATH)
 │       ├── logger.ts          # Logger Pino estructurado con censura de secretos
@@ -364,7 +367,7 @@ npm.cmd run db:seed       # Inserta usuario de sistema, fuentes y datos de prueb
 ### Paso 5: Ejecutar la suite de tests
 ```bash
 cd server
-npm.cmd test               # Ejecuta Vitest (85 tests automáticos)
+npm.cmd test               # Ejecuta Vitest (96 tests automáticos)
 npm.cmd run typecheck      # Verifica que TypeScript esté al 100% sin errores
 ```
 

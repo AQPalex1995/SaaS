@@ -21,6 +21,8 @@ export interface ServerConfig {
   storageLocalDir: string;
   nominatimUrl: string;
   osmUserAgent: string;
+  remajuHomeUrl: string;
+  remajuUserAgent: string;
   scoutDbPath: string;
 }
 
@@ -93,6 +95,11 @@ export const serverConfig: ServerConfig = {
   osmUserAgent: env(
     'OSM_USER_AGENT',
     'LandIntelligence/0.1 (land-intel-dev; +http://localhost:3001)'
+  ),
+  remajuHomeUrl: env('REMAJU_HOME_URL', 'https://remaju.pj.gob.pe/remaju/index.xhtml'),
+  remajuUserAgent: env(
+    'REMAJU_USER_AGENT',
+    'LandIntelligence/0.1 (land-intel-dev; public remate info reader; +http://localhost:3001)'
   ),
   scoutDbPath: env('SCOUT_DB_PATH', defaultScoutDbPath()),
 };

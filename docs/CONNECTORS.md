@@ -48,6 +48,13 @@ Los siguientes conectores se encuentran definidos y registrados en el `Connector
 | `sunarp_bgr` | SUNARP Base Gráfica Registral | Visor cartográfico de polígonos registrales oficiales |
 | `sunarp_sprl` | SUNARP Servicio de Publicidad Registral | Copias literales oficiales y certificados de gravamen (de pago) |
 | `remaju` | Remates Judiciales Electrónicos (REM@JU) | Oportunidades de terrenos en remate judicial por deuda/ejecución; señal `judicial` de riesgo |
+
+> **Estado real (Fase 4)**: desde T4.2 existe una implementación REAL del
+> conector `remaju` en `server/src/connectors/implementations/remaju.ts`
+> (parser de la superficie **pública** del home, sin login ni CAPTCHA,
+> ver `docs/REMATE_JUDICIAL.md`). El stub de `registry` conserva el slot para
+> que el registro del conector real se haga en **T4.6** (research connector)
+> manteniendo el contrato de 14 fuentes en `/api/v1/sources`.
 | `google_maps` | Google Maps Platform | Geocodificación inversa, vistas satelitales y Street View |
 | `openstreetmap` | OpenStreetMap / Nominatim | Georreferenciación de código abierto y cálculo de distancias |
 | `impla` | Instituto Municipal de Planeamiento Arequipa | Planos de zonificación, áreas de riesgo y planes específicos |

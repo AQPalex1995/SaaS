@@ -578,7 +578,7 @@ legal y respetando mecanismos de acceso.
 Tasks:
 
 T4.1 discovery — ✅ DONE (2026-09-17)
-T4.2 parser
+T4.2 parser — ✅ DONE (2026-09-17)
 T4.3 normalization
 T4.4 deduplication
 T4.5 Property linking
@@ -617,6 +617,33 @@ T4.1 discovery — result:
   Complemento oficial: El Peruano "Remates Judiciales" (nota).
 - Sandbox/capturas reales necesarias para confirmar el shape exacto del
   detalle público antes de T4.5 (enlace por partida).
+
+T4.2 parser — result:
+
+- Implementado `server/src/connectors/implementations/remaju.ts` (T4.2):
+  `RemajuConnector` (PropertyDataSource real, sourceId `remaju`) + parser puro
+  exportable `parseRemajuHome()`/`parseFechaRemaju()` sobre la **superficie
+  pública del home** (`/remaju/index.xhtml`). Sin login, sin CAPTCHA.
+- Extrae del carrusel: `convocatoria`, `tipoConvocatoria`, `remate` (del array
+  `pa:` PrimeFaces, aceptando `&quot;` y comillas planas), `tipoLabel`,
+  `ubicacion`, `fecha` (dd/MM/yyyy → `fechaISO`), `info`,
+  `esUltimoDiaInscripcion`.
+- Comportamiento responsable/legal:
+  - **Throttle 6 s** entre peticiones (una única sesión; desactivado en
+    `NODE_ENV=test`), cookie jar mínimo (`jsessionid`) y UA de identificación.
+  - 403/412 (Akamai) → degradación `unavailable`; 429 → `rate_limited`;
+    `search()` nunca inventa datos: ante fallo devuelve `items: []`.
+  - `search()` filtra por `district`/`query` (case/accent-insensitive) y aplica
+    `limit`; externalId `remaju:remate:<id>`; `getDetails()` informa que el
+    detalle AJAX queda para T4.5 (found:false).
+- Config: `REMAJU_HOME_URL` / `REMAJU_USER_AGENT` en `config.ts` + plantillas
+  `.env*.example` y `server/.env`.
+- Tests offline **`server/tests/remaju.test.ts`** (11 casos) con `fetch`
+  stubbed + **fixture** `server/tests/fixtures/remaju-home.html` (sin red).
+  Suite completa: **96/96 (14 archivos)**; typecheck y build del server OK.
+- Smoke test en vivo (1? consultas a la página pública): **276 remates**
+  parseados del home real (MIRAFLORES/40451/25296), filtro "cusco" → 2 hits,
+  `getStatus` → `available`. Ninguna interacción con login/CAPTCHA.
 
 ============================================================
 PHASE 5 — SUNARP

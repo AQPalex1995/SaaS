@@ -459,3 +459,50 @@ Deliverables/policy:
 Next:
 - **T4.2 — parser** (zona pública; fixtures offline + fetch stubbed como
   `osm.test.ts`).
+
+## 2026-09-17 — OpenCode — Phase 4 / T4.2 (REM@JU public parser)
+
+Implemented the REM@JU public-surface parser (no login, no CAPTCHA) per the
+T4.1 discovery report.
+
+Code:
+- New `server/src/connectors/implementations/remaju.ts`:
+  - Pure, testable `parseRemajuHome(html)` + `parseFechaRemaju()` extracting
+    the home carousel: `convocatoria`, `tipoConvocatoria`, `remate` (from the
+    PrimeFaces `pa:` array, accepting both `&quot;` and plain `"`), `tipoLabel`,
+    `ubicacion`, `fecha` (dd/MM/yyyy → `fechaISO`), `info`,
+    `esUltimoDiaInscripcion`.
+  - `RemajuConnector extends PropertyDataSource` (`sourceId: 'remaju'`):
+    `search()` (district/query filter, accent-insensitive, `limit`,
+    externalId `remaju:remate:<id>`), `getStatus()` (real availability) and
+    `getDetails()` (returns found:false; AJAX detail deferred to T4.5).
+  - Responsible-access design: 6 s throttle (disabled under NODE_ENV=test),
+    single-session cookie jar (`jsessionid`), identifying User-Agent, and
+    403/412 → `unavailable` / 429 → `rate_limited`; `search()` returns
+    `items: []` on failure — never fabricated data.
+- Config: `REMAJU_HOME_URL` / `REMAJU_USER_AGENT` in `server/src/config.ts`,
+  `server/.env` and all `.env*.example` templates.
+  (Note: in test/prod `env()` throws on missing values, so `server/.env` had to
+  be updated — same pattern as `NOMINATIM_URL`.)
+- Tests: new `server/tests/remaju.test.ts` (11 cases) with stubbed `fetch` and
+  new offline fixture `server/tests/fixtures/remaju-home.html`.
+  Two real bugs caught by tests: `\b` word-boundaries fail on accented text
+  (now accent-normalized `includes`), and `totalFound` counted unmappable
+  panels (now counts only items with an id).
+
+Verified:
+- `npm.cmd test` → **96/96 (14 files)**; `npm.cmd run typecheck` (server and
+  root) and `npm.cmd run build` all OK.
+- Live smoke (public home, a handful of requests): **276 remates** parsed
+  (first: MIRAFLORES/40451/25296), district `cusco` → 2 hits, `getStatus` =
+  `available`. No login/CAPTCHA interaction.
+
+Docs:
+- `PROJECT_EXECUTION_PLAN.md` (T4.2 DONE + result), `PROJECT_STATUS.md`
+  (Current Task → T4.3; test counts 96/96), `docs/CONNECTORS.md` (real remaju
+  note; registry wiring stays in T4.6), `docs/DEVELOPMENT.md`, `AGENTS.md`
+  (test counts 96; tree includes remaju tests/fixture), `docs/NEXT_STEPS.md`.
+
+Next:
+- **T4.3 — normalization** (typed fields, S/ values, districts; evaluate the
+  public AJAX listing/detail reachable without auth).

@@ -39,20 +39,21 @@ PostGIS:
 ## Tests
 
 Server:
-✅ 85/85
+✅ 96/96 (14 files — incl. `remaju.test.ts` T4.2)
 
 Root:
 ✅
 
 ## Current Phase
 
-Phase 4 — IN PROGRESS (REM@JU, T4.1 discovery done)
+Phase 4 — IN PROGRESS (REM@JU; T4.1 discovery + T4.2 parser done)
 
 ## Current Task
 
-Phase 4 / T4.2 (parser) — próximo paso; T4.1 discovery completado y
-documentado en `docs/REMATE_JUDICIAL.md` (portal público sin login viable,
-sin CAPTCHA; participación autenticada NO automatizable).
+Phase 4 / T4.3 (normalization) — próximo paso. T4.2 parser completado:
+`server/src/connectors/implementations/remaju.ts` (zona pública del home,
+sin CAPTCHA/login) + tests offline 96/96 + smoke en vivo (276 remates
+parseados del home público real). Reporte T4.1 en `docs/REMATE_JUDICIAL.md`.
 
 ## Blockers
 
@@ -63,9 +64,9 @@ None
 - La suite completa de tests emitió ruido ambiental durante T3.4–T3.6:
   `osm.test.ts` falla una llamada real a Nominatim (`500`) y `app.test.ts`
   reporta `ECONNREFUSED` a PostgreSQL 5433 (servicios locales detenidos), pero
-  **todos los archivos de test pasan** (13/13, 85/85). El smoke test en vivo no
-  se repitió: PostgreSQL/Redis/Docker estaban detenidos (ver CHANGELOG_AGENTS.md
-  2026-09-17, T3.4–T3.8).
+  **todos los archivos de test pasan** (14/14, 96/96). El smoke test en vivo de
+  REM@JU (T4.2) SÍ se repitió contra la página pública real: 276 remates
+  parseados (MIRAFLORES/40451/25296, distrito "cusco" → 2 hits).
 - Limitaciones conocidas del motor de investigación (reveladas por T3.8, sin
   corregir en una tarea de tests):
   - `createResearch` no deduplica investigaciones activas del mismo inmueble.

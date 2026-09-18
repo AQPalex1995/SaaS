@@ -4,7 +4,8 @@
 > El estado del repositorio refleja la **Fase 4 (REM@JU)** en curso.
 > Las fases 0–2.5 y la Fase 3 (T3.1 → T3.9) están implementadas en `main`
 > (Fase 3 completada el 2026-09-17); la Fase 4 fue aprobada por el usuario y
-> el T4.1 (discovery) ya está documentado (ver §5 y `docs/REMATE_JUDICIAL.md`).
+> los T4.1 (discovery) y T4.2 (parser público) ya están completados
+> (ver §5, `docs/REMATE_JUDICIAL.md` y `server/src/connectors/implementations/remaju.ts`).
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
 > Lee atentamente este documento antes de escribir código.
 > **Reglas operativas vigentes (AGENTS.md)**: el agente inicia **automáticamente** Docker/PostgreSQL
@@ -21,7 +22,7 @@
 - **Colas**: 6 colas BullMQ definidas en `server/src/workers/queue.ts`, con consumidores reales para `geocoding` y `research`.
 - **Ingesta**: Motor de sincronización `server/src/domain/ingestion/sync.ts` + CLI `server/src/scripts/sync-sqlite.ts`.
 - **UI**: Panel Scout intacto en puerto `8787` con botón `[INVESTIGAR]`, `Property Intelligence Drawer`, badges en tiempo real y lista dinámica de fuentes.
-- **Pruebas**: 85 tests automatizados pasando en Vitest (`cd server && npm.cmd test`).
+- **Pruebas**: 96 tests automatizados pasando en Vitest (`cd server && npm.cmd test`).
 
 > **Bugs conocidos y divergencias**: la base SQLite real es `data/scout.db` (no `data/terrenos.db` como cita la doc);
 > `node:sqlite` requiere import dinámico en Docker `node:22` (ya resuelto en `sync.ts`).
@@ -352,7 +353,8 @@ Antes de dar por concluida cualquier sesión de trabajo, ejecuta siempre:
 cd server
 npm.cmd run typecheck
 
-# 2. Ejecutar toda la suite de tests (85 tests)npm.cmd test
+# 2. Ejecutar toda la suite de tests (96 tests)
+npm.cmd test
 
 # 3. Build de producción del servidor
 npm.cmd run build
@@ -385,10 +387,15 @@ cd server && npm.cmd run sync:sqlite
 > **T4.1 discovery → ✅ DONE**: reporte en `docs/REMATE_JUDICIAL.md`
 > (portal público sin login viable, sin CAPTCHA; participación autenticada
 > NO automatizable; Akamai + JSF/ViewState; no hay JSON/API pública).
+> **T4.2 parser → ✅ DONE**: `server/src/connectors/implementations/remaju.ts`
+> (`parseRemajuHome` + `RemajuConnector`) parsea el carrusel público
+> (276 remates en vivo), con throttle 6s, cookie jar `jsessionid`, degradación
+> ante 403/429 y tests offline 96/96.
 >
-> **Siguiente tarea del plan**: **Fase 4 / T4.2 — parser** (zona pública:
-> home/carrusel y, si es alcanzable sin auth ni captcha, listado/detalle AJAX
-> con ViewState). Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 4).
+> **Siguiente tarea del plan**: **Fase 4 / T4.3 — normalization**
+> (tipos, fechas ISO, valores S/, distritos; y, si aplica, evaluación del
+> listado/detalle AJAX público sin auth). Ver `PROJECT_EXECUTION_PLAN.md`
+> (PHASE 4).
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.
 - Implementar la verificación a nivel de caso: confirmar manualmente la identidad del property y la coordenada geocodificada (hoy `verification='inferred'`).

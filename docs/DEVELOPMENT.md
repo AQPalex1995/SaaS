@@ -75,7 +75,7 @@ docker compose stop postgres redis
 | `npm.cmd run db:seed` | Inserta datos de prueba (usuario, fuentes, propiedad de ejemplo) |
 | `npm.cmd run db:setup` | TODO EN UNO: extensiones PostGIS + migraciones + seed (idempotente) |
 | `npm.cmd run db:studio` | Abre Drizzle Studio en el navegador para explorar la base de datos |
-| `npm.cmd test` | Ejecuta la suite de pruebas unitarias e integración con Vitest (85 tests) |
+| `npm.cmd test` | Ejecuta la suite de pruebas unitarias e integración con Vitest (96 tests) |
 | `npm.cmd run test:watch` | Ejecuta Vitest en modo observador interactivo |
 
 ### En la raíz del proyecto (`fb-terreno-scout`):
