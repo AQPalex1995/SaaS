@@ -17,6 +17,10 @@ PostgreSQL:
 Redis:
 ▶️ 6380 (docker `land-intel-redis`, healthy)
 
+GitHub:
+✅ `origin` → `https://github.com/AQPalex1995/SaaS.git` — `main` sincronizado
+   (autopush por checkpoint, ver AGENTS.md §2.9)
+
 > Nota: los contenedores `land-intel-postgres`/`land-intel-redis` se levantaron
 > al final de la sesión para aplicar la migración `0003`. La API y el Scout
 > permanecen detenidos (ver CHANGELOG_AGENTS.md).
