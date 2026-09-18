@@ -4,6 +4,7 @@ import { logger } from './logger.js';
 import { connectorRegistry } from './connectors/registry.js';
 import { allStubConnectors } from './connectors/stubs/index.js';
 import { osmConnector as realOsmConnector } from './connectors/implementations/osm.js';
+import { remajuConnector as realRemajuConnector } from './connectors/implementations/remaju.js';
 import { closePool, testConnection } from './db/connection.js';
 import { closeQueues } from './workers/queue.js';
 import { closeStorage } from './storage/index.js';
@@ -22,6 +23,13 @@ async function main() {
   logger.info(
     { baseUrl: serverConfig.nominatimUrl },
     'Real OpenStreetMap/Nominatim connector registered'
+  );
+
+  // 1c. Override the REM@JU stub with the real public-surface connector (Fase 4).
+  connectorRegistry.register(realRemajuConnector);
+  logger.info(
+    { homeUrl: serverConfig.remajuHomeUrl },
+    'Real REM@JU public connector registered'
   );
 
   // 2. Build Fastify app

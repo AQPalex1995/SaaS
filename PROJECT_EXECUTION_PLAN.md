@@ -582,7 +582,8 @@ T4.2 parser — ✅ DONE (2026-09-17)
 T4.3 normalization — ✅ DONE (2026-09-17)
 T4.4 deduplication — ✅ DONE (2026-09-17)
 T4.5 Property linking + manual intake — ✅ DONE (2026-09-17)
-T4.6 research connector
+T4.6 research connector — ✅ DONE (2026-09-17)
+T4.7 manual action handling
 T4.7 manual action handling
 T4.8 tests
 T4.9 monitoring
@@ -733,6 +734,42 @@ T4.5 property linking + manual intake — result:
 Siguiente: **T4.6 research connector** (integrar `RemajuConnector` +
 `RemateIntakeService` al Research Engine: `TASK_SOURCE_MAP`, `recordResearchResult`,
 `requestManualAction` cuando el detalle requiere CAPTCHA).
+
+T4.6 research connector — result:
+
+- La tarea de investigación `judicial` ahora la ejecuta el orquestador contra
+  REM@JU (real): `TASK_SOURCE_MAP.judicial = 'remaju'`, nuevo constructor con
+  `OrchestratorDeps.remajuSearch` (inyectable en tests; por defecto
+  `remajuConnector.search`) y nuevo `executeRemajuTask()` en
+  `server/src/domain/research/orchestrator.ts`.
+- Nuevo módulo puro `server/src/domain/research/remaju-research.ts`:
+  - `toRemateEntry(item)`: extrae los campos normalizados del `rawData` del
+    carrusel (partida opcional, ubicación, `ubicacionKey`, fecha, tipo, ids).
+  - `planRemajuMatches(property, remates)`: empareja el remate contra la property
+    (partida registral fuerte → `partida`/`high`; distrito/dirección débil → `low`)
+    usando `remaju-link.ts`; devuelve matches ordenados, `hardMatch`, confidence y
+    warnings (p. ej. "la property no tiene partida registral").
+- Comportamiento de la tarea:
+  - Sin distrito/dirección → `requires_manual_action` (no se puede ubicar).
+  - Carrusel sin remates → `completed` con "Sin remates públicos".
+  - Match partida → `recordResearchResult` (`source:'remaju'`, `dataType:
+    'judicial'`, `confidence` high/low, `verification:'reported'`,
+    `parserVersion:'remaju-research-v1'`, matches en `data`) y la tarea se
+    completa o pasa a `requires_manual_action` (kind `captcha`, url al home,
+    `metadata.resultReference`) si solo hay candidatos débiles.
+- `index.ts` registra el conector REM@JU **real** en el registry (reemplaza el
+  stub), junto a OSM. El worker de research usa el orquestador (sin cambios).
+- Tests: `server/tests/remaju-research.test.ts` (6 casos puros: extracción,
+  distrito débil, hard match por partida, warnings, confianza unknown, orden) y
+  `server/tests/orchestrator.test.ts` (+3 casos del flujo judicial con
+  `remajuSearch` fake: candidatos + manual action, carrusel vacío, property sin
+  datos). `research-flows.test.ts` (flujo completo 8 tareas) ahora inyecta un
+  `remajuSearch` vacío (sin red en la suite) y verifica `judicial → completed`.
+  Suite completa **145/145 (21 archivos)**; typecheck server+root y build OK.
+
+Siguiente: **T4.7 manual action handling** (afinar el ciclo completo
+manual: listado/UI ya expuestos en T4.5b, verificación de estados
+`requires_manual_action` ↔ `completed`, cancelación desde la API).
 
 ============================================================
 PHASE 5 — SUNARP

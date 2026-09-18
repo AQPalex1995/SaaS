@@ -265,20 +265,30 @@ describe('T3.8 — Research flows', () => {
       property: property(),
     });
 
-    const orchestrator = new ResearchOrchestrator(db);
+    const orchestrator = new ResearchOrchestrator(db, {
+      // REM@JU con carrusel vacío en test: sin remates públicos → se completa
+      // con 'Sin información' (sin peticiones de red en la suite).
+      remajuSearch: async () => ({
+        items: [],
+        totalFound: 0,
+        source: 'remaju',
+        searchedAt: new Date(),
+      }),
+    });
     const result = await orchestrator.executeCase(CASE_ID);
 
     expect(result.status).toBe('completed');
     expect(result.completedTasks).toBe(8);
     expect(result.totalTasks).toBe(8);
     expect(result.errorCount).toBe(0);
-    expect(result.warningCount).toBe(6); // 4 connector stubs + market + risk
+    expect(result.warningCount).toBe(5); // 3 conectores stub (registry/bgr/urbanism) + market + risk
     expect(result.summary).toBe('Caso completado correctamente');
 
     const byType = Object.fromEntries(db._state.tasks.map((t: any) => [t.taskType, t.status]));
     expect(byType.identity).toBe('completed');
     expect(byType.geolocation).toBe('skipped'); // coordinates already verified
     expect(byType.registry).toBe('unavailable');
+    expect(byType.judicial).toBe('completed'); // carrusel público REM@JU sin remates
     expect(byType.risk).toBe('unavailable');
 
     // identity + geolocation (skipped, still recorded) persist provenance rows

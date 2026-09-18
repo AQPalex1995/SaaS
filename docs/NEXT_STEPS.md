@@ -403,12 +403,16 @@ cd server && npm.cmd run sync:sqlite
 > `server/src/connectors/implementations/remaju-link.ts` (partida fuerte,
 > dirección/distrito débil), `server/src/domain/research/remate-manual.ts` +
 > `remate-intake.service.ts` + `remate-intake.routes.ts` (intake manual, PDF a
-> storage y UI en `/manual-actions`), integrado en `app.ts`; suite
-> **136/136 (20 archivos)**.
+> storage y UI en `/manual-actions`), integrado en `app.ts`.
+> **T4.6 research connector → ✅ DONE**:
+> `server/src/domain/research/remaju-research.ts` (`planRemajuMatches`) +
+> `executeRemajuTask` en el orquestador (`TASK_SOURCE_MAP.judicial='remaju'`,
+> dep inyectable `remajuSearch`); conector REM@JU real registrado; suite
+> **145/145 (21 archivos)**.
 >
-> **Siguiente tarea del plan**: **Fase 4 / T4.6 — research connector**
-> (integrar `RemajuConnector` + `RemateIntakeService` al Research Engine:
-> `TASK_SOURCE_MAP`, `recordResearchResult`, `requestManualAction`).
+> **Siguiente tarea del plan**: **Fase 4 / T4.7 — manual action handling**
+> (ciclo manual completo: `requested → completed | cancelled`, DTOs/API y
+> verificación de estados `requires_manual_action`).
 > Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 4).
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.

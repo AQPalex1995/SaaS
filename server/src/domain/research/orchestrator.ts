@@ -2,6 +2,7 @@ import { eq, and } from 'drizzle-orm';
 import { getDb, type Database } from '../../db/connection.js';
 import {
   properties,
+  registryProperties,
   researchCases,
   researchTasks,
 } from '../../db/schema/index.js';
@@ -19,8 +20,10 @@ import {
 import { recordResearchResult } from './result-provenance.js';
 import { ManualActionService } from './manual-action.service.js';
 import { connectorRegistry } from '../../connectors/registry.js';
-import type { SourceType } from '../../connectors/base.js';
+import type { SearchParams, SearchResult, SourceType } from '../../connectors/base.js';
 import { osmConnector } from '../../connectors/implementations/osm.js';
+import { REMAJU_HOME_URL, remajuConnector } from '../../connectors/implementations/remaju.js';
+import { planRemajuMatches, toRemateEntry } from './remaju-research.js';
 import { logger } from '../../logger.js';
 
 export interface OrchestratorOptions {
@@ -30,6 +33,11 @@ export interface OrchestratorOptions {
    * Default is false when calling orchestrator directly, true when called from research worker.
    */
   skipGeolocation?: boolean;
+}
+
+export interface OrchestratorDeps {
+  /** Injectable REM@JU search (tests); defaults to the real public connector. */
+  remajuSearch?: (params: SearchParams) => Promise<SearchResult>;
 }
 
 export interface OrchestrationResult {
@@ -48,7 +56,7 @@ export const TASK_SOURCE_MAP: Record<string, SourceType> = {
   registry: 'sunarp',
   bgr: 'sunarp_bgr',
   urbanism: 'impla',
-  judicial: 'cej',
+  judicial: 'remaju',
 };
 
 /**
@@ -74,10 +82,12 @@ export const TASK_SOURCE_MAP: Record<string, SourceType> = {
 export class ResearchOrchestrator {
   private db: Database;
   private manualActions: ManualActionService;
+  private remajuSearch: (params: SearchParams) => Promise<SearchResult>;
 
-  constructor(db?: Database) {
+  constructor(db?: Database, deps: OrchestratorDeps = {}) {
     this.db = db ?? getDb();
     this.manualActions = new ManualActionService(this.db);
+    this.remajuSearch = deps.remajuSearch ?? ((params) => remajuConnector.search(params));
   }
 
   /**
@@ -224,8 +234,10 @@ export class ResearchOrchestrator {
       case 'registry':
       case 'bgr':
       case 'urbanism':
-      case 'judicial':
         return await this.executeConnectorTask(task.id, task.taskType, propertyId);
+
+      case 'judicial':
+        return await this.executeRemajuTask(task.id, propertyId);
 
       case 'market':
       case 'risk':
@@ -399,6 +411,149 @@ export class ResearchOrchestrator {
     });
 
     return resultId;
+  }
+
+  /**
+   * T4: Judicial auction task backed by REM@JU (Fase 4 / T4.6).
+   *
+   * Searches the public carousel (no CAPTCHA) and matches it against the
+   * property's partida/dirección. A strong link only happens when the partida
+   * is already known; otherwise the CAPTCHA-gated detail must be captured by a
+   * human, so the task lands on `requires_manual_action` with a pending action
+   * (completed later via the REM@JU manual intake API).
+   */
+  private async executeRemajuTask(
+    researchTaskId: string,
+    propertyId: string,
+  ): Promise<string | null> {
+    const propRows = await this.db
+      .select()
+      .from(properties)
+      .where(eq(properties.id, propertyId))
+      .limit(1);
+
+    const prop = propRows[0];
+    if (!prop) {
+      throw new Error(`Property ${propertyId} not found for judicial task`);
+    }
+
+    if (!prop.district && !prop.address) {
+      await this.requireRemajuManualAction(
+        researchTaskId,
+        propertyId,
+        'Sin distrito ni dirección: no se puede ubicar el remate en REM@JU',
+      );
+      return null;
+    }
+
+    const registryRows = await this.db
+      .select({ registryNumber: registryProperties.registryNumber })
+      .from(registryProperties)
+      .where(eq(registryProperties.propertyId, propertyId));
+
+    const registryNumbers = registryRows
+      .map((r) => r.registryNumber)
+      .filter((n): n is string => Boolean(n));
+
+    const searchResult = await this.remajuSearch({
+      district: prop.district ?? undefined,
+      query: prop.district ?? undefined,
+      limit: 50,
+    });
+
+    const entries = searchResult.items.map(toRemateEntry);
+    const plan = planRemajuMatches(
+      {
+        propertyId,
+        district: prop.district,
+        address: prop.address,
+        registryNumbers,
+      },
+      entries,
+    );
+
+    if (entries.length === 0) {
+      await transitionTask(this.db, researchTaskId, 'completed', {
+        error: 'Sin remates públicos en REM@JU para el distrito consultado',
+      });
+      return null;
+    }
+
+    const resId = await recordResearchResult(this.db, {
+      researchTaskId,
+      propertyId,
+      source: 'remaju',
+      sourceUrl: REMAJU_HOME_URL,
+      dataType: 'judicial',
+      data: {
+        district: prop.district,
+        totalRemates: entries.length,
+        matchCount: plan.matches.length,
+        hardMatch: plan.hardMatch,
+        bestMatchType: plan.bestMatchType,
+        matches: plan.matches.map((m) => ({
+          externalId: m.externalId,
+          sourceUrl: m.sourceUrl,
+          title: m.title,
+          matchType: m.matchType,
+          confidence: m.confidence,
+          score: m.score,
+          ubicacion: m.remate.ubicacion,
+          fechaISO: m.remate.fechaISO,
+          tipo: m.remate.tipo,
+        })),
+      },
+      rawData: { remates: entries },
+      retrievedAt: searchResult.searchedAt,
+      confidence: plan.confidence === 'unknown' ? 'low' : plan.confidence,
+      verification: 'reported',
+      parserVersion: 'remaju-research-v1',
+      metadata: { warnings: plan.warnings },
+    });
+
+    if (plan.hardMatch) {
+      await transitionTask(this.db, researchTaskId, 'completed', {
+        resultReference: resId,
+      });
+      return resId;
+    }
+
+    await this.requireRemajuManualAction(
+      researchTaskId,
+      propertyId,
+      plan.matches.length > 0
+        ? `REM@JU: ${plan.matches.length} remate(s) candidato(s) en "${prop.district}". Falta la partida registral (detalle con CAPTCHA): captura el aviso y regístralo.`
+        : `REM@JU: sin coincidencias públicas para "${prop.district}". Si hay un remate, captura el aviso y regístralo.`,
+      resId,
+    );
+    return resId;
+  }
+
+  /** Mark the task as requiring a human REM@JU capture and request the action. */
+  private async requireRemajuManualAction(
+    researchTaskId: string,
+    propertyId: string,
+    description: string,
+    resultReference?: string,
+  ): Promise<void> {
+    await transitionTask(this.db, researchTaskId, 'requires_manual_action', {
+      manualActionDescription: description,
+      ...(resultReference ? { resultReference } : {}),
+    });
+    try {
+      await this.manualActions.requestManualAction(researchTaskId, propertyId, {
+        actionKind: 'captcha',
+        instructions: description,
+        url: REMAJU_HOME_URL,
+        source: 'remaju',
+        metadata: resultReference ? { resultReference } : null,
+      });
+    } catch (err: any) {
+      logger.warn(
+        { researchTaskId, err: err?.message },
+        'No se pudo crear la manual action de REM@JU',
+      );
+    }
   }
 
   /**

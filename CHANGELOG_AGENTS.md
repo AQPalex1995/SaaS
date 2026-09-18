@@ -613,3 +613,40 @@ Next:
 - **T4.6 — research connector**: wire `RemajuConnector` + `RemateIntakeService`
   into the Research Engine (`TASK_SOURCE_MAP`, `recordResearchResult`,
   `requestManualAction` when the CAPTCHA-gated detail is required).
+
+## 2026-09-17 — OpenCode — Phase 4 / T4.6 (REM@JU research connector)
+
+Wired REM@JU into the Research Engine: the `judicial` task is now backed by the
+real public-surface connector instead of a stub.
+
+Code:
+- `server/src/connectors/implementations/remaju.ts`: unchanged connector, now
+  registered as **real** in `server/src/index.ts` (replaces the stub).
+- `server/src/domain/research/remaju-research.ts` (pure): `toRemateEntry()` +
+  `planRemajuMatches()` — matches public carousel remates against a property by
+  partida (strong) or district/address (weak) via `remaju-link.ts`; returns
+  ordered matches, `hardMatch`, confidence and warnings.
+- `server/src/domain/research/orchestrator.ts`:
+  - `TASK_SOURCE_MAP.judicial = 'remaju'`.
+  - Constructor accepts `OrchestratorDeps.remajuSearch` (injectable; defaults to
+    `remajuConnector.search`).
+  - New `executeRemajuTask()`: queries `properties` + `registry_properties`,
+    searches the public carousel by district, plans matches and either records a
+    `judicial` result (`source:'remaju'`, `verification:'reported'`,
+    `parserVersion:'remaju-research-v1'`) and completes, or — when only weak
+    candidates exist — lands on `requires_manual_action` and requests a
+    `captcha`-kind manual action pointing at the REM@JU home.
+- Tests: `remaju-research.test.ts` (6 pure) + 3 `judicial` orchestrator tests
+  (fake `remajuSearch`, in-memory DB). `research-flows` full 8-task scenario now
+  injects an empty `remajuSearch` (no live network in the suite) and asserts
+  `judicial → completed`. Suite **145/145 (21 files)**; server+root typecheck and
+  build OK.
+
+Notes:
+- A hard partida match is impossible from the public carousel alone (the detail
+  with the partida is CAPTCHA-gated); the honest state for weak matches is
+  `requires_manual_action`, completed later through the T4.5 intake API.
+
+Next:
+- **T4.7 — manual action handling**: refine the end-to-end manual cycle
+  (pending → completed/`cancelled` from the API, DTOs, states).

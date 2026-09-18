@@ -6,11 +6,13 @@ import {
 import { connectorRegistry } from '../src/connectors/registry.js';
 import { allStubConnectors } from '../src/connectors/stubs/index.js';
 import { ResearchService } from '../src/domain/research/service.js';
+import type { SearchParams, SearchResult } from '../src/connectors/base.js';
 import {
   researchCases,
   researchTasks,
   researchResults,
   properties,
+  manualActions,
 } from '../src/db/schema/index.js';
 
 describe('T3.3 — Research Orchestration', () => {
@@ -27,7 +29,7 @@ describe('T3.3 — Research Orchestration', () => {
         registry: 'sunarp',
         bgr: 'sunarp_bgr',
         urbanism: 'impla',
-        judicial: 'cej',
+        judicial: 'remaju',
       });
     });
 
@@ -335,5 +337,167 @@ describe('T3.3 — Research Orchestration', () => {
       const results = await service.getResults('empty-case');
       expect(results).toEqual([]);
     });
+  });
+});
+
+describe('T4.6 — REM@JU judicial task (Research Engine)', () => {
+  const caseId = '00000000-0000-0000-0000-000000000001';
+  const propId = '00000000-0000-0000-0000-000000000002';
+
+  function makeMockDb(taskStatus = 'pending') {
+    const caseRow = {
+      id: caseId,
+      propertyId: propId,
+      status: 'created',
+      completedTaskCount: 0,
+      totalTaskCount: 1,
+      errorCount: 0,
+      warningCount: 0,
+    };
+    const taskRows = [
+      { id: 'task-judicial', researchCaseId: caseId, taskType: 'judicial', status: taskStatus },
+    ];
+    const propertyRow: {
+      id: string;
+      district: string | null;
+      address: string | null;
+      latitude: null;
+      longitude: null;
+      locationVerification: null;
+    } = {
+      id: propId,
+      district: 'Arequipa',
+      address: 'Av. Ejército 400',
+      latitude: null,
+      longitude: null,
+      locationVerification: null,
+    };
+
+    // Minimal select/update/insert mock reusing the outer suite's helpers is not
+    // exported, so build a small local one covering the remaju path.
+    const makeQuery = (data: any[]) => {
+      const promise = Promise.resolve(data);
+      const q: any = {
+        limit: vi.fn().mockImplementation((n: number) => Promise.resolve(data.slice(0, n))),
+        orderBy: vi.fn().mockImplementation(() => Promise.resolve(data)),
+        then: (onfulfilled: any, onrejected: any) => promise.then(onfulfilled, onrejected),
+        catch: (onrejected: any) => promise.catch(onrejected),
+      };
+      return q;
+    };
+
+    const state = { results: [] as any[], taskRows, manualActions: [] as any[] };
+
+    const mockDb: any = {
+      select: vi.fn().mockImplementation(() => ({
+        from: vi.fn().mockImplementation((table: any) => ({
+          where: vi.fn().mockImplementation(() => {
+            let data: any[] = [];
+            if (table === researchCases) data = [caseRow];
+            else if (table === researchTasks) data = state.taskRows;
+            else if (table === properties) data = [propertyRow];
+            else if (table === researchResults) data = state.results;
+            return makeQuery(data);
+          }),
+        })),
+      })),
+      update: vi.fn().mockImplementation((table: any) => ({
+        set: vi.fn().mockImplementation(() => ({
+          where: vi.fn().mockImplementation(() => {
+            const retVal = [{ id: 'updated-id' }];
+            return {
+              returning: vi.fn().mockReturnValue(Promise.resolve(retVal)),
+              then: (onfulfilled: any, onrejected: any) =>
+                Promise.resolve(retVal).then(onfulfilled, onrejected),
+            };
+          }),
+        })),
+      })),
+      insert: vi.fn().mockImplementation((table: any) => ({
+        values: vi.fn().mockImplementation((values: any) => {
+          const row = { id: `row-${state.results.length}-${state.manualActions.length}`, ...values };
+          if (table === researchResults) state.results.push(row);
+          else if (table === manualActions) state.manualActions.push(row);
+          const retVal = [row];
+          return {
+            returning: vi.fn().mockReturnValue(Promise.resolve(retVal)),
+            then: (onfulfilled: any, onrejected: any) =>
+              Promise.resolve(retVal).then(onfulfilled, onrejected),
+          };
+        }),
+      })),
+      _state: state,
+    };
+    return { mockDb, propertyRow };
+  }
+
+  it('registra candidatos y pide manual action cuando no hay enlace fuerte', async () => {
+    const { mockDb } = makeMockDb();
+    const fakeSearch = vi.fn(async (): Promise<SearchResult> => ({
+      items: [
+        {
+          externalId: 'remaju:remate:1',
+          sourceUrl: 'https://remaju.pj.gob.pe/remaju/index.xhtml?remate=1',
+          title: 'Remate · Arequipa',
+          district: 'Arequipa',
+          rawData: {
+            normalized: {
+              ubicacion: 'Arequipa',
+              ubicacionKey: 'AREQUIPA',
+              fechaISO: '2026-10-01T00:00:00.000Z',
+              tipo: 'remate_simple',
+            },
+          },
+        },
+      ],
+      totalFound: 1,
+      source: 'remaju',
+      searchedAt: new Date(),
+    }));
+
+    const orchestrator = new ResearchOrchestrator(mockDb, { remajuSearch: fakeSearch });
+    const resId = await orchestrator.executeTask(mockDb._state.taskRows[0], propId);
+
+    expect(resId).toBeDefined();
+    expect(mockDb._state.results).toHaveLength(1);
+    const result = mockDb._state.results[0];
+    expect(result.source).toBe('remaju');
+    expect(result.dataType).toBe('judicial');
+    expect(result.verification).toBe('reported');
+    expect(result.data.matchCount).toBe(1);
+    expect(result.data.hardMatch).toBe(false);
+    // Se solicita acción manual por el detalle con CAPTCHA
+    expect(mockDb._state.manualActions).toHaveLength(1);
+    expect(mockDb._state.manualActions[0].source).toBe('remaju');
+  });
+
+  it('completa sin info cuando el carrusel público no trae remates', async () => {
+    const { mockDb } = makeMockDb();
+    const fakeSearch = vi.fn(async (): Promise<SearchResult> => ({
+      items: [],
+      totalFound: 0,
+      source: 'remaju',
+      searchedAt: new Date(),
+    }));
+
+    const orchestrator = new ResearchOrchestrator(mockDb, { remajuSearch: fakeSearch });
+    const resId = await orchestrator.executeTask(mockDb._state.taskRows[0], propId);
+
+    expect(resId).toBeNull();
+    expect(mockDb._state.results).toHaveLength(0);
+    expect(mockDb._state.manualActions).toHaveLength(0);
+  });
+
+  it('pide manual action si la property no tiene distrito ni dirección', async () => {
+    const { mockDb, propertyRow } = makeMockDb();
+    propertyRow.district = null;
+    propertyRow.address = null;
+
+    const orchestrator = new ResearchOrchestrator(mockDb, { remajuSearch: vi.fn() });
+    const resId = await orchestrator.executeTask(mockDb._state.taskRows[0], propId);
+
+    expect(resId).toBeNull();
+    expect(mockDb._state.manualActions).toHaveLength(1);
+    expect(mockDb._state.results).toHaveLength(0);
   });
 });

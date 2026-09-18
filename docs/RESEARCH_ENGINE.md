@@ -76,6 +76,17 @@ graph TD
   (ver `docs/REMATE_JUDICIAL.md`). El conector consumirá solo la vía pública y
   delegará a **acción manual** (`manual_actions`) cualquier paso que exija
   CAPTCHA/login.
+- **Implementación (Fase 4, T4.6)**: la tarea `judicial` la ejecuta ahora el
+  orquestador (`executeRemajuTask`) contra el conector REM@JU real (registrado en
+  `index.ts`): busca el carrusel público por distrito, empareja contra la partida
+  registral/dirección de la property (`remaju-research.ts` + `remaju-link.ts`) y:
+  - hard match por partida → resultado `confidence: 'high'` + `completed`;
+  - solo candidatos débiles (distrito) → resultado `low` y la tarea pasa a
+    `requires_manual_action` con `manual_action` (`kind: 'captcha'`) para que un
+    operador capture el aviso (PDF) vía `/api/v1/manual-actions/.../complete`;
+  - carrusel sin remates → `completed` con "Sin remates públicos".
+  Provenance: `source: 'remaju'`, `dataType: 'judicial'`, `verification:
+  'reported'`, `parserVersion: 'remaju-research-v1'`.
 
 ### Tarea 7: Valuación y Comparables de Mercado (`market`)
 - **Objetivo**: Analizar precios de terrenos en la misma zona o distrito dentro de un radio de 500m a 2km para calcular el valor promedio por m² y detectar si la publicación está bajo o sobre el precio de mercado.

@@ -9,7 +9,7 @@
 
 - **Objetivo**: Plataforma de inteligencia territorial e inmobiliaria para terrenos en Arequipa, Perú (con expansión nacional).
 - **Evolución**: De un scraper local básico de Facebook Marketplace/Grupos (`FB Terreno Scout`) hacia una plataforma modular de due diligence inmobiliario, valuación y análisis registral/urbano (`Land Intelligence`).
-- **Estado Actual**: **Fase 4 EN CURSO (REM@JU, aprobada por el usuario)** — T4.1 discovery, T4.2 parser, T4.3 normalization, T4.4 deduplication y T4.5 linking + intake manual DONE; siguiente tarea **T4.6 research connector**. Ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). Fases 0–3 completadas (infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ, Research Engine T3.x).
+- **Estado Actual**: **Fase 4 EN CURSO (REM@JU, aprobada por el usuario)** — T4.1 a T4.6 DONE (discovery, parser, normalization, dedup, linking + intake manual, research connector); siguiente tarea **T4.7 manual action handling**. Ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). Fases 0–3 completadas (infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ, Research Engine T3.x).
 - **Gobernanza**: este documento contiene las **Checkpoint Rules**, **Decision Gates** y **reglas de ejecución autónoma** (sección 2). Todo agente DEBE leer `PROJECT_EXECUTION_PLAN.md`, `PROJECT_STATUS.md` y `CHANGELOG_AGENTS.md` antes de escribir código.
 - **Enfoque**: Modular Monolith en TypeScript (Node.js ESM), Fastify, PostgreSQL 16 + PostGIS 3.4, Drizzle ORM, BullMQ, Vitest.
 
@@ -178,7 +178,7 @@ Cualquier agente que modifique este repositorio **DEBE RESPETAR ESTRICTAMENTE** 
    - `worker.ts`: proceso separado consumiendo colas BullMQ (`geocoding`, `research` con handlers reales; el resto ack+log).
 4. **NO inventar datos ni crear integraciones falsas**:
    - Los conectores externos (SUNARP, IMPLA, CEJ, etc.) son **stubs** que devuelven estado `'unavailable'`.
-   - **Única excepción**: el conector `openstreetmap` es real (Nominatim) y se registra en `index.ts` DESPUÉS de los 14 stubs, manteniendo el contrato de 14 fuentes.
+   - **Únicas excepciones**: el conector `openstreetmap` es real (Nominatim) y el conector `remaju` es real pero SOLO consume la superficie pública (sin CAPTCHA); se registran en `index.ts` DESPUÉS de los 14 stubs, manteniendo el contrato de 14 fuentes.
    - Si una fuente requiere auth o no está implementada, devuelve status `not_implemented` o `unavailable`. Nunca simules scraping exitoso con datos inventados. Las tareas de investigación apoyadas en stubs terminan como `unavailable`, no como `completed`.
 5. **Trazabilidad y Proveniencia Obligatoria**:
    - Todo dato externo almacenado debe registrar: `source`, `source_url`, `retrieved_at`, `confidence` ('high' | 'medium' | 'low' | 'unknown') y `verification` ('reported' | 'inferred' | 'verified' | 'conflicting').
@@ -231,7 +231,7 @@ d:\SaaS\fb-terreno-scout\
 │   ├── drizzle/               # Migraciones SQL generadas (0000_military_salo.sql … 0003_natural_mysterio.sql)
 │   ├── scripts/
 │   │   └── queue-health.mjs   # Healthcheck Redis para el worker en Docker
-│   ├── tests/                 # Suite de pruebas Vitest (136 tests pasando)
+│   ├── tests/                 # Suite de pruebas Vitest (145 tests pasando)
 │   │   ├── app.test.ts        # Tests de API Fastify, /health, /sources
 │   │   ├── connector.test.ts  # Tests de registro y conectores stubs
 │   │   ├── research.test.ts   # Tests del motor de investigación
@@ -252,6 +252,7 @@ d:\SaaS\fb-terreno-scout\
 │   │   └── remate-manual.test.ts # Tests del planner de intake manual REM@JU (T4.5)
 │   │   └── remate-intake.service.test.ts # Tests del servicio de intake manual (T4.5)
 │   │   └── remate-intake.routes.test.ts # Tests HTTP de /api/v1/manual-actions (T4.5)
+│   │   └── remaju-research.test.ts # Tests de matching REM@JU→property para research (T4.6)
 │   └── fixtures/
 │       └── remaju-home.html   # Fixture offline del home público REM@JU (T4.2)
 │   └── src/
@@ -282,7 +283,7 @@ d:\SaaS\fb-terreno-scout\
 │       │   └── schema/        # 28 tablas Drizzle + 19 enums PostgreSQL
 │       ├── domain/            # Servicios de negocio
 │       │   ├── properties/    # PropertyService + rutas /api/v1/properties
-│       │   ├── research/      # ResearchService + lifecycle + task-lifecycle + orchestrator + manual-action + result-provenance + remate-manual/remate-intake (T4.5)
+│       │   ├── research/      # ResearchService + lifecycle + task-lifecycle + orchestrator + manual-action + result-provenance + remate-manual/remate-intake/remaju-research (T4.5/T4.6)
 │       │   ├── ingestion/     # sync.ts: SQLite legacy → PostgreSQL (dedup, hash, audit)
 │       │   └── audit/         # AuditService para registro de eventos
 │       ├── dto/               # Tipos de transferencia de datos
@@ -377,7 +378,7 @@ npm.cmd run db:seed       # Inserta usuario de sistema, fuentes y datos de prueb
 ### Paso 5: Ejecutar la suite de tests
 ```bash
 cd server
-npm.cmd test               # Ejecuta Vitest (136 tests automáticos)
+npm.cmd test               # Ejecuta Vitest (145 tests automáticos)
 npm.cmd run typecheck      # Verifica que TypeScript esté al 100% sin errores
 ```
 
