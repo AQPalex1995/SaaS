@@ -670,3 +670,21 @@ Code:
 Next:
 - **T4.8 — tests**: Fase 4 acceptance suite (offline E2E manual→complete cycle,
   payload fixtures, edge cases for `planRemajuMatches` and intake).
+
+## 2026-09-17 — OpenCode — Phase 4 / T4.8 (acceptance tests)
+
+- New `server/tests/phase4-acceptance.test.ts` (5 tests, all offline):
+  - E2E REM@JU cycle without network using a minimal in-memory Drizzle db:
+    judicial task → weak carousel candidate → `requires_manual_action` + manual
+    action (kind captcha) → `completeManualAction` → task `completed` and
+    manual result persisted with provenance `manual-v1` (high/verified).
+  - Fixture `server/tests/fixtures/remate-manual-payload.json` driven through
+    `planRemateIntake` (partida normalization, numeric amounts, composed
+    direction, partida-origin coords, `needsGeocoding:false`).
+  - `planRemajuMatches` multi-partida hard match; `linkRemateToProperties`
+    partida-over-address priority; no-address intake edge (alert, no geocode).
+- Suite **151/151 (22 files)**; server+root typecheck and build OK.
+
+Next:
+- **T4.9 — monitoring**: queue/worker healthchecks, alerts for stuck
+  `requires_manual_action` tasks, manual-cycle and REM@JU consumption metrics.

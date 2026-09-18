@@ -1,0 +1,20 @@
+{
+  "partida": "p-1234-5678",
+  "distrito": "Arequipa",
+  "direccion": {
+    "urb": "Los Álamos",
+    "avenida": "Ejército",
+    "numero": "400",
+    "lote": "12",
+    "referencia": "frente al parque"
+  },
+  "valorDeuda": "S/ 150,000.50",
+  "tasacion": 200000,
+  "precioRemate": "180000.00",
+  "convocatoria": "primera",
+  "fechaRemate": "2026-10-01",
+  "origenUbicacion": "partida",
+  "latitude": -16.409,
+  "longitude": -71.537,
+  "sourceUrlPdf": "https://remaju.pj.gob.pe/remaju/pages/publico/informativo.xhtml"
+}

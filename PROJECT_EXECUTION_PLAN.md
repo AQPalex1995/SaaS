@@ -584,7 +584,8 @@ T4.4 deduplication — ✅ DONE (2026-09-17)
 T4.5 Property linking + manual intake — ✅ DONE (2026-09-17)
 T4.6 research connector — ✅ DONE (2026-09-17)
 T4.7 manual action handling — ✅ DONE (2026-09-17)
-T4.8 tests
+T4.8 tests — ✅ DONE (2026-09-17)
+T4.9 monitoring (en curso)
 T4.7 manual action handling
 T4.8 tests
 T4.9 monitoring
@@ -792,6 +793,28 @@ T4.7 manual action handling — result:
 Siguiente: **T4.8 tests** (batería de pruebas de aceptación de la Fase 4:
 ciclo E2E manual→completo sin red, fixtures del payload, casos límite de
 `planRemajuMatches` y del intake).
+
+T4.8 tests — result:
+
+- Nueva suite de aceptación `server/tests/phase4-acceptance.test.ts` (5 tests,
+  todo offline):
+  - Ciclo E2E REM@JU **sin red**: caso `judicial` → carrusel con candidato débil
+    (sin partida) → tarea `requires_manual_action` + manual action kind captcha →
+    `ManualActionService.completeManualAction` → tarea `completed` y resultado
+    manual con provenance `manual-v1` (high/verified) persistido en
+    `research_results` + auditoría. (usa un in-memory db de Drizzle mínimo,
+    replicando `research-flows.test.ts`).
+  - Fixture `server/tests/fixtures/remate-manual-payload.json` → `planRemateIntake`
+    normaliza partida P12345678, montos numéricos, dirección compuesta, origen
+    partida, coords high/verified y `needsGeocoding:false`.
+  - `planRemajuMatches` con múltiples partidas: hard match con la 2ª.
+  - `linkRemateToProperties` prioriza partida sobre dirección.
+  - Intake sin direcciones: advierte y no geocodifica (location null).
+- Suite completa **151/151 (22 archivos)**; typecheck server+root y build OK.
+
+Siguiente: **T4.9 monitoring** (healthchecks de colas/workers, alerts de tareas
+stuck en `requires_manual_action`, métricas del ciclo manual y del consumo
+REM@JU).
 
 ============================================================
 PHASE 5 — SUNARP
