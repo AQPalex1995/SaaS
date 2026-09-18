@@ -381,3 +381,39 @@ Verified:
 Next:
 - Phase 4 / T4.1 (REM@JU discovery) — **requires explicit approval** (Decision
   Gate: new external data provider).
+
+## 2026-09-17 — OpenCode — Governance (auto-infra + auto-push rules)
+
+Requested by the user:
+1. Auto-start Docker and PostgreSQL automatically when the agent needs the DBs.
+2. Copy/push the project to GitHub automatically on each advance, with the
+   corresponding `.md` updates.
+
+Implemented:
+- `AGENTS.md`:
+  - New **§2.8 "Autoarranque automático de Docker y PostgreSQL"**: when a task
+    needs PostgreSQL 5433 / Redis 6380 the agent starts Docker Desktop,
+    `docker compose up -d postgres redis`, waits for `healthy` and applies
+    pending migrations (`npm.cmd run db:migrate`). Guardrails: never touch
+    5432/6379 (CAST ERP), never `docker compose down -v`, never the `full`
+    profile unless requested; if the engine can't start, stop and report.
+  - New **§2.9 "Sincronización automática con GitHub"**: every checkpoint ends
+    with `git push origin main` (no `--force`); credentials via Git Credential
+    Manager; on divergence fetch+merge/rebase informing the user; on auth
+    failure stop and request login.
+  - §2.1 checkpoint list now includes step 9 (auto Git push); §2.4 rules make
+    the push mandatory; §2.7 notes GCM and the stop-and-ask-auth rule;
+    §3 added rules 7 (auto-infra) and 8 (auto-sync).
+- `docs/DEVELOPMENT.md` §3: auto-start note + `docker compose stop` + never
+  `down -v`; fixed the stale "40 tests" counter → 85.
+- `docs/CI-CD.md`: header updated (local CI + auto-push) and git-state note
+  documents the auto-push rule.
+- `docs/NEXT_STEPS.md`: header references §2.8/§2.9; migration 0003 now listed
+  as applied to the live DB.
+
+Verified:
+- `git push --dry-run origin main` → auth OK (`06768a8..904af81` fast-forward).
+
+Next:
+- Push pending local work to GitHub (autopush) and continue per plan: Phase 4 /
+  T4.1 (REM@JU discovery) still requires explicit approval.

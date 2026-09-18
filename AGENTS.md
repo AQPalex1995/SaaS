@@ -36,6 +36,7 @@ A checkpoint consists of:
 6. Updated PROJECT_EXECUTION_PLAN.md
 7. Updated CHANGELOG_AGENTS.md
 8. Git commit
+9. Git push automático a GitHub (`origin/main`, sin `--force`) — ver §2.9
 
 The agent must stop and request approval before crossing a major architectural checkpoint.
 
@@ -81,6 +82,8 @@ Cuando esté bloqueado, anotar en `CHANGELOG_AGENTS.md` y `PROJECT_STATUS.md`: l
 - **DEBE** ejecutar, antes de declarar éxito: `npm.cmd test` y `npm.cmd run typecheck` (en `server/`), `npm.cmd run build` cuando aplique, y el typecheck de la raíz (Scout Legacy).
 - **DEBE** actualizar la documentación afectada por el cambio (`docs/*.md`, y los documentos raíz de gobernanza si aplica).
 - **DEBE** crear el checkpoint (git commit) al terminar.
+- **DEBE** empujar el checkpoint a GitHub automáticamente (`git push origin main`,
+  sin `--force`) — ver §2.9. El push es parte del checkpoint, no opcional.
 - Si una tarea **no puede completarse** (bloqueo, falta de información, servicio no disponible), **detenerse y reportar el bloqueo** — nunca improvisar un workaround no autorizado.
 
 ### 2.5 Project State Tracking
@@ -125,6 +128,35 @@ Never delete user work to make tests pass.
 
 > Remote de referencia: `origin` → `https://github.com/AQPalex1995/SaaS.git` (push solo por `main`, sin `--force`).
 > Git portable disponible en `D:\SaaS\PortableGit\cmd\git.exe` (no está en el PATH global).
+> Credenciales: Git Credential Manager ya configurado. Si un push falla por autenticación, **detenerse y pedir login al usuario** — nunca intentar `--force` ni rebasar el remoto.
+
+### 2.8 Autoarranque automático de Docker y PostgreSQL
+
+Cuando una tarea requiera la **base de datos PostgreSQL (5433)** o las **colas Redis (6380)** (migraciones, seed, smoke tests en vivo, sync, verificación en DB, tests de integración), el agente **DEBE** asegurar el runtime automáticamente antes de seguir:
+
+1. Comprobar el puerto de Postgres: `(Test-NetConnection -ComputerName localhost -Port 5433 -WarningAction SilentlyContinue).TcpTestSucceeded`.
+   - Si escucha → continuar sin tocar Docker.
+2. Si NO escucha → iniciar Docker Desktop y esperar el engine:
+   - `Start-Process -FilePath 'C:\Program Files\Docker\Docker\Docker Desktop.exe'`
+   - Esperar (poll cada ~5 s, máx ~150 s) hasta que `docker info --format '{{.ServerVersion}}'` devuelva una versión.
+   - Si el engine no arranca (servicio sin privilegios), **detenerse y reportar** que el usuario debe abrir Docker Desktop.
+3. Levantar solo la infraestructura local:
+   - `docker compose up -d postgres redis`
+   - Esperar a que `land-intel-postgres` esté `healthy` (`docker inspect --format '{{.State.Health.Status}}' land-intel-postgres`).
+   - **NUNCA** usar `docker compose up -d` con el profile `full` (api/worker) salvo petición explícita; **NUNCA** `docker compose down -v` ni borrar volúmenes (destruyen datos).
+4. Aplicar migraciones pendientes: `cd server; npm.cmd run db:migrate` (idempotente).
+5. Guardrails CAST ERP: todo el stack local usa **5433/6380**; jamás tocar `5432`/`6379`.
+
+### 2.9 Sincronización automática con GitHub
+
+- Tras **cada checkpoint** (§2.1), el agente **DEBE** empujar `main` a `origin` automáticamente:
+  ```
+  git push origin main
+  ```
+- El commit y el push forman un solo avance: los `.md` de estado/docs ya ida actualizados en ese mismo commit antes del push.
+- Reglas de seguridad (ver §2.7): solo `main`, **nunca** `--force`, **nunca** borrar historial.
+- Si el push es rechazado por divergencia: `git fetch` y resolver (merge/rebase) informando al usuario; no sobreescribir el remoto.
+- Si el push falla por credenciales: **detenerse y pedir login** (abrir GCM / `git push` interactivo).
 
 ---
 
@@ -153,6 +185,11 @@ Cualquier agente que modifique este repositorio **DEBE RESPETAR ESTRICTAMENTE** 
    - Todo dato externo almacenado debe registrar: `source`, `source_url`, `retrieved_at`, `confidence` ('high' | 'medium' | 'low' | 'unknown') y `verification` ('reported' | 'inferred' | 'verified' | 'conflicting').
 6. **Ejecución en Windows / PowerShell**:
    - Para ejecutar scripts `npm` en Windows cuando la política de ejecución de PowerShell bloquea `.ps1`, usa `npm.cmd <comando>` o `npx.cmd <comando>`.
+7. **Autoarranque de Docker/PostgreSQL/Redis**:
+   - Si una tarea requiere la DB o las colas, iniciar el runtime automáticamente siguiendo **§2.8** (Docker Desktop → `docker compose up -d postgres redis` → esperar `healthy` → `db:migrate`).
+   - **NUNCA** tocar los puertos `5432`/`6379` (CAST ERP), **NUNCA** `docker compose down -v` ni borrar volúmenes.
+8. **Auto-sync con GitHub**:
+   - Cada avance terminado (checkpoint) se **commitea y se hace `git push origin main`** automáticamente (sin `--force`), ver **§2.9**.
 
 ---
 
@@ -306,9 +343,14 @@ SCOUT_DB_PATH=../data/scout.db
 
 ### Paso 3: Iniciar infraestructura Docker (cuando Docker esté disponible)
 ```bash
-docker compose up -d
+docker compose up -d postgres redis
 ```
-> **Nota**: Si Docker no está corriendo, el servidor de Land Intelligence está diseñado con **degradación elegante**: inicia en modo degradado, reporta el estado en `/health` y los endpoints de conectores y metadatos siguen respondiendo normalmente.
+> **Nota**: Si PostgreSQL/Redis están apagados y la tarea los requiere, el agente los inicia
+> **automáticamente** (ver **§2.8**): Docker Desktop → `docker compose up -d postgres redis`
+> → esperar `healthy` → aplicar migraciones (`npm.cmd run db:migrate`). No detenerse por
+> "Docker no está corriendo" a menos que el engine no pueda arrancarse.
+> El servidor además tiene **degradación elegante**: inicia en modo degradado, reporta el
+> estado en `/health` y los endpoints de conectores y metadatos siguen respondiendo.
 
 ### Paso 4: Migraciones y Seed (con Postgres activo)
 ```bash

@@ -2,7 +2,8 @@
 
 > **ESTADO: PLANIFICACIÓN.** No hay pipeline real desplegado. Este documento
 > define qué debe validar cualquier pipeline y dibuja el shape de uno futuro
-> en GitHub Actions (por el ambiente del repo local, sin push aún).
+> en GitHub Actions. El CI local es manual y cada checkpoint se **empuja a
+> GitHub automáticamente** (ver `AGENTS.md` §2.9).
 
 ## Pipeline mínimo (y post-merge) — gate de calidad
 
@@ -21,6 +22,7 @@ Todo pipeline debe ejecutar, en este orden:
 - El CI local (manual) cumple ese gate: `npm.cmd run typecheck && npm.cmd test && npm.cmd run build` en `server/`, más typecheck raíz.
 - Al crear checkpoints respetar las **Git Safety Rules** (`AGENTS.md` §2.7): revisar `git status`, prohibido `git reset --hard` / `git clean -fd` / `git push --force` salvo autorización explícita, preferir `git revert`.
 - **Estado de git**: repositorio inicializado en `main` (commit raíz `dcd6ef3`). Remoto: `origin` → `https://github.com/AQPalex1995/SaaS.git`. Git portable instalado en `D:\SaaS\PortableGit\cmd\git.exe` (NO está en el PATH global); invócalo por ruta completa o agrégalo al PATH por sesión: `$env:Path += ";D:\SaaS\PortableGit\cmd"`.
+- **Auto-push**: al terminar un checkpoint el agente ejecuta `git push origin main` (solo `main`, sin `--force`). Si el push falla por autenticación, detenerse y pedir login (Git Credential Manager).
 - `data/` (perfil de navegador, credenciales, cache), `scratch/`, `.env*` y `node_modules/` están en `.gitignore` — **nunca** forzarlos con `git add -f`.
 
 ## Shape futuro (GitHub Actions)

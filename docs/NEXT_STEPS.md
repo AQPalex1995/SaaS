@@ -5,6 +5,8 @@
 > Las fases 0–2.5 están implementadas en `main`; la Fase 3 (T3.1 ResearchCase lifecycle → T3.9 Research documentation) quedó completada el 2026-09-17.
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
 > Lee atentamente este documento antes de escribir código.
+> **Reglas operativas vigentes (AGENTS.md)**: el agente inicia **automáticamente** Docker/PostgreSQL
+> cuando los necesita (§2.8) y hace **push automático a GitHub** en cada checkpoint (§2.9).
 
 ---
 
@@ -12,7 +14,7 @@
 
 - **Servidor Fastify**: Implementado en `server/src/app.ts` e `index.ts` (puerto `3001`).
 - **Base de Datos**: Esquema completo en `server/src/db/schema/` (28 tablas, 19 enums, tipos PostGIS).
-- **Migraciones**: Archivos `server/drizzle/0000_military_salo.sql`, `0001_research_lifecycle_enums.sql`, `0002_research_lifecycle_default.sql` y `0003_natural_mysterio.sql` (manual_actions) generados (0003 sin aplicar aún a un Postgres vivo).
+- **Migraciones**: Archivos `server/drizzle/0000_military_salo.sql`, `0001_research_lifecycle_enums.sql`, `0002_research_lifecycle_default.sql` y `0003_natural_mysterio.sql` (manual_actions), **todos aplicados** a la base viva `land_intelligence` (5433) el 2026-09-17.
 - **Conectores**: 14 stubs + **conector OSM/Nominatim real** registrado sobre el stub en `index.ts`.
 - **Colas**: 6 colas BullMQ definidas en `server/src/workers/queue.ts`, con consumidores reales para `geocoding` y `research`.
 - **Ingesta**: Motor de sincronización `server/src/domain/ingestion/sync.ts` + CLI `server/src/scripts/sync-sqlite.ts`.

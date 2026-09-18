@@ -31,10 +31,17 @@
 
 ## 3. Infraestructura Docker
 
-Iniciar los contenedores en segundo plano:
+Iniciar los contenedores de base de datos/cache (Postgres + Redis) en segundo plano:
 ```bash
-docker compose up -d
+docker compose up -d postgres redis
 ```
+
+> **Autoarranque (agentes IA)**: si una tarea requiere PostgreSQL 5433 o Redis 6380
+> y el puerto no escucha, el agente los inicia automáticamente sin pedir permiso:
+> 1) abrir Docker Desktop (`C:\Program Files\Docker\Docker\Docker Desktop.exe`) y
+> esperar el engine; 2) `docker compose up -d postgres redis`; 3) esperar que
+> `land-intel-postgres` esté `healthy`; 4) `npm.cmd run db:migrate` (idempotente).
+> Ver **§2.8 de AGENTS.md** para el procedimiento y guardrails exactos.
 
 Verificar que los contenedores estén saludables:
 ```bash
@@ -45,8 +52,9 @@ docker compose ps
 
 Para detenerlos:
 ```bash
-docker compose down
+docker compose stop postgres redis
 ```
+> **NUNCA** `docker compose down -v` ni borrar volúmenes (destruyen los datos 4025 properties).
 
 ---
 
@@ -67,7 +75,7 @@ docker compose down
 | `npm.cmd run db:seed` | Inserta datos de prueba (usuario, fuentes, propiedad de ejemplo) |
 | `npm.cmd run db:setup` | TODO EN UNO: extensiones PostGIS + migraciones + seed (idempotente) |
 | `npm.cmd run db:studio` | Abre Drizzle Studio en el navegador para explorar la base de datos |
-| `npm.cmd test` | Ejecuta la suite de pruebas unitarias e integración con Vitest (40 tests) |
+| `npm.cmd test` | Ejecuta la suite de pruebas unitarias e integración con Vitest (85 tests) |
 | `npm.cmd run test:watch` | Ejecuta Vitest en modo observador interactivo |
 
 ### En la raíz del proyecto (`fb-terreno-scout`):
