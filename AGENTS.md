@@ -9,6 +9,7 @@
 
 - **Objetivo**: Plataforma de inteligencia territorial e inmobiliaria para terrenos en Arequipa, Perú (con expansión nacional).
 - **Evolución**: De un scraper local básico de Facebook Marketplace/Grupos (`FB Terreno Scout`) hacia una plataforma modular de due diligence inmobiliario, valuación y análisis registral/urbano (`Land Intelligence`).
+- **Producto definido (2026‑09‑19)**: **Land Intelligence — plataforma de investigación y due diligence inmobiliario de predios**. Las publicaciones de Facebook/Marketplace son SOLO una fuente de descubrimiento (entrada A). El sistema debe permitir además registrar predios NO publicados, solicitados directamente por un usuario (entrada B). **No asumir `Listing = Property = ResearchCase`**; se puede crear un `ResearchCase` sin `Listing`. El resultado completo vive en un **expediente** propio (`/investigaciones/:id`), no solo en el Drawer. Detalle de producto, flujos, Buscar Predio y Due Diligence PRO en `docs/PRODUCT.md`; gobernanza de investigación en `docs/RESEARCH_GOVERNANCE.md`; UX en `docs/UX_ARCHITECTURE.md`; datos en `docs/DATA_GOVERNANCE.md`; seguridad en `docs/SECURITY.md`.
 - **Estado Actual**: **Fase 5 — SUNARP EN PROGRESO (2026‑09‑19, T5.1 Conoce Aquí + T5.2 Consulta de Propiedad + T5.3 SPRL + T5.4 Registry normalization + T5.5 Owners + T5.6 Charges + T5.7 Titles + T5.8 Historical data DONE)**. Fase 4 — REM@JU COMPLETED (T4.1–T4.9: discovery, parser, normalization, dedup, linking + intake manual, research connector, manual action handling, tests, monitoring). Siguiente tarea **T5.9 (Provenance)**. SUNARP no tiene superficie consultable sin identidad + CAPTCHA → postura `requires_auth` (conectores reales de postura, ver §3.4). Ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). Fases 0–3 completadas (infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ, Research Engine T3.x).
 - **Gobernanza**: este documento contiene las **Checkpoint Rules**, **Decision Gates** y **reglas de ejecución autónoma** (sección 2). Todo agente DEBE leer `PROJECT_EXECUTION_PLAN.md`, `PROJECT_STATUS.md` y `CHANGELOG_AGENTS.md` antes de escribir código.
 - **Enfoque**: Modular Monolith en TypeScript (Node.js ESM), Fastify, PostgreSQL 16 + PostGIS 3.4, Drizzle ORM, BullMQ, Vitest.
@@ -71,6 +72,33 @@ El agente **DEBE detenerse y pedir aprobación** cuando encuentre:
 - tocar el entorno CAST ERP o los puertos estándar `5432` / `6379`;
 - modificar o eliminar archivos del **Scout Legacy** (`src/`) o `data/scout.db`;
 - **adelantarse a una fase futura** (front-running de `PROJECT_EXECUTION_PLAN.md`).
+
+### 2.3-bis Decision Gates de producto/seguridad (agregados 2026‑09‑19)
+
+Detenerse, documentar y pedir aprobación antes de cruzar (detalle en
+`docs/SECURITY.md` §9):
+
+- proveedor de autenticación;
+- sistema de pagos / planes premium;
+- acceso comercial a fuentes externas;
+- automatización de SUNARP / SPRL / BGR / CEJ;
+- almacenamiento de documentos (buckets, URLs firmadas);
+- tratamiento de datos personales;
+- cambio de arquitectura de identidad (usuarios, sesiones, RBAC);
+- exposición pública de APIs;
+- infraestructura cloud / cambios de costos significativos.
+
+Reglas duras asociadas:
+- **No hardcodear `if (plan === "pro")`** en el código: entidad de
+  entitlement/permisos server-side (`docs/SECURITY.md` §5).
+- Toda autorización es **server-side**: identidad → rol → ownership →
+  organización → entitlement → recurso; prevenir IDOR/BOLA.
+- Las investigaciones se protegen por ownership; los documentos privados usan
+  acceso controlado y auditoría.
+- Auditoría mínima de eventos de identidad/exports/documentos/denegados
+  (`docs/SECURITY.md` §7).
+- **No introducir secretos ni credenciales de proveedores al frontend**; no
+  guardar passwords en texto plano; no loguear tokens/sesiones.
 
 Cuando esté bloqueado, anotar en `CHANGELOG_AGENTS.md` y `PROJECT_STATUS.md`: la decisión requerida, las opciones y la recomendación. Luego **detenerse**.
 
@@ -186,12 +214,16 @@ Cualquier agente que modifique este repositorio **DEBE RESPETAR ESTRICTAMENTE** 
    - Si una fuente requiere auth o no está implementada, devuelve status `not_implemented`, `unavailable` o `requires_auth`. Nunca simules scraping exitoso con datos inventados. Las tareas de investigación apoyadas en stubs terminan como `unavailable`, no como `completed`; las que requieren auth/acción manual terminan como `requires_manual_action`.
 5. **Trazabilidad y Proveniencia Obligatoria**:
    - Todo dato externo almacenado debe registrar: `source`, `source_url`, `retrieved_at`, `confidence` ('high' | 'medium' | 'low' | 'unknown') y `verification` ('reported' | 'inferred' | 'verified' | 'conflicting').
-6. **Ejecución en Windows / PowerShell**:
+6. **Regla de riesgos y know-how del producto (2026‑09‑19)**:
+   - El sistema **no convierte una señal en conclusión profesional**: diferenciar HECHO / SEÑAL / INTERPRETACIÓN / REQUIERE VERIFICACIÓN / OPINIÓN PROFESIONAL (`docs/RESEARCH_GOVERNANCE.md` §2). Nunca presentar inferencias automáticas como certificación.
+   - No eliminar reglas para hacer pasar tests, ni borrar auditoría, ni desactivar controles de seguridad.
+   - No hardcodear planes (`if plan === 'pro'` en el código) ni confiar en flags/plan/role del cliente; las decisiones de acceso son server-side (identidad → rol → ownership → organización → entitlement → recurso; prevenir IDOR/BOLA) — `docs/SECURITY.md`.
+7. **Ejecución en Windows / PowerShell**:
    - Para ejecutar scripts `npm` en Windows cuando la política de ejecución de PowerShell bloquea `.ps1`, usa `npm.cmd <comando>` o `npx.cmd <comando>`.
-7. **Autoarranque de Docker/PostgreSQL/Redis**:
+8. **Autoarranque de Docker/PostgreSQL/Redis**:
    - Si una tarea requiere la DB o las colas, iniciar el runtime automáticamente siguiendo **§2.8** (Docker Desktop → `docker compose up -d postgres redis` → esperar `healthy` → `db:migrate`).
    - **NUNCA** tocar los puertos `5432`/`6379` (CAST ERP), **NUNCA** `docker compose down -v` ni borrar volúmenes.
-8. **Auto-sync con GitHub**:
+9. **Auto-sync con GitHub**:
    - Cada avance terminado (checkpoint) se **commitea y se hace `git push origin main`** automáticamente (sin `--force`), ver **§2.9**.
 
 ---
@@ -328,8 +360,13 @@ d:\SaaS\fb-terreno-scout\
     ├── GIS.md                 # Inteligencia geoespacial y PDM Arequipa
     ├── QUEUES.md              # Infraestructura BullMQ y Redis
     ├── DEVELOPMENT.md         # Manual para levantar y desarrollar
-    ├── ROADMAP.md             # Plan de fases 1 a 5
+    ├── ROADMAP.md             # Plan de fases 1 a 5 + Research Platform UX + Identity
     ├── DECISIONS.md           # Registros de decisiones (ADRs)
+    ├── PRODUCT.md             # Definición del producto (2026-09-19): flujos, Buscar Predio, Due Diligence PRO, planes
+    ├── RESEARCH_GOVERNANCE.md # Reglas de investigación: hecho/señal, entidades, historial
+    ├── UX_ARCHITECTURE.md     # Navegación y expediente /investigaciones/:id
+    ├── DATA_GOVERNANCE.md     # Ciclo de vida, provenance/cumplimiento de datos
+    ├── SECURITY.md            # Autenticación, RBAC, entitlements, ASVS L2, auditoría, know-how
     └── NEXT_STEPS.md          # Tareas exactas para la siguiente fase
 ```
 
@@ -467,3 +504,8 @@ Para profundizar en cualquier área, lee directamente el documento correspondien
 | [CI-CD.md](file:///d:/SaaS/fb-terreno-scout/docs/CI-CD.md) | Pipeline mínimo de CI/CD y despliegue futuro |
 | [COST_CONTROL.md](file:///d:/SaaS/fb-terreno-scout/docs/COST_CONTROL.md) | Control de costos en la nube (sin recursos creados aún) |
 | [LOCAL_TO_GCP.md](file:///d:/SaaS/fb-terreno-scout/docs/LOCAL_TO_GCP.md) | Guía de transición del stack local a Google Cloud |
+| [PRODUCT.md](file:///d:/SaaS/fb-terreno-scout/docs/PRODUCT.md) | **Definición del producto (2026-09-19)**: flujos oficiales, Buscar Predio, expediente, Due Diligence PRO, planes |
+| [RESEARCH_GOVERNANCE.md](file:///d:/SaaS/fb-terreno-scout/docs/RESEARCH_GOVERNANCE.md) | **Gobernanza de investigación**: HECHO/SEÑAL/INTERPRETACIÓN, entidades, historial |
+| [UX_ARCHITECTURE.md](file:///d:/SaaS/fb-terreno-scout/docs/UX_ARCHITECTURE.md) | Navegación de producto y expediente `/investigaciones/:id` |
+| [DATA_GOVERNANCE.md](file:///d:/SaaS/fb-terreno-scout/docs/DATA_GOVERNANCE.md) | Ciclo de vida del dato, provenance/cumplimiento |
+| [SECURITY.md](file:///d:/SaaS/fb-terreno-scout/docs/SECURITY.md) | **Seguridad**: auth, RBAC, entitlements, ASVS L2, auditoría, protección del know-how |

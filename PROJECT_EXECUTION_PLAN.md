@@ -1,7 +1,7 @@
 # LAND INTELLIGENCE
 # PROJECT EXECUTION PLAN
 
-VERSION: 1.0
+VERSION: 1.1
 STATUS: ACTIVE
 
 Este documento es la fuente principal para determinar qué debe
@@ -23,19 +23,26 @@ PROJECT STATE
 ============================================================
 
 Current Phase:
-PHASE 3 — RESEARCH ENGINE HARDENING
+PHASE 5 — SUNARP STATUS (T5.1–T5.8 DONE; T5.9 Provenance, T5.10 Manual actions, T5.11 Tests pendientes)
 
 Previous Completed:
 PHASE 0 — LOCAL INFRASTRUCTURE
 PHASE 1 — FOUNDATION / ARCHITECTURE
 PHASE 2 — PROPERTY IDENTITY / INGESTION
 PHASE 2.5 — END-TO-END VALIDATION
+PHASE 3 — RESEARCH ENGINE HARDENING
+PHASE 4 — REM@JU (discovery, parser, normalization, dedup, linking, intake manual, research connector, tests, monitoring)
 
 Current Objective:
 
 Construir un motor de investigación inmobiliaria sólido,
 idempotente, observable y preparado para incorporar fuentes
 externas progresivamente.
+
+Nota (2026-09-19): la evolución de producto se definió formalmente en
+`docs/PRODUCT.md` (Land Intelligence, predios no publicados, expediente).
+Se añade la etapa transversal «Research Platform UX + Identity» (ver su
+sección); registro SOLAMENTE documental — ninguna subfase está implementada.
 
 ============================================================
 GLOBAL ARCHITECTURE
@@ -970,6 +977,42 @@ T5.8 Historical data — DONE (2026-09-19). Estado registral derivado del
 T5.9 Provenance
 T5.10 Manual actions
 T5.11 Tests
+
+============================================================
+PHASE 5.5 — RESEARCH PLATFORM UX + IDENTITY (transversal)
+============================================================
+
+STATUS: PLANNED (registrado 2026-09-19 junto con `docs/PRODUCT.md`)
+
+Etapa de producto transversal: plataforma de investigación y due diligence
+de predios (Land Intelligence). Ninguna subfase está implementada todavía;
+cada una requiere su propio checkpoint y los Decision Gates de AGENTS.md
+(auth, pagos, documentos, datos personales, APIs públicas).
+
+Subfases (RP = Research Platform; todas PLANNED):
+
+RP.1 Domain model — separar Listing / Property / ResearchCase / ResearchRun;
+decidir tabla `research_runs` (DECISION REQUIRED).
+RP.2 Search Property flow — módulo Buscar Predio independiente de las
+publicaciones (entrada B); crear ResearchCase sin Listing.
+RP.3 Research history — historial PROPERTY / RESEARCH_CASE / RESEARCH_RUN.
+RP.4 Property dossier — expediente propio `/investigaciones/:id` en lugar del
+drawer (secciones Resumen/Registral/Urbanismo/GIS/Infraestructura/Riesgos/
+Histórico/Judicial/Mercado/Evidencias/Informe).
+RP.5 Authentication — cuentas, sesiones, email, recuperación (Decision Gate).
+RP.6 Authorization / RBAC — roles USER/CUSTOMER/PROFESSIONAL/STAFF/ADMIN/
+SUPER_ADMIN; autorización server-side anti-IDOR/BOLA.
+RP.7 Entitlements — permisos por plan sin hardcodear `if (plan === "pro")`.
+RP.8 Security hardening — objetivo OWASP ASVS Level 2.
+RP.9 Audit — eventos de identidad/exports/documentos/denegados
+(`docs/SECURITY.md` §7).
+RP.10 Frontend redesign — navegación Dashboard / Buscar predio / Mis
+investigaciones / Predios guardados / Mercado / Cuenta / Administración.
+RP.11 End-to-end testing — validación integral de la plataforma.
+
+Regla en `docs/RESEARCH_GOVERNANCE.md` y `docs/SECURITY.md`:
+el sistema no convierte señales en conclusiones profesionales; toda
+autorización es server-side; los planes se manejan vía entitlements.
 
 ============================================================
 PHASE 6 — BGR + GIS

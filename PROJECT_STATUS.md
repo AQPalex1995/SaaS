@@ -1,7 +1,7 @@
 # PROJECT STATUS
 
 Updated:
-2026-09-17
+2026-09-19
 
 ## Runtime
 
@@ -116,11 +116,42 @@ Suite **199/199 (27 archivos)**; typecheck server+root y build OK.
   Tests: +5 en `sunarp-historical.test.ts` (nuevo) + 1 en remate-manual.
 Suite **205/205 (28 archivos)**; typecheck server+root y build OK.
 
+## Gobernanza y producto (registrado 2026-09-19)
+
+Documentación de producto/seguridad/gobierno actualizada con la definición
+formal del producto **Land Intelligence** (plataforma de investigación y due
+diligence de predios). Documentos añadidos:
+- `docs/PRODUCT.md` — producto, flujos oficiales, módulo Buscar Predio (entrada
+  B: predios no publicados), expediente `/investigaciones/:id`, Due Diligence
+  PRO (dimensiones A–I), planes FREE/BASIC/PRO/PROFESSIONAL (conceptuales).
+- `docs/RESEARCH_GOVERNANCE.md` — HECHO/SEÑAL/INTERPRETACIÓN/REQUIERE
+  VERIFICACIÓN/OPINIÓN PROFESIONAL; separación Listing/Property/ResearchCase/
+  ResearchRun; historial.
+- `docs/UX_ARCHITECTURE.md` — navegación y estructura del expediente.
+- `docs/DATA_GOVERNANCE.md` — ciclo de vida, provenance/cumplimiento.
+- `docs/SECURITY.md` — auth, RBAC, entitlements, ASVS L2, auditoría, know-how.
+- Plan: cabecera corregida a PHASE 5; nueva etapa **PHASE 5.5 — Research
+  Platform UX + Identity** (11 subfases RP.1–RP.11, **todas PLANNED**, ninguna
+  implementada). `PROJECT_EXECUTION_PLAN.md` VERSION 1.0 → 1.1.
+
+Decisiones en curso / pendientes (DECISION REQUIRED):
+- Tabla `research_runs` (existencia y diseño) — modelada en dominio, no creada.
+- Proveedor de autenticación, pagos/planes premium, acceso comercial a fuentes,
+  almacenamiento de documentos, retención/borrado de datos → Decision Gates
+  (AGENTS.md §2.3-bis, `docs/SECURITY.md` §9).
+
 ## Blockers
 
 None
 
 ## Known Issues
+
+- El producto definido (2026-09-19: Land Intelligence, Buscar Predio,
+  expediente `/investigaciones/:id`, planes) está **documentado pero no
+  implementado en la UI**: el frontend sigue siendo el panel Scout (8787) +
+  Property Intelligence Drawer. La tabla `users` es solo para auditoría;
+  roles/entitlements/auth aún no existen (ver `docs/SECURITY.md`).
+- **No ejecutar `git reset --hard` ni `git clean -fd`** (regla AGENTS.md §2.7).
 
 - La suite completa de tests emitió ruido ambiental durante T3.4–T3.6:
   `osm.test.ts` falla una llamada real a Nominatim (`500`) y `app.test.ts`

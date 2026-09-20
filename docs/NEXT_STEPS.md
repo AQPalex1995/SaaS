@@ -468,6 +468,26 @@ cd server && npm.cmd run sync:sqlite
 > `remate-manual.test.ts`. Suite **205/205 (28 archivos)**; typecheck
 > server+root y build OK. Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 5).
 
+### 5.1 Definición de producto y gobernanza (registrado 2026-09-19)
+
+- **Producto**: **Land Intelligence** — plataforma de investigación y due
+  diligence de predios (`docs/PRODUCT.md`). Entrada A = publicaciones
+  existentes; **entrada B** = predio NO publicado solicitado por el usuario
+  (se puede crear un `ResearchCase` sin `Listing`). **No asumir
+  `Listing = Property = ResearchCase`**; el resultado completo vive en un
+  expediente propio `/investigaciones/:id`.
+- Documentos nuevos: `PRODUCT.md`, `RESEARCH_GOVERNANCE.md`, `UX_ARCHITECTURE.md`,
+  `DATA_GOVERNANCE.md`, `SECURITY.md`. Regla de riesgos: el sistema nunca
+  convierte una señal en conclusión profesional (HECHO/SEÑAL/INTERPRETACIÓN/
+  REQUIERE VERIFICACIÓN/OPINIÓN PROFESIONAL).
+- **Etapa transversal PHASE 5.5 — Research Platform UX + Identity** (11 subfases
+  RP.1–RP.11) registrada en `PROJECT_EXECUTION_PLAN.md` como **PLANNED**; ninguna
+  está implementada. Requiere aprobación explícita del usuario y sus Decision
+  Gates (AGENTS.md §2.3-bis) antes de implementar cualquiera de ellas.
+- Pendientes DECISION REQUIRED: tabla `research_runs`, proveedor de
+  autenticación, pagos/planes, acceso comercial a fuentes, almacenamiento de
+  documentos, retención/borrado de datos.
+
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.
 - Implementar la verificación a nivel de caso: confirmar manualmente la identidad del property y la coordenada geocodificada (hoy `verification='inferred'`).
 - Probar escenarios de error restantes con Postgres caído (degradación sin crash) y OSM devolviendo 429/500 con retry+backoff.

@@ -1,5 +1,11 @@
 # Hoja de Ruta Técnica (Roadmap) — Land Intelligence
 
+> **Nota (2026-09-19)**: la fuente de verdad del plan de ejecución es
+> `PROJECT_EXECUTION_PLAN.md` (16 fases + etapa transversal). Este documento
+> resume la evolución técnica. La **Fase 5 (SUNARP)** está en progreso
+> (T5.1–T5.8 DONE, siguiente T5.9) y la etapa transversal del producto está
+> **registrada como PLANNED** (nada implementado).
+
 ```text
 [FASE 1: Base & Arquitectura] ──► [FASE 2: Pipeline de Ingesta] ──► [FASE 3: Inteligencia Territorial]
           (COMPLETADA)                     (SIGUIENTE)
@@ -60,3 +66,24 @@
 - [ ] Alertas en tiempo real vía Telegram o WhatsApp ante terrenos subvaluados ("gangas").
 - [ ] Interfaz web completa independiente en React / Next.js o enriquecimiento total del panel actual.
 - [ ] Análisis predictivo de plusvalía y expansión urbana en Arequipa (La Joya, Yura, Cerro Colorado).
+
+---
+
+## Etapa transversal: Research Platform UX + Identity (PLANNED — registrada 2026-09-19)
+
+Etapa de producto definida en `docs/PRODUCT.md` (Land Intelligence, predios no
+publicados, expediente `/investigaciones/:id`). **Ninguna subfase está
+implementada**; requiere aprobación explícita y los Decision Gates de
+AGENTS.md §2.3-bis.
+
+- [ ] RP.1 Domain model — separar Listing / Property / ResearchCase / ResearchRun (tabla `research_runs`: DECISION REQUIRED).
+- [ ] RP.2 Search Property flow — módulo Buscar Predio (entrada B, ResearchCase sin Listing).
+- [ ] RP.3 Research history — historial PROPERTY / RESEARCH_CASE / RESEARCH_RUN.
+- [ ] RP.4 Property dossier — expediente `/investigaciones/:id` (11 secciones).
+- [ ] RP.5 Authentication — cuentas, sesiones, email (Decision Gate).
+- [ ] RP.6 Authorization / RBAC — roles y autorización server-side anti-IDOR/BOLA.
+- [ ] RP.7 Entitlements — permisos por plan sin hardcodear (`docs/SECURITY.md` §5).
+- [ ] RP.8 Security hardening — objetivo OWASP ASVS Level 2.
+- [ ] RP.9 Audit — eventos de identidad/exports/documentos/denegados.
+- [ ] RP.10 Frontend redesign — navegación Dashboard / Buscar predio / Mis investigaciones / Predios guardados / Mercado / Cuenta / Administración.
+- [ ] RP.11 End-to-end testing — validación integral.

@@ -854,3 +854,50 @@ Next:
 
 Next:
 - **T5.9 - Provenance**: garantizar que el resultado del intake manual y el estado registral derivado expongan full provenance (`source/source_url/retrieved_at/confidence/verification/parser_version`) en su superficie. Acotar alcance al iniciar (T5.9 sin definir en el plan).
+
+## 2026-09-19 - OpenCode - Gobernanza y producto (definición Land Intelligence)
+
+- Tarea SOLO documental (sin implementación) aprobada por el usuario:
+  formalizar la nueva definición de producto y la gobernanza de seguridad/datos.
+- Nuevos docs:
+  - `docs/PRODUCT.md` — producto **Land Intelligence** (plataforma de
+    investigación y due diligence de predios); entradas A (publicaciones) y B
+    (predio solicitado sin Listing); **no asumir Listing = Property =
+    ResearchCase**; flujos; módulo Buscar Predio; expediente `/investigaciones/:id`;
+    Due Diligence PRO (dimensiones A–I); planes FREE/BASIC/PRO/PROFESSIONAL
+    (conceptuales, DECISION REQUIRED precios); regla de riesgos
+    HECHO/SEÑAL/INTERPRETACIÓN/REQUIERE VERIFICACIÓN/OPINIÓN PROFESIONAL.
+  - `docs/RESEARCH_GOVERNANCE.md` — entidades separadas, regla de riesgos,
+    provenance obligatoria, historial PROPERTY/RESEARCH_CASE/RESEARCH_RUN.
+  - `docs/UX_ARCHITECTURE.md` — navegación (Dashboard/Buscar predio/Mis
+    investigaciones/Predios guardados/Mercado/Cuenta/Administración) y
+    expediente (11 secciones).
+  - `docs/DATA_GOVERNANCE.md` — ciclo de vida del dato, provenance/cumplimiento,
+    retención DECISION REQUIRED.
+  - `docs/SECURITY.md` — auth, RBAC server-side (roles
+    USER/CUSTOMER/PROFESSIONAL/STAFF/ADMIN/SUPER_ADMIN), anti-IDOR/BOLA,
+    entitlements sin hardcodear planes, ASVS L2, eventos de auditoría nuevos
+    (LOGIN/DOCUMENT_ACCESSED/AUTHORIZATION_DENIED/etc.), protección del know-how,
+    Decision Gates.
+- AGENTS.md: producto definido en §1, reglas de know-how/riesgos en §3 (item 6),
+  Decision Gates de producto/seguridad en §2.3-bis (auth, pagos, acceso
+  comercial, automatización SUNARP/SPRL/BGR/CEJ, documentos, datos personales,
+  identidad, APIs públicas, cloud/costos), árbol §4 e índice §7 con los 5 docs.
+- PROJECT_EXECUTION_PLAN.md (VERSION 1.0 → 1.1): cabecera corregida a
+  PHASE 5 (T5.1–T5.8 DONE) + Previous Completed incluye PHASE 3 y PHASE 4;
+  nueva etapa transversal **PHASE 5.5 — Research Platform UX + Identity**
+  (RP.1 Domain model … RP.11 End-to-end testing), STATUS: PLANNED, ninguna
+  subfase implementada.
+- PROJECT_STATUS.md (2026-09-19): sección "Gobernanza y producto" +
+  DECISION REQUIRED (research_runs, auth provider, pagos, retención, acceso
+  comercial, documentos) + Known Issues (producto documentado, no implementado
+  en UI; `users` solo auditoría).
+- NEXT_STEPS.md y ROADMAP.md actualizados (etapa transversal PLANNED).
+- No se tocó código de producción: la suite de tests sigue **205/205 (28 files)**;
+  typecheck server+root y build sin cambios (no se ejecutó build porque no hay
+  cambios de código).
+
+Next:
+- **T5.9 - Provenance** (Fase 5): ver arriba. Tras ella, T5.10 y T5.11; luego
+  las subfases RP.1–RP.11 de la etapa transversal requieren aprobación
+  explícita (Decision Gates de AGENTS.md §2.3-bis).
