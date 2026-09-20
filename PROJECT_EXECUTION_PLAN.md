@@ -841,13 +841,13 @@ T4.9 monitoring — result:
   inyectado). Suite completa **157/157 (24 archivos)**; typecheck server+root y
   build OK.
 
-siguiente tarea del plan: **Fase 5 — SUNARP** (T5.8 Historical data).
+siguiente tarea del plan: **Fase 5 — SUNARP** (T5.9 Provenance).
 
 ============================================================
 PHASE 5 — SUNARP
 ============================================================
 
-STATUS: IN PROGRESS (T5.1–T5.7 DONE)
+STATUS: IN PROGRESS (T5.1–T5.8 DONE)
 
 Dividir:
 
@@ -953,7 +953,20 @@ T5.7 Titles — DONE (2026-09-19). Historial de títulos/asientos de la partida
     (persistencia → 2 INSERTs: registry + titles). Suite **199/199 (27 archivos)**;
     typecheck server+root y build OK.
 
-T5.8 Historical data
+T5.8 Historical data — DONE (2026-09-19). Estado registral derivado del
+  historial de asientos, sin duplicar cargas:
+  - Nuevo módulo puro `server/src/connectors/implementations/sunarp-historical.ts`
+    (`deriveHistoricalState(titulos, cargas)`): estado `cargado` (hay cargas
+    `isActive: 'si'`) / `sano` (solo vencidas) / `desconocido` (sin cargas),
+    nº de títulos/cargas, `activeCharges`/`inactiveCharges`, deuda activa por
+    moneda (`totalActiveDebtPen`/`totalActiveDebtUsd`) y `lastTitleDate`
+    (máximo ISO de los títulos).
+  - `planRemateIntake` expone la derivación en `RemateManualNormalized.historical`
+    y `RegistryPlanRow.historical` (queda en `rawData`; sin migración ni DB).
+  - Tests: nuevo `sunarp-historical.test.ts` (5 casos) + 1
+    `remate-manual.test.ts`. Suite **205/205 (28 archivos)**; typecheck
+    server+root y build OK.
+
 T5.9 Provenance
 T5.10 Manual actions
 T5.11 Tests

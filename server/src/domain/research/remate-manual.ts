@@ -19,6 +19,10 @@ import {
   type PropietarioNormalizado,
   type TituloNormalizado,
 } from '../../connectors/implementations/sunarp-normalize.js';
+import {
+  deriveHistoricalState,
+  type RegistryHistoricalState,
+} from '../../connectors/implementations/sunarp-historical.js';
 
 export type OrigenUbicacion = 'partida' | 'direccion' | 'maps';
 
@@ -71,6 +75,8 @@ export interface RemateManualNormalized {
   cargas: CargaNormalizada[];
   /** Historial de títulos normalizado de la partida (T5.7). */
   titulos: TituloNormalizado[];
+  /** Estado registral derivado del historial de asientos y cargas (T5.8). */
+  historical: RegistryHistoricalState;
 }
 
 export interface RegistryPlanRow {
@@ -83,6 +89,8 @@ export interface RegistryPlanRow {
   charges: CargaNormalizada[];
   /** Títulos/asientos a persistir en `registry_titles` (T5.7). */
   titles: TituloNormalizado[];
+  /** Estado registral derivado (T5.8). */
+  historical: RegistryHistoricalState;
   source: 'remaju';
   confidence: 'medium';
   verification: 'reported';
@@ -235,6 +243,7 @@ export function planRemateIntake(input: RemateManualInput): RemateManualPlan {
     propietarios: owners,
     cargas: charges,
     titulos: titles,
+    historical: deriveHistoricalState(titles, charges),
   };
 
   const registry: RegistryPlanRow | null =
@@ -246,6 +255,7 @@ export function planRemateIntake(input: RemateManualInput): RemateManualPlan {
           owners,
           charges,
           titles,
+          historical: deriveHistoricalState(titles, charges),
           source: 'remaju',
           confidence: 'medium',
           verification: 'reported',

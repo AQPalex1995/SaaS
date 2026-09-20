@@ -39,18 +39,18 @@ PostGIS:
 ## Tests
 
 Server:
-✅ 199/199 (27 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3 + `sunarp-normalize.test.ts` T5.4/T5.5/T5.6/T5.7)
+✅ 205/205 (28 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3 + `sunarp-normalize.test.ts` T5.4/T5.5/T5.6/T5.7 + `sunarp-historical.test.ts` T5.8)
 
 Root:
 ✅
 
 ## Current Phase
 
-Phase 5 — ✅ SUNARP EN PROGRESO (T5.1–T5.7 DONE, 2026-09-19). Fase 4 — REM@JU COMPLETED.
+Phase 5 — ✅ SUNARP EN PROGRESO (T5.1–T5.8 DONE, 2026-09-19). Fase 4 — REM@JU COMPLETED.
 
 ## Current Task
 
-Fase 5 / T5.8 (Historical data) — próximo paso. T5.1–T5.7 completados:
+Fase 5 / T5.9 (Provenance) — próximo paso. T5.1–T5.8 completados:
 - **T5.1 Conoce Aquí**: discovery (`docs/SUNARP.md`): **ninguna superficie consultable
   sin identidad (DNI + fecha de emisión) + CAPTCHA** → no automatizable (Ley 29733, no
   bypass CAPTCHA, 3–5 consultas/día). Conector real de postura `SunarpConnector`
@@ -104,6 +104,17 @@ Suite **195/195 (27 archivos)**; typecheck server+root y build OK.
   aprovechables (+warnings). Tests: +1 sunarp-normalize, +2 remate-manual, +1
   remate-intake.service.
 Suite **199/199 (27 archivos)**; typecheck server+root y build OK.
+- **T5.8 Historical data**:
+  Nuevo módulo puro `sunarp-historical.ts` con `deriveHistoricalState(titulos,
+  cargas)`: deriva el **estado registral** de la partida desde el historial de
+  títulos/asientos y cargas ya normalizados (T5.6/T5.7). Estado `cargado`
+  (cargas `isActive: 'si'`) / `sano` (solo vencidas) / `desconocido` (sin
+  cargas); también nº de títulos/cargas, `activeCharges`/`inactiveCharges`,
+  deuda activa por moneda (PEN/USD) y `lastTitleDate`. `planRemateIntake`
+  expone la derivación en `RemateManualNormalized.historical` y
+  `RegistryPlanRow.historical` (en `rawData`; sin migración ni DB).
+  Tests: +5 en `sunarp-historical.test.ts` (nuevo) + 1 en remate-manual.
+Suite **205/205 (28 archivos)**; typecheck server+root y build OK.
 
 ## Blockers
 

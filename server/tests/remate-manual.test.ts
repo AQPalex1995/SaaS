@@ -186,4 +186,28 @@ describe('REM@JU manual intake planner (T4.5b)', () => {
     expect(plan.normalized.titulos).toHaveLength(0);
     expect(plan.warnings.some((w) => w.includes('títulos normalizables'))).toBe(true);
   });
+
+  it('deriva el estado registral histórico del plan (T5.8)', () => {
+    const plan = planRemateIntake({
+      partida: 'P9',
+      cargas: [
+        { tipo: 'HIPOTECA', monto: 'S/ 1,234,567.89', moneda: 'S/', estado: 'VIGENTE' },
+        { tipo: 'EMBARGO', monto: 'US$ 45,000.00', moneda: 'US$', estado: 'Cancelado' },
+      ],
+      titulos: [{ titulo: '006-2020', fechaTitulo: '15/03/2020', tipoTitulo: 'INDEPENDIZACION' }],
+    });
+    expect(plan.normalized.historical).toEqual({
+      titleCount: 1,
+      chargeCount: 2,
+      activeCharges: [
+        expect.objectContaining({ chargeType: 'hipoteca', amount: 1234567.89, currency: 'PEN' }),
+      ],
+      inactiveCharges: [expect.objectContaining({ chargeType: 'embargo', currency: 'USD' })],
+      totalActiveDebtPen: 1234567.89,
+      totalActiveDebtUsd: 0,
+      lastTitleDate: '2020-03-15',
+      registryState: 'cargado',
+    });
+    expect(plan.registry?.historical.registryState).toBe('cargado');
+  });
 });

@@ -831,3 +831,26 @@ Next:
 
 Next:
 - **T5.8 - Historical data**: derivar el estado registral de la partida desde los datos históricos de asientos (leer `registry_titles` + `registry_charges` del mismo registry row) en vez de duplicar cargas.
+
+## 2026-09-19 - OpenCode - Fase 5 / T5.8 (Historical data - estado registral derivado)
+
+- Alcance acotado con el usuario (T5.8 sin definir en el plan): derivación PURA, sin migración ni DB.
+- Nuevo módulo `server/src/connectors/implementations/sunarp-historical.ts`:
+  - `deriveHistoricalState(titles: TituloNormalizado[], charges: CargaNormalizada[])` → `RegistryHistoricalState`
+    `{ titleCount, chargeCount, activeCharges, inactiveCharges, totalActiveDebtPen,
+    totalActiveDebtUsd, lastTitleDate, registryState }`.
+  - `registryState`: `'cargado'` (hay cargas con `isActive: 'si'`), `'sano'` (solo
+    vencidas/canceladas) o `'desconocido'` (sin cargas capturadas). Deuda activa
+    solo por moneda (PEN/USD), redondeada a 2 decimales; `lastTitleDate` =
+    máximo de fechas ISO de los títulos (null si no hay).
+- `remate-manual.ts` (`planRemateIntake`): `RemateManualNormalized.historical` y
+  `RegistryPlanRow.historical` exponen la derivación (queda en `rawData` del
+  registry row). Sin cambios en el servicio de intake ni en la BD.
+- Tests (+6): nuevo `server/tests/sunarp-historical.test.ts` (5: desconocido,
+  sano, cargado con deuda por moneda, última fecha ISO, sin fechas) + 1 en
+  `remate-manual.test.ts` (plan expone la derivación con hipoteca vigente).
+- Suite **205/205 (28 files)**; typecheck server+root y build OK.
+- Docs: SUNARP.md (T5.8 DONE + sección), PROJECT_EXECUTION_PLAN (T5.8 DONE, next T5.9, STATUS T5.1–T5.8), PROJECT_STATUS (Current Task T5.9, 205/205/28), NEXT_STEPS.md, CHANGELOG.
+
+Next:
+- **T5.9 - Provenance**: garantizar que el resultado del intake manual y el estado registral derivado expongan full provenance (`source/source_url/retrieved_at/confidence/verification/parser_version`) en su superficie. Acotar alcance al iniciar (T5.9 sin definir en el plan).

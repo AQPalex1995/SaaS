@@ -1,6 +1,6 @@
 # SUNARP — Registro y Titularidad (Fase 5)
 
-> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ + T5.3 (SPRL) ✅ + T5.4 (Registry normalization) ✅ + T5.5 (Owners) ✅ + T5.6 (Charges) ✅ + T5.7 (Titles) ✅ — DONE (2026‑09‑19).
+> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ + T5.3 (SPRL) ✅ + T5.4 (Registry normalization) ✅ + T5.5 (Owners) ✅ + T5.6 (Charges) ✅ + T5.7 (Titles) ✅ + T5.8 (Historical data) ✅ — DONE (2026‑09‑19).
 > Reporte de discovery, postura del conector `sunarp` y normalización registral.
 
 ## 1. Qué es SUNARP
@@ -172,6 +172,22 @@ Detalle de **SPRL** (T5.3):
     `remate-manual.test.ts` (planner) y +1 `remate-intake.service.test.ts`
     (persistencia → 2 INSERTs: registry + titles). Suite
     **199/199 (27 archivos)**; typecheck server+root y build OK.
+- **T5.8 Historical data** → ✅ DONE (2026‑09‑19): nuevo módulo puro
+  `sunarp-historical.ts` con `deriveHistoricalState(titulos, cargas)` que
+  **deriva el estado registral** de la partida desde el historial de
+  asientos/títulos y cargas ya normalizados (T5.6/T5.7):
+  - Estado: `cargado` (hay cargas con `isActive: 'si'`), `sano` (solo cargas
+    vencidas/canceladas) o `desconocido` (sin cargas capturadas).
+  - Resumen: nº de títulos/cargas, listas `activeCharges`/`inactiveCharges`,
+    deuda activa por moneda (`totalActiveDebtPen`/`totalActiveDebtUsd`,
+    redondeada a 2 decimales) y `lastTitleDate` (máximo de fechas ISO de los
+    títulos; null si no hay).
+  - `planRemateIntake` expone la derivación en `RemateManualNormalized.historical`
+    y en `RegistryPlanRow.historical` (queda en `rawData` del registry row; sin
+    migración, sin DB).
+  - Tests: nuevo archivo `sunarp-historical.test.ts` (5 casos) + 1 en
+    `remate-manual.test.ts` (plan expone la derivación). Suite
+    **205/205 (28 archivos)**; typecheck server+root y build OK.
 - **BGR (Fase 6, visor)** → DNI + CAPTCHA: misma postura `requires_auth` en
   `sunarp_bgr`.
 - **SPRL histórico** (T5.8) → via copias literales manuales.
