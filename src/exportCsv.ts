@@ -22,6 +22,7 @@ export const CSV_HEADERS = [
   'notas',
   'imagen_url',
   'url',
+  'link_status',
 ] as const;
 
 function esc(value: unknown): string {

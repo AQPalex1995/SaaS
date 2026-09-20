@@ -188,6 +188,13 @@ None
 
 ## Known Issues
 
+- **Scout Legacy — enlaces de grupos (2026-09-19)**: corregida la extracción de
+  permalinks de publicaciones de grupos (nuevo `src/links.ts` + `data-ft` en
+  `src/extract.ts`), etiquetado honesto en `src/panel.html`
+  (`link_status`: permalink/búsqueda/raíz) y backfill (`migrate:links` corrido;
+  `recover:links` disponible para recuperación en vivo con sesión de Facebook).
+  Distribución actual en `data/scout.db`: 956 filas de grupo → 50 `permalink` +
+  906 `search`. **Validación real pendiente de corrida con login** (no offline).
 - El producto definido (2026-09-19: Land Intelligence, Buscar Predio,
   expediente `/investigaciones/:id`, planes) está **documentado pero no
   implementado en la UI**: el frontend sigue siendo el panel Scout (8787) +

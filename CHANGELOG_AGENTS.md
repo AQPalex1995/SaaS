@@ -1040,3 +1040,64 @@ Next:
   personales). Acotar alcance al iniciar. Decisiones pendientes: tabla
   `research_runs`, proveedor de autenticación, pagos/planes, acceso comercial a
   fuentes, almacenamiento de documentos, retención/borrado de datos.
+
+## 2026-09-19 - OpenCode - Fix out-of-band (Scout Legacy): enlaces de publicaciones en búsqueda por GRUPOS
+
+Contexto / Decision Gate:
+- El usuario reportó que en el panel Scout (8787) los enlaces de publicaciones
+  de **GRUPOS** abren el grupo o su búsqueda interna en lugar de la publicación.
+- **Aprobación explícita del usuario** (AGENTS.md §2.3: tocar `src/` y
+  `data/scout.db`) y elección del enfoque **híbrido 1+3 (+2 backfill)**:
+  1) mejorar la extracción del permalink, 3) etiquetar honestamente los enlaces
+  no-directos en la UI, 2) backfill de filas históricas.
+
+Diagnóstico (solo lectura sobre `data/scout.db`, 6243 listings):
+- 956 filas `fuente=grupo`: solo **50 (5.2%)** tenían permalink real
+  `/groups/{gid}/posts/{pid}`; 409 a `/groups/{gid}/search/?q=…`; 497 a la raíz
+  del grupo. Crónico por día.
+- Causa raíz: en el feed de grupos Facebook ya no expone de forma fiable el
+  anchor `<a href="/groups/…/posts/…">`; `readGroupCards` (`src/extract.ts`) caía
+  a un **href sintético** (`/search/?q=` o raíz) y `src/panel.html` lo mostraba
+  como si fuera la publicación ("👥 Solo grupo" para la raíz pero `Ver →` para
+  la búsqueda).
+
+Implementación:
+- `src/links.ts` (nuevo, puro): `isCanonicalPermalink()` /
+  `classifyPublicationUrl()` → `permalink | search | group_root | direct`.
+- `src/extract.ts`: nuevo helper `postIdFromDataFt()` que lee el id real del post
+  desde los atributos `data-ft` (`top_level_post_id` > `mf_story_key` >
+  `story_fbid` > `post_id`) y construye el permalink aunque no exista anchor;
+  se prefiere el permalink del anchor cuando su score es válido y se cae a
+  `data-ft` cuando el anchor es de comentario o inexistente.
+- `src/searchers.ts`: `cardToRow` persiste `link_status`; el patch de
+  `storeRows` promueve a `permalink` cuando una pasada posterior sí trae el
+  enlace; `hasPermalink` usa el helper canónico. Nuevo `recoverGroupLinks(page,
+  group, url)` (backfill en vivo).
+- `src/panel.html`: la etiqueta usa `row.link_status` (con respaldo por regex):
+  permalink → `Ver →`; búsqueda → `🔎 Buscar en grupo`; raíz → `👥 Solo grupo`
+  (atenuado, con tooltip de "sin enlace directo").
+- `src/migrate-links.ts`: además de corregir URLs, etiqueta `link_status` en las
+  filas de grupo (no destructivo).
+- `src/exportCsv.ts`: columna `link_status`.
+- `package.json`: scripts `migrate:links` y `recover:links`;
+  `src/recover-links.ts` (nuevo) re-visita los grupos con la sesión existente y
+  actualiza filas sin permalink (backfill en vivo, requiere login).
+
+Verificado:
+- Typecheck raíz (`tsc --noEmit`) OK.
+- `migrate:links` ejecutado (respaldo previo de `scout.db` en temp):
+  **956 filas etiquetadas**, 499 URLs raíz→búsqueda corregidas. Distribución
+  final `link_status`: 906 `search` + 50 `permalink` (los permalinks reales no se
+  tocaron).
+- Suite server **218/218 (30 files)**; typecheck server+root; build OK (el fix
+  no toca el servidor).
+
+Findings / limitaciones:
+- La mejora de extracción (`data-ft`) y el backfill en vivo **no son
+  verificables offline**: requieren una corrida real con sesión de Facebook
+  (`npm.cmd run recover:links`). Los permalinks históricos que ya no aparecen en
+  el feed no se recuperan (quedan etiquetados como `search`, honestamente).
+
+Next:
+- **PHASE 5.5 — Research Platform UX + Identity** (PLANNED): requiere aprobación
+  explícita y Decision Gates (AGENTS.md §2.3-bis).

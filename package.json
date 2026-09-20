@@ -6,7 +6,9 @@
   "scripts": {
     "start": "tsx src/main.ts",
     "typecheck": "tsc --noEmit",
-    "test:detect": "tsx src/test-detect.ts"
+    "test:detect": "tsx src/test-detect.ts",
+    "migrate:links": "tsx src/migrate-links.ts",
+    "recover:links": "tsx src/recover-links.ts"
   },
   "dependencies": {
     "playwright": "^1.49.0",

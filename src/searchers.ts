@@ -15,6 +15,7 @@ import { randomDelay, scrollPage } from './browser';
 import { log } from './logs';
 import { store, type ListingRow } from './store';
 import { analyzeImage, type OcrData } from './ocr';
+import { classifyPublicationUrl, isCanonicalPermalink } from './links';
 
 export function isoDate(d: Date): string {
   const y = d.getFullYear();
@@ -118,6 +119,7 @@ export function cardToRow(card: CardRaw, started: Date, ocr?: OcrData | null): L
     url_publicacion: card.href,
     url: card.href,
     fuente: card.href.includes('/groups/') || card.key.includes('_') ? 'grupo' : 'marketplace',
+    link_status: classifyPublicationUrl(card.href),
   };
 }
 
@@ -154,12 +156,8 @@ async function storeRows(cards: CardRaw[], started: Date): Promise<number> {
       const prev = store.get(card.key);
       const prevUrl = (prev && (prev.url_publicacion || prev.url)) || '';
       const newUrl = row.url_publicacion || '';
-      if (
-        newUrl &&
-        /\/groups\/[^/]+\/(?:posts|permalink|multi_permalink)\//.test(newUrl) &&
-        !/\/groups\/[^/]+\/(?:posts|permalink|multi_permalink)\//.test(prevUrl)
-      ) {
-        store.patch(card.key, { url_publicacion: newUrl, url: newUrl });
+      if (newUrl && isCanonicalPermalink(newUrl) && !isCanonicalPermalink(prevUrl)) {
+        store.patch(card.key, { url_publicacion: newUrl, url: newUrl, link_status: 'permalink' });
       }
     }
   }
@@ -207,9 +205,7 @@ export async function searchGroup(
 
   let cards = await readGroupCards(page, groupId);
 
-  const hasPermalink = (c: CardRaw) =>
-    /\/groups\/[^/]+\/(?:posts|permalink|multi_permalink)\//.test(c.href || '') ||
-    /set=gm\.\d+/.test(c.href || '');
+  const hasPermalink = (c: CardRaw) => isCanonicalPermalink(c.href);
   const withLink = cards.filter(hasPermalink);
 
   if (withLink.length === 0 && cards.length > 0) {
@@ -259,6 +255,50 @@ export async function searchGroup(
 
   log('info', `  [grupo ${groupName}] -> ${cards.length} publicaciones encontradas (${inserted} nuevas)`);
   return { count: cards.length, inserted };
+}
+
+/**
+ * Backfill dirigido: re-visita el feed de un grupo y actualiza en la base las
+ * filas existentes que aún no tienen permalink real, usando los enlaces que
+ * Facebook ya hidrata en esta nueva pasada. No inserta publicaciones nuevas.
+ */
+export async function recoverGroupLinks(
+  page: Page,
+  groupName: string,
+  groupUrl: string
+): Promise<{ scanned: number; fixed: number }> {
+  const idMatch = groupUrl.match(/groups\/([^\/?#]+)/);
+  const groupId = idMatch ? idMatch[1] : 'group';
+  const feedUrl = groupUrl.replace(/\/+$/, '') + '/';
+
+  try {
+    await page.goto(feedUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.waitForTimeout(2500);
+    await page
+      .waitForSelector(
+        `a[href*="/groups/${groupId}/posts/"], a[href*="/groups/${groupId}/permalink/"], a[href*="set=gm."]`,
+        { timeout: 12000 }
+      )
+      .catch(() => {});
+    await scrollPage(page, Math.max(config.maxScrolls, 10));
+    await page.waitForTimeout(1500);
+  } catch (e) {
+    log('warn', `  [recover ${groupName}] Error al abrir feed: ${(e as Error).message}`);
+  }
+
+  const cards = await readGroupCards(page, groupId);
+  let fixed = 0;
+  for (const card of cards) {
+    if (!isCanonicalPermalink(card.href)) continue;
+    const prev = store.get(card.key);
+    if (!prev) continue;
+    const prevUrl = prev.url_publicacion || prev.url || '';
+    if (!isCanonicalPermalink(prevUrl)) {
+      store.patch(card.key, { url_publicacion: card.href, url: card.href, link_status: 'permalink' });
+      fixed++;
+    }
+  }
+  return { scanned: cards.length, fixed };
 }
 
 export { randomDelay };

@@ -841,8 +841,16 @@ function renderListings(d){
     const isVisited=visited.has(url);
     // ÚLTIMO CLICK: debe coincidir el ID de fila Y la URL — evita que múltiples filas con el mismo URL lo muestren
     const isLast=(lastUrl&&lastRid)?(rowId===lastRid&&url===lastUrl):(url===lastUrl&&url!=='#');
-    // Detectar si la URL es solo la raíz del grupo (sin permalink real al post)
-    const isGroupRootUrl=url!=='#'&&!/\/groups\/[^/?#]+\/(?:posts|permalink|multi_permalink)\//.test(url)&&url.includes('/groups/');
+    // Estado del enlace: usar el clasificado en origen (link_status) o calcularlo como respaldo.
+    // Evita disfrazar una búsqueda/raíz de grupo como si fuera la publicación.
+    let linkStatus=row.link_status||'';
+    if(!linkStatus){
+      if(url.includes('/search/?q='))linkStatus='search';
+      else if(/\/groups\/[^/?#]+\/(?:posts|permalink|multi_permalink)\//.test(url)||/[?&]multi_permalinks=\d+/.test(url)||/[?&]set=gm\.\d+/.test(url))linkStatus='permalink';
+      else if(url.includes('/groups/'))linkStatus='group_root';
+      else linkStatus='direct';
+    }
+    const isNonDirect=(linkStatus==='search'||linkStatus==='group_root');
     let visitedCls='';let linkLabel='Ver \u2192';
     if(isLast){
       visitedCls='last-visited';
@@ -850,6 +858,8 @@ function renderListings(d){
     } else if(isVisited){
       visitedCls='visited';
       linkLabel='\u2714 Visto';
+    } else if(isNonDirect){
+      linkLabel=(linkStatus==='search')?'\uD83D\uDD0E Buscar en grupo':'\uD83D\uDC65 Solo grupo';
     }
     const notaHtml=row.notas?'<div class="nota-inline" title="'+escH(row.notas)+'">\uD83D\uDCDD '+escH(row.notas)+'</div>':'';
     const editJsonStr=JSON.stringify({id:rowId,titulo:title,telefono:row.telefono||'',distrito:row.distrito||'',precio:row.precio||'',m2:row.m2||row.area_m2||'',notas:row.notas||''});
@@ -870,7 +880,7 @@ function renderListings(d){
       '<td><span class="badge-src '+sc+'">'+sl+'</span></td>'+
       '<td class="fecha-cell">'+fechaPub+'</td>'+
       '<td class="fecha-cell">'+fechaBus+'</td>'+
-      '<td class="link-cell"><div style="display:flex;align-items:center;gap:5px;"><a href="'+escH(url)+'" target="_blank" rel="noopener" class="'+visitedCls+'" data-rid="'+escH(rowId)+'" onclick="onLinkClick(this)"'+(isGroupRootUrl&&!isVisited&&!isLast?' title="\u26A0\uFE0F Sin enlace directo: solo abre el grupo" style="opacity:.55;color:var(--muted);font-size:10px"':'')+'>'+((isGroupRootUrl&&!isVisited&&!isLast)?'\uD83D\uDC65 Solo grupo':linkLabel)+'</a>'+invBtn+editBtn+favStar+'</div></td>'+
+      '<td class="link-cell"><div style="display:flex;align-items:center;gap:5px;"><a href="'+escH(url)+'" target="_blank" rel="noopener" class="'+visitedCls+'" data-rid="'+escH(rowId)+'" onclick="onLinkClick(this)"'+(isNonDirect&&!isVisited&&!isLast?(' title="'+(linkStatus==='search'?'\u26A0\uFE0F Sin enlace directo: abre una b\u00FAsqueda dentro del grupo':'\u26A0\uFE0F Sin enlace directo: solo abre el grupo')+'" style="opacity:.55;color:var(--muted);font-size:10px"'):'')+'>'+linkLabel+'</a>'+invBtn+editBtn+favStar+'</div></td>'+
       '</tr>';
   }).join('');
   renderPagination(d.total,d.page,d.perPage);

@@ -148,6 +148,31 @@ export async function readGroupCards(page: Page, groupId: string): Promise<CardR
 
           return null;
         },
+
+        /**
+         * Obtener el id de la publicación desde los atributos `data-ft` de
+         * Facebook. El feed de grupos deja de exponer el anchor con el
+         * permalink, pero casi siempre conserva `data-ft` con
+         * `top_level_post_id` / `story_fbid` / `mf_story_key`, que sí es el id
+         * real del post. Se prioriza `top_level_post_id`.
+         */
+        postIdFromDataFt(root: HTMLElement): string | null {
+          const els: HTMLElement[] = [root, ...Array.from(root.querySelectorAll<HTMLElement>('[data-ft]'))];
+          let fallback = '';
+          for (const el of els) {
+            const raw = el.getAttribute('data-ft');
+            if (!raw) continue;
+            let obj: Record<string, unknown>;
+            try { obj = JSON.parse(raw) as Record<string, unknown>; } catch { continue; }
+            const top = obj.top_level_post_id;
+            if (top != null && /^\d+$/.test(String(top))) return String(top);
+            for (const k of ['mf_story_key', 'story_fbid', 'post_id']) {
+              const v = obj[k];
+              if (!fallback && v != null && /^\d+$/.test(String(v))) fallback = String(v);
+            }
+          }
+          return fallback || null;
+        },
       };
 
       // ─── extracción principal por contenedores de feed ─────────────────────
@@ -223,10 +248,20 @@ export async function readGroupCards(page: Page, groupId: string): Promise<CardR
         cands.sort((a, b) => b.score - a.score);
         const best = cands[0] ?? null;
 
+        // id real desde data-ft (funciona aunque el feed no exponga el anchor)
+        const ftPid = helpers.postIdFromDataFt(article);
+
         let postId: string;
         let finalHref: string;
 
-        if (best) {
+        if (best && (best.score >= 0 || !ftPid)) {
+          postId = best.postId;
+          finalHref = best.cleanUrl;
+        } else if (ftPid) {
+          // Anchor no disponible (o solo de comentario), pero data-ft conserva el id del post.
+          postId = ftPid;
+          finalHref = `https://www.facebook.com/groups/${gid}/posts/${ftPid}`;
+        } else if (best) {
           postId = best.postId;
           finalHref = best.cleanUrl;
         } else {
