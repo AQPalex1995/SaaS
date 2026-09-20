@@ -1,5 +1,17 @@
 # AGENT CHANGELOG
 
+## 2026-09-20 — OpenCode — RP.2 (Buscar Predio / entrada B) — BLOCKED & REVERTED
+
+Estado: intento de acceptance test para RP.2 (entrada B: crear ResearchCase sin
+Listing) sobre `server/tests/research-flows.test.ts`. La edicion produjo bytes
+corruptos (tokens no-ASCII invalidos para TS/Vitest). Se revirtio con
+`git checkout -- server/tests/research-flows.test.ts` para preservar la suite
+218/218 verde de RP.1. NO commit / NO push de RP.2 (arbol limpio, salvo
+`server/tmp/` scratch). Hallazgo util para la proxima sesion: el dominio YA
+soporta entrada B (research-cases solo FK `property_id` sin `listing_id`;
+`ResearchService.createResearch` valida SOLO `properties`). Delta restante de
+RP.2 = acceptance/spec test explicito de esa entrada. Seguir en sesion nueva.
+
 ## 2026-09-20 — OpenCode — Fase 5.5 / RP.1 (Domain model — Case/Run separation) — DONE
 
 Completado:
