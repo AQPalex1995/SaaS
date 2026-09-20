@@ -13,6 +13,7 @@ import {
   normalizeDocumentType,
   normalizeOwnerType,
   parseOwnershipPercentage,
+  normalizePropietarios,
   normalizeChargeType,
   normalizeIsActive,
   normalizeAreaM2,
@@ -150,6 +151,23 @@ describe('T5.4 — Titulares (owners)', () => {
     expect(parseOwnershipPercentage('-5')).toBeNull();
     expect(parseOwnershipPercentage('')).toBeNull();
     expect(parseOwnershipPercentage(null)).toBeNull();
+  });
+
+  it('normalizePropietarios: array o un único objeto → lista normalizada (T5.5)', () => {
+    const list = normalizePropietarios([
+      { titular: 'JOSE LUIS TORRES GOMEZ', tipoDocumento: 'DNI', numeroDocumento: '29384756', porcentaje: '50%' },
+      { titular: 'INVERSIONES ANDINAS S.A.C.', tipoDocumento: 'RUC', numeroDocumento: '20452687123' },
+    ]);
+    expect(list).toHaveLength(2);
+    expect(list[0]).toMatchObject({ ownerName: 'Jose Luis Torres Gomez', documentType: 'DNI', ownershipPercentage: 50 });
+
+    const single = normalizePropietarios({ titular: 'MARÍA LUZ QUISPE' });
+    expect(single).toHaveLength(1);
+    expect(single[0].ownerName).toBe('María Luz Quispe');
+
+    expect(normalizePropietarios(null)).toHaveLength(0);
+    expect(normalizePropietarios(undefined)).toHaveLength(0);
+    expect(normalizePropietarios(['not-an-object'])).toHaveLength(0);
   });
 });
 

@@ -1,6 +1,6 @@
 # SUNARP — Registro y Titularidad (Fase 5)
 
-> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ + T5.3 (SPRL) ✅ + T5.4 (Registry normalization) ✅ — DONE (2026‑09‑18).
+> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ + T5.3 (SPRL) ✅ + T5.4 (Registry normalization) ✅ + T5.5 (Owners) ✅ — DONE (2026‑09‑19).
 > Reporte de discovery, postura del conector `sunarp` y normalización registral.
 
 ## 1. Qué es SUNARP
@@ -126,6 +126,22 @@ Detalle de **SPRL** (T5.3):
     → 3802, y `normalizeCarga`/`amount` no parseaba separadores de miles
     ("S/ 1,234.56" → null). Suite **187/187 (27 archivos)**; typecheck server+root
     y build OK.
+- **T5.5 Owners** → ✅ DONE (2026‑09‑19): los **titulares** de la partida
+  capturados por el operador se normalizan (helper `normalizePropietarios`,
+  reutiliza `PropietarioNormalizado`) y se **persisten en `registry_owners`**
+  vinculados a la fila de `registry_properties` (FK `registry_property_id` →
+  `registryId` del intake):
+  - `planRemateIntake` acepta `propietarios` (array o un único objeto) en el
+    payload manual; solo persiste titulares aprovechables (con nombre y/o
+    documento) y advierte si la captura no deja ninguno.
+  - `RemateIntakeService.saveOwners` inserta el array en un solo INSERT con
+    `source: 'sunarp'`, porcentaje en texto numérico (columna `numeric(5,2)`) y
+    `rawData: { parserVersion }`; `RemateIntakeResult.ownersPersisted` reporta
+    cuántas filas se crearon.
+  - Tests: `sunarp-normalize.test.ts` (`normalizePropietarios`),
+    `remate-manual.test.ts` (planner) y `remate-intake.service.test.ts`
+    (persistencia). Suite **191/191 (27 archivos)**; typecheck server+root y
+    build OK.
 - **T5.6/5.7 cargas y asientos** → se rellenan desde el detalle manual.
 - **BGR (Fase 6, visor)** → DNI + CAPTCHA: misma postura `requires_auth` en
   `sunarp_bgr`.

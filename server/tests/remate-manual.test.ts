@@ -84,4 +84,39 @@ describe('REM@JU manual intake planner (T4.5b)', () => {
     const plan = planRemateIntake({ valorDeuda: 10 });
     expect(plan.registry).toBeNull();
   });
+
+  it('normaliza propietarios SUNARP de la captura manual para registry_owners (T5.5)', () => {
+    const plan = planRemateIntake({
+      partida: 'P9',
+      propietarios: [
+        { titular: 'JOSE LUIS TORRES GOMEZ', tipo: 'NATURAL', tipoDocumento: 'DNI', numeroDocumento: '29384756', porcentaje: '50%', fechaInscripcion: '2020-05-10' },
+        { titular: 'INVERSIONES ANDINAS S.A.C.', tipo: 'JURIDICA', tipoDocumento: 'RUC', numeroDocumento: '20452687123', porcentaje: 0.5, fechaInscripcion: '15/06/2021' },
+      ],
+    });
+    expect(plan.registry?.owners).toHaveLength(2);
+    expect(plan.registry?.owners[0]).toEqual({
+      ownerName: 'Jose Luis Torres Gomez',
+      ownerType: 'persona_natural',
+      documentType: 'DNI',
+      documentNumber: '29384756',
+      ownershipPercentage: 50,
+      registeredDate: '2020-05-10',
+    });
+    expect(plan.registry?.owners[1]).toEqual({
+      ownerName: 'Inversiones Andinas S.A.C.',
+      ownerType: 'persona_juridica',
+      documentType: 'RUC',
+      documentNumber: '20452687123',
+      ownershipPercentage: 50,
+      registeredDate: '2021-06-15',
+    });
+    expect(plan.normalized.propietarios).toHaveLength(2);
+  });
+
+  it('advierte si la captura SUNARP no deja propietarios normalizables (T5.5)', () => {
+    const plan = planRemateIntake({ partida: 'P9', propietarios: [{ tipoDocumento: 'XXX' }] });
+    expect(plan.registry?.owners).toHaveLength(0);
+    expect(plan.normalized.propietarios).toHaveLength(0);
+    expect(plan.warnings.some((w) => w.includes('propietarios normalizables'))).toBe(true);
+  });
 });

@@ -10,7 +10,11 @@
  * solo partida, dirección, coordenadas y datos públicos del remate.
  */
 
-import { registryLookupKey } from '../../connectors/implementations/sunarp-normalize.js';
+import {
+  normalizePropietarios,
+  registryLookupKey,
+  type PropietarioNormalizado,
+} from '../../connectors/implementations/sunarp-normalize.js';
 
 export type OrigenUbicacion = 'partida' | 'direccion' | 'maps';
 
@@ -36,6 +40,8 @@ export interface RemateManualInput {
   latitude?: number | string | null;
   longitude?: number | string | null;
   sourceUrlPdf?: string | null;
+  /** Titulares de la partida capturados del detalle SUNARP (T5.5). */
+  propietarios?: Array<Record<string, unknown>> | Record<string, unknown> | null;
 }
 
 export interface RemateManualNormalized {
@@ -51,12 +57,16 @@ export interface RemateManualNormalized {
   latitude: number | null;
   longitude: number | null;
   sourceUrlPdf: string | null;
+  /** Titulares normalizados de la partida (T5.5). */
+  propietarios: PropietarioNormalizado[];
 }
 
 export interface RegistryPlanRow {
   registryNumber: string | null;
   registeredAddress: string | null;
   registeredDistrict: string | null;
+  /** Titulares de la partida a persistir en `registry_owners` (T5.5). */
+  owners: PropietarioNormalizado[];
   source: 'remaju';
   confidence: 'medium';
   verification: 'reported';
@@ -127,6 +137,13 @@ function normalizeOrigen(origen: OrigenUbicacion | null | undefined): OrigenUbic
   return origen === 'partida' || origen === 'maps' ? origen : 'direccion';
 }
 
+/** Solo titulares aprovechables para `registry_owners` (nombre y/o documento). */
+function meaningfulOwners(owners: PropietarioNormalizado[]): PropietarioNormalizado[] {
+  return owners.filter(
+    (o) => o.ownerName !== null || o.documentNumber !== null || o.documentType !== 'other',
+  );
+}
+
 /**
  * Normaliza el payload humano y planifica los efectos. Función pura.
  */
@@ -142,6 +159,13 @@ export function planRemateIntake(input: RemateManualInput): RemateManualPlan {
   if (!partida) warnings.push('sin partida registral: el enlace será débil (candidato)');
   if (!distrito) warnings.push('sin distrito: la geocodificación puede ser imprecisa');
 
+  // Titulares de la partida capturados de SUNARP (T5.5): se normalizan y se
+  // preparan para persistir en `registry_owners` vinculados al registry row.
+  const owners = meaningfulOwners(normalizePropietarios(input.propietarios));
+  if (input.propietarios && owners.length === 0) {
+    warnings.push('captura SUNARP sin propietarios normalizables (revisar campos)');
+  }
+
   const normalized: RemateManualNormalized = {
     partida,
     distrito,
@@ -155,6 +179,7 @@ export function planRemateIntake(input: RemateManualInput): RemateManualPlan {
     latitude: toCoordinate(input.latitude, 90),
     longitude: toCoordinate(input.longitude, 180),
     sourceUrlPdf: cleanText(input.sourceUrlPdf),
+    propietarios: owners,
   };
 
   const registry: RegistryPlanRow | null =
@@ -163,6 +188,7 @@ export function planRemateIntake(input: RemateManualInput): RemateManualPlan {
           registryNumber: partida,
           registeredAddress: direccion,
           registeredDistrict: distrito,
+          owners,
           source: 'remaju',
           confidence: 'medium',
           verification: 'reported',

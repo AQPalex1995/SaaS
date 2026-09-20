@@ -780,3 +780,20 @@ Next:
 
 Next:
 - **T5.5 - Owners**: persistir titulares normalizados de la captura manual en `registry_owners` (seed desde la captura; vincular por `propertyId` + `registryId`).
+
+## 2026-09-19 - OpenCode - Fase 5 / T5.5 (Owners - persistir titulares SUNARP)
+
+- `sunarp-normalize.ts`: nuevo export `normalizePropietarios(raw)` (acepta array o un único objeto; reutiliza `normalizePropietario`/`PropietarioNormalizado` de T5.4).
+- `remate-manual.ts` (`planRemateIntake`):
+  - `RemateManualInput` gana `propietarios?` (Array<Record> | Record | null) — captura manual SUNARP.
+  - Los titulares se normalizan y solo se persisten los aprovechables (`meaningfulOwners`: nombre y/o documento); si la captura no deja ninguno, warning `captura SUNARP sin propietarios normalizables`.
+  - `RegistryPlanRow.owners` y `RemateManualNormalized.propietarios` exponen el lote normalizado.
+- `remate-intake.service.ts`:
+  - `saveOwners(registryId, owners)`: un solo INSERT en `registry_owners` (FK `registry_property_id` = registryId, `source: 'sunarp'`, porcentaje `numeric(5,2)` en texto, `rawData: { parserVersion }`).
+  - `RemateIntakeResult.ownersPersisted` + `ownersPersisted` en el payload/log del intake.
+- Tests (+4): `sunarp-normalize.test.ts` (1 normalizePropietarios: array/objeto único/vacío/no-objeto), `remate-manual.test.ts` (2: lote normalizado al shape canónico + warning para captura sin titulares), `remate-intake.service.test.ts` (1: complete() con propietarios → 2 INSERTs registry+owners con shape correcto y ownersPersisted=2).
+- Suite **191/191 (27 files)**; typecheck server+root y build OK.
+- Docs: SUNARP.md (T5.5 DONE + sección), PROJECT_EXECUTION_PLAN (T5.5 DONE, next T5.6, STATUS T5.1–T5.5), PROJECT_STATUS (Current Task T5.6, 191/191/27), NEXT_STEPS.md, CHANGELOG.
+
+Next:
+- **T5.6 - Charges**: persistir cargas/gravámenes normalizados de la captura manual en `registry_charges` (igual patrón: `planRemateIntake` → `saveCharges`, FK `registry_property_id`).

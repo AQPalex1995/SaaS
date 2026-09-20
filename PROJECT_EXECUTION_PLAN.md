@@ -841,13 +841,13 @@ T4.9 monitoring — result:
   inyectado). Suite completa **157/157 (24 archivos)**; typecheck server+root y
   build OK.
 
-siguiente tarea del plan: **Fase 5 — SUNARP** (T5.5 Owners).
+siguiente tarea del plan: **Fase 5 — SUNARP** (T5.6 Charges).
 
 ============================================================
 PHASE 5 — SUNARP
 ============================================================
 
-STATUS: IN PROGRESS (T5.1–T5.4 DONE)
+STATUS: IN PROGRESS (T5.1–T5.5 DONE)
 
 Dividir:
 
@@ -905,7 +905,22 @@ Dividir:
     `server/tests/fixtures/registry-capture.json`. Suite **187/187 (27 archivos)**;
     typecheck server+root y build OK.
 
-T5.5 Owners
+T5.5 Owners — DONE (2026-09-19). Titulares de la partida capturados por el
+  operador persistidos en `registry_owners`, vinculados a la fila de
+  `registry_properties` del intake manual:
+  - `planRemateIntake` acepta `propietarios` (array o un único objeto) y los
+    normaliza con `normalizePropietarios` (reutiliza `PropietarioNormalizado` de
+    T5.4); solo se persisten titulares aprovechables (nombre y/o documento) y se
+    advierte si la captura no deja ninguno.
+  - `RemateIntakeService.saveOwners` inserta el lote en un solo INSERT con
+    `source: 'sunarp'`, porcentaje en texto numérico `numeric(5,2)` y
+    `rawData: { parserVersion }`; `RemateIntakeResult.ownersPersisted` expone el
+    número de filas creadas.
+  - Tests: +1 `sunarp-normalize.test.ts` (normalizePropietarios), +2
+    `remate-manual.test.ts` (planner) y +1 `remate-intake.service.test.ts`
+    (persistencia → 2 INSERTs: registry + owners). Suite **191/191 (27 archivos)**;
+    typecheck server+root y build OK.
+
 T5.6 Charges
 T5.7 Titles
 T5.8 Historical data

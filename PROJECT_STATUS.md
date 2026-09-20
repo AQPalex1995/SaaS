@@ -39,18 +39,18 @@ PostGIS:
 ## Tests
 
 Server:
-✅ 187/187 (27 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3 + `sunarp-normalize.test.ts` T5.4)
+✅ 191/191 (27 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3 + `sunarp-normalize.test.ts` T5.4/T5.5)
 
 Root:
 ✅
 
 ## Current Phase
 
-Phase 5 — ✅ SUNARP EN PROGRESO (T5.1–T5.4 DONE, 2026-09-18). Fase 4 — REM@JU COMPLETED.
+Phase 5 — ✅ SUNARP EN PROGRESO (T5.1–T5.5 DONE, 2026-09-19). Fase 4 — REM@JU COMPLETED.
 
 ## Current Task
 
-Fase 5 / T5.5 (Owners) — próximo paso. T5.1–T5.4 completados:
+Fase 5 / T5.6 (Charges) — próximo paso. T5.1–T5.5 completados:
 - **T5.1 Conoce Aquí**: discovery (`docs/SUNARP.md`): **ninguna superficie consultable
   sin identidad (DNI + fecha de emisión) + CAPTCHA** → no automatizable (Ley 29733, no
   bypass CAPTCHA, 3–5 consultas/día). Conector real de postura `SunarpConnector`
@@ -74,8 +74,17 @@ Fase 5 / T5.5 (Owners) — próximo paso. T5.1–T5.4 completados:
   (`normalizeAreaM2` "380 m2"→380 y montos con miles vía `parseAmount`).
   Tests `sunarp-normalize.test.ts` (20) + fixture `registry-capture.json`.
 Tareas `registry`/`bgr` → `requires_manual_action` (manual action kind `login`).
-Tests: `sunarp.test.ts` (5) + `sunarp-sprl.test.ts` (5) + `sunarp-normalize.test.ts` (20).
-Suite **187/187 (27 archivos)**; typecheck server+root y build OK.
+Tests: `sunarp.test.ts` (5) + `sunarp-sprl.test.ts` (5) + `sunarp-normalize.test.ts` (21).
+- **T5.5 Owners**:
+  `planRemateIntake` acepta `propietarios` (array u objeto único) de la captura
+  SUNARP y los normaliza con `normalizePropietarios` → `registry_owners`
+  vinculados a la fila de `registry_properties` (FK `registry_property_id`).
+  `RemateIntakeService.saveOwners` inserta el lote en un solo INSERT
+  (`source: 'sunarp'`, porcentaje `numeric(5,2)` en texto, `rawData` con
+  `parserVersion`); `ownersPersisted` en el resultado del intake. Solo se
+  persisten titulares con nombre y/o documento (+warnings).
+  Tests: +1 sunarp-normalize, +2 remate-manual, +1 remate-intake.service.
+Suite **191/191 (27 archivos)**; typecheck server+root y build OK.
 
 ## Blockers
 

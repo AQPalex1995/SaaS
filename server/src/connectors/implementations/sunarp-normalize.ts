@@ -352,6 +352,15 @@ function normalizePropietario(input: Record<string, unknown>): PropietarioNormal
   };
 }
 
+/** Normaliza un array (o un único objeto) de titulares de la partida (T5.5). */
+export function normalizePropietarios(raw: unknown): PropietarioNormalizado[] {
+  if (raw == null) return [];
+  const list = Array.isArray(raw) ? raw : [raw];
+  return list
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+    .map(normalizePropietario);
+}
+
 function normalizeCarga(input: Record<string, unknown>): CargaNormalizada {
   const montoRaw = readField(input, ['amount', 'monto']);
   const monedaRaw = readField(input, ['currency', 'moneda']);

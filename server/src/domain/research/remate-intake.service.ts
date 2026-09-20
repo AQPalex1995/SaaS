@@ -15,7 +15,16 @@
 
 import { eq } from 'drizzle-orm';
 import { getDb, type Database } from '../../db/connection.js';
-import { externalLinks, properties, registryProperties } from '../../db/schema/index.js';
+import {
+  externalLinks,
+  properties,
+  registryOwners,
+  registryProperties,
+} from '../../db/schema/index.js';
+import {
+  SUNARP_PARSER_VERSION,
+  type PropietarioNormalizado,
+} from '../../connectors/implementations/sunarp-normalize.js';
 import type { ManualActionDTO } from '../../dto/index.js';
 import { logger } from '../../logger.js';
 import { getStorage } from '../../storage/index.js';
@@ -44,6 +53,8 @@ export interface RemateIntakeResult {
   manualAction: ManualActionDTO;
   plan: RemateManualPlan;
   registryId: string | null;
+  /** Titulares SUNARP persistidos en `registry_owners` (T5.5). */
+  ownersPersisted: number;
   pdfKey: string | null;
   locationApplied: boolean;
 }
@@ -116,12 +127,15 @@ export class RemateIntakeService {
     const propertyId = action.propertyId;
 
     const registryId = await this.saveRegistry(propertyId, plan);
+    const ownersPersisted =
+      registryId && plan.registry ? await this.saveOwners(registryId, plan.registry.owners) : 0;
     const locationApplied = await this.applyLocation(propertyId, plan);
     const pdfKey = input.pdf ? await this.savePdf(propertyId, id, input.pdf) : null;
 
     const result: Record<string, unknown> = {
       ...plan.normalized,
       registryId,
+      ownersPersisted,
       pdfKey,
       warnings: plan.warnings,
     };
@@ -132,11 +146,11 @@ export class RemateIntakeService {
     });
 
     logger.info(
-      { manualActionId: id, propertyId, registryId, pdfKey, locationApplied },
+      { manualActionId: id, propertyId, registryId, ownersPersisted, pdfKey, locationApplied },
       'REM@JU manual intake completed',
     );
 
-    return { manualAction, plan, registryId, pdfKey, locationApplied };
+    return { manualAction, plan, registryId, ownersPersisted, pdfKey, locationApplied };
   }
 
   /** Cancela una acción manual pendiente (el operador decide que no procede). */
@@ -161,6 +175,24 @@ export class RemateIntakeService {
       })
       .returning({ id: registryProperties.id });
     return row?.id ?? null;
+  }
+
+  /** Persiste los titulares SUNARP de la partida en `registry_owners` (T5.5). */
+  private async saveOwners(registryId: string, owners: PropietarioNormalizado[]): Promise<number> {
+    if (owners.length === 0) return 0;
+    const rows = owners.map((o) => ({
+      registryPropertyId: registryId,
+      ownerName: o.ownerName,
+      ownerType: o.ownerType,
+      documentType: o.documentType,
+      documentNumber: o.documentNumber,
+      ownershipPercentage: o.ownershipPercentage === null ? null : String(o.ownershipPercentage),
+      registeredDate: o.registeredDate,
+      source: 'sunarp',
+      rawData: { parserVersion: SUNARP_PARSER_VERSION },
+    }));
+    await this.db().insert(registryOwners).values(rows);
+    return rows.length;
   }
 
   private async applyLocation(propertyId: string, plan: RemateManualPlan): Promise<boolean> {

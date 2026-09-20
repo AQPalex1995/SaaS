@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { RemateIntakeService } from '../src/domain/research/remate-intake.service';
+import { registryOwners, registryProperties } from '../src/db/schema/registry';
 
 function makeManualActions(overrides: Record<string, unknown> = {}) {
   return {
@@ -146,6 +147,54 @@ describe('RemateIntakeService.complete (T4.5b)', () => {
     expect(result.pdfKey).toBe(storage.puts[0].key);
     // registry + external_links
     expect(inserted).toHaveLength(2);
+  });
+
+  it('persiste titulares SUNARP normalizados en registry_owners (T5.5)', async () => {
+    const { db, inserted, updated } = makeDb();
+    const manual = makeManualActions();
+    const service = new RemateIntakeService({
+      db: db as never,
+      manualActions: manual as never,
+      storage: makeStorage().storage as never,
+    });
+
+    const result = await service.complete('ma-6', {
+      payload: {
+        partida: 'P9',
+        propietarios: [
+          { titular: 'JOSE LUIS TORRES GOMEZ', tipo: 'NATURAL', tipoDocumento: 'DNI', numeroDocumento: '29384756', porcentaje: '100%' },
+          { titular: 'INVERSIONES ANDINAS S.A.C.', tipo: 'JURIDICA', tipoDocumento: 'RUC', numeroDocumento: '20452687123', porcentaje: 0 },
+        ],
+      },
+      completedBy: 'analista',
+    });
+
+    // registry_properties + registry_owners (un único insert con el array de titulares).
+    expect(inserted).toHaveLength(2);
+    expect(inserted[0].table).toBe(registryProperties);
+    expect(inserted[1].table).toBe(registryOwners);
+
+    const owners = inserted[1].values as unknown as Array<Record<string, unknown>>;
+    expect(owners).toHaveLength(2);
+    expect(owners[0]).toMatchObject({
+      registryPropertyId: 'reg-1',
+      ownerName: 'Jose Luis Torres Gomez',
+      ownerType: 'persona_natural',
+      documentType: 'DNI',
+      documentNumber: '29384756',
+      ownershipPercentage: '100',
+      source: 'sunarp',
+    });
+    expect(owners[1]).toMatchObject({
+      ownerName: 'Inversiones Andinas S.A.C.',
+      ownerType: 'persona_juridica',
+      documentType: 'RUC',
+      ownershipPercentage: '0',
+    });
+
+    expect(result.registryId).toBe('reg-1');
+    expect(result.ownersPersisted).toBe(2);
+    expect(updated).toHaveLength(0);
   });
 
   it('rechaza acciones inexistentes o ya completadas', async () => {

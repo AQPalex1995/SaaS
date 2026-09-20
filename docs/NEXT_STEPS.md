@@ -2,7 +2,7 @@
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
 > El estado del repositorio refleja la **Fase 4 (REM@JU) completada** y la
-> **Fase 5 (SUNARP) en progreso (T5.1 + T5.2 + T5.3 + T5.4 DONE)**.
+> **Fase 5 (SUNARP) en progreso (T5.1 + T5.2 + T5.3 + T5.4 + T5.5 DONE)**.
 > Las fases 0–2.5, la Fase 3 (T3.1 → T3.9), la Fase 4 (T4.1 → T4.9) y el
 > arranque de la Fase 5 (T5.1) están implementadas en `main`
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
@@ -449,22 +449,20 @@ cd server && npm.cmd run sync:sqlite
 > `server/tests/sunarp-sprl.test.ts` (5). Suite **167/167 (26 archivos)**;
 > typecheck server+root y build OK.
 >
-> **Siguiente tarea del plan**: **Fase 5 — SUNARP / T5.5 (Owners)** — persistir
-> los titulares normalizados de la captura manual en `registry_owners`.
-> T5.4 completada (2026‑09‑18): normalización pura del registro capturado
-> manualmente en `server/src/connectors/implementations/sunarp-normalize.ts`
-> (`normalizeRegistryPartida`/`registryLookupKey` → clave canónica `P-XXXXXXXX`,
-> prefijo de oficina `110` de la Zona XII; `normalizeRegistryCapture` → shape
-> canónico tipado para `registry_properties`/`registry_owners`/
-> `registry_charges`) e integración "antes de persistir" vía `planRemateIntake`
-> (`registry_properties.registry_number` canónico → dedup del cache de pagos
-> SPRL). Bugs reales corregidos por la batería: `normalizeAreaM2` ("380 m2"→380,
-> no 3802) y montos con separadores de miles (vía `parseAmount`). Tests
-> `server/tests/sunarp-normalize.test.ts` (20) + fixture
-> `server/tests/fixtures/registry-capture.json`; aserciones de los tests
-> `remate-manual` y `phase4-acceptance` actualizadas al formato canónico.
-> Suite **187/187 (27 archivos)**; typecheck server+root y build OK.
-> Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 5).
+> **Siguiente tarea del plan**: **Fase 5 — SUNARP / T5.6 (Charges)** — persistir
+> las cargas/gravámenes normalizados de la captura manual en `registry_charges`.
+> T5.5 completada (2026‑09‑19): titulares de la partida capturados por el
+> operador persistidos en `registry_owners`, vinculados a la fila de
+> `registry_properties` del intake manual (`registry_property_id` = `registryId`).
+> `planRemateIntake` acepta `propietarios` (array u objeto único) y los normaliza
+> con `normalizePropietarios` (reutiliza `PropietarioNormalizado` de T5.4); solo
+> se persisten titulares aprovechables (nombre y/o documento) y se advierte si la
+> captura no deja ninguno. `RemateIntakeService.saveOwners` inserta el lote en un
+> solo INSERT (`source: 'sunarp'`, porcentaje `numeric(5,2)` en texto,
+> `rawData: { parserVersion }`) y expone `ownersPersisted`. Tests +1
+> `sunarp-normalize.test.ts`, +2 `remate-manual.test.ts`, +1
+> `remate-intake.service.test.ts`. Suite **191/191 (27 archivos)**; typecheck
+> server+root y build OK. Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 5).
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.
 - Implementar la verificación a nivel de caso: confirmar manualmente la identidad del property y la coordenada geocodificada (hoy `verification='inferred'`).
