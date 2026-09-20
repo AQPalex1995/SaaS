@@ -1,6 +1,6 @@
 # SUNARP — Registro y Titularidad (Fase 5)
 
-> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ + T5.3 (SPRL) ✅ + T5.4 (Registry normalization) ✅ + T5.5 (Owners) ✅ — DONE (2026‑09‑19).
+> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ + T5.3 (SPRL) ✅ + T5.4 (Registry normalization) ✅ + T5.5 (Owners) ✅ + T5.6 (Charges) ✅ — DONE (2026‑09‑19).
 > Reporte de discovery, postura del conector `sunarp` y normalización registral.
 
 ## 1. Qué es SUNARP
@@ -142,7 +142,21 @@ Detalle de **SPRL** (T5.3):
     `remate-manual.test.ts` (planner) y `remate-intake.service.test.ts`
     (persistencia). Suite **191/191 (27 archivos)**; typecheck server+root y
     build OK.
-- **T5.6/5.7 cargas y asientos** → se rellenan desde el detalle manual.
+- **T5.6 Charges** → ✅ DONE (2026‑09‑19): las **cargas/gravámenes** de la
+  partida capturadas por el operador se normalizan (helper `normalizeCargas`,
+  reutiliza `CargaNormalizada`/`normalizeCarga`) y se **persisten en
+  `registry_charges`** vinculados a la fila de `registry_properties` (FK
+  `registry_property_id` → `registryId` del intake):
+  - `planRemateIntake` acepta `cargas` (array o un único objeto) en el payload
+    manual; solo persiste cargas aprovechables (con tipo/descripción/monto/
+    acreedor) y advierte si la captura no deja ninguna.
+  - `RemateIntakeService.saveCharges` inserta el lote en un solo INSERT con
+    `source: 'sunarp'`, monto en texto numérico (columna `numeric(15,2)`),
+    moneda (PEN/USD), estado si/no/unknown y `rawData: { parserVersion }`;
+    `RemateIntakeResult.chargesPersisted` reporta cuántas filas se crearon.
+  - Tests: `sunarp-normalize.test.ts` (`normalizeCargas`), `remate-manual.test.ts`
+    (planner) y `remate-intake.service.test.ts` (persistencia). Suite
+    **195/195 (27 archivos)**; typecheck server+root y build OK.
 - **BGR (Fase 6, visor)** → DNI + CAPTCHA: misma postura `requires_auth` en
   `sunarp_bgr`.
 - **SPRL histórico** (T5.8) → via copias literales manuales.

@@ -119,4 +119,38 @@ describe('REM@JU manual intake planner (T4.5b)', () => {
     expect(plan.normalized.propietarios).toHaveLength(0);
     expect(plan.warnings.some((w) => w.includes('propietarios normalizables'))).toBe(true);
   });
+
+  it('normaliza cargas SUNARP de la captura manual para registry_charges (T5.6)', () => {
+    const plan = planRemateIntake({
+      partida: 'P9',
+      cargas: [
+        { tipo: 'HIPOTECA', descripcion: 'Hipoteca a favor del Banco de Crédito', monto: 'S/ 1,234,567.89', moneda: 'S/', acreedor: 'BANCO DE CREDITO DEL PERU S.A.', fechaInscripcion: '20/05/2020', estado: 'VIGENTE' },
+        { tipo: 'EMBARGO', monto: 'US$ 45,000.00', moneda: 'US$', estado: 'Cancelado' },
+      ],
+    });
+    expect(plan.registry?.charges).toHaveLength(2);
+    expect(plan.registry?.charges[0]).toEqual({
+      chargeType: 'hipoteca',
+      description: 'Hipoteca a favor del Banco de Crédito',
+      amount: 1234567.89,
+      currency: 'PEN',
+      creditor: 'Banco De Credito Del Peru S.A.',
+      registeredDate: '2020-05-20',
+      isActive: 'si',
+    });
+    expect(plan.registry?.charges[1]).toMatchObject({
+      chargeType: 'embargo',
+      amount: 45000,
+      currency: 'USD',
+      isActive: 'no',
+    });
+    expect(plan.normalized.cargas).toHaveLength(2);
+  });
+
+  it('advierte si la captura SUNARP no deja cargas normalizables (T5.6)', () => {
+    const plan = planRemateIntake({ partida: 'P9', cargas: [{ tipo: 'SIN VALOR' }] });
+    expect(plan.registry?.charges).toHaveLength(0);
+    expect(plan.normalized.cargas).toHaveLength(0);
+    expect(plan.warnings.some((w) => w.includes('cargas normalizables'))).toBe(true);
+  });
 });

@@ -18,11 +18,13 @@ import { getDb, type Database } from '../../db/connection.js';
 import {
   externalLinks,
   properties,
+  registryCharges,
   registryOwners,
   registryProperties,
 } from '../../db/schema/index.js';
 import {
   SUNARP_PARSER_VERSION,
+  type CargaNormalizada,
   type PropietarioNormalizado,
 } from '../../connectors/implementations/sunarp-normalize.js';
 import type { ManualActionDTO } from '../../dto/index.js';
@@ -55,6 +57,8 @@ export interface RemateIntakeResult {
   registryId: string | null;
   /** Titulares SUNARP persistidos en `registry_owners` (T5.5). */
   ownersPersisted: number;
+  /** Cargas SUNARP persistidas en `registry_charges` (T5.6). */
+  chargesPersisted: number;
   pdfKey: string | null;
   locationApplied: boolean;
 }
@@ -129,6 +133,8 @@ export class RemateIntakeService {
     const registryId = await this.saveRegistry(propertyId, plan);
     const ownersPersisted =
       registryId && plan.registry ? await this.saveOwners(registryId, plan.registry.owners) : 0;
+    const chargesPersisted =
+      registryId && plan.registry ? await this.saveCharges(registryId, plan.registry.charges) : 0;
     const locationApplied = await this.applyLocation(propertyId, plan);
     const pdfKey = input.pdf ? await this.savePdf(propertyId, id, input.pdf) : null;
 
@@ -136,6 +142,7 @@ export class RemateIntakeService {
       ...plan.normalized,
       registryId,
       ownersPersisted,
+      chargesPersisted,
       pdfKey,
       warnings: plan.warnings,
     };
@@ -146,11 +153,27 @@ export class RemateIntakeService {
     });
 
     logger.info(
-      { manualActionId: id, propertyId, registryId, ownersPersisted, pdfKey, locationApplied },
+      {
+        manualActionId: id,
+        propertyId,
+        registryId,
+        ownersPersisted,
+        chargesPersisted,
+        pdfKey,
+        locationApplied,
+      },
       'REM@JU manual intake completed',
     );
 
-    return { manualAction, plan, registryId, ownersPersisted, pdfKey, locationApplied };
+    return {
+      manualAction,
+      plan,
+      registryId,
+      ownersPersisted,
+      chargesPersisted,
+      pdfKey,
+      locationApplied,
+    };
   }
 
   /** Cancela una acción manual pendiente (el operador decide que no procede). */
@@ -192,6 +215,25 @@ export class RemateIntakeService {
       rawData: { parserVersion: SUNARP_PARSER_VERSION },
     }));
     await this.db().insert(registryOwners).values(rows);
+    return rows.length;
+  }
+
+  /** Persiste las cargas/gravámenes SUNARP de la partida en `registry_charges` (T5.6). */
+  private async saveCharges(registryId: string, charges: CargaNormalizada[]): Promise<number> {
+    if (charges.length === 0) return 0;
+    const rows = charges.map((c) => ({
+      registryPropertyId: registryId,
+      chargeType: c.chargeType,
+      description: c.description,
+      amount: c.amount === null ? null : String(c.amount),
+      currency: c.currency,
+      creditor: c.creditor,
+      registeredDate: c.registeredDate,
+      isActive: c.isActive,
+      source: 'sunarp',
+      rawData: { parserVersion: SUNARP_PARSER_VERSION },
+    }));
+    await this.db().insert(registryCharges).values(rows);
     return rows.length;
   }
 

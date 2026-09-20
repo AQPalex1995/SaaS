@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { RemateIntakeService } from '../src/domain/research/remate-intake.service';
-import { registryOwners, registryProperties } from '../src/db/schema/registry';
+import { registryCharges, registryOwners, registryProperties } from '../src/db/schema/registry';
 
 function makeManualActions(overrides: Record<string, unknown> = {}) {
   return {
@@ -194,6 +194,55 @@ describe('RemateIntakeService.complete (T4.5b)', () => {
 
     expect(result.registryId).toBe('reg-1');
     expect(result.ownersPersisted).toBe(2);
+    expect(updated).toHaveLength(0);
+  });
+
+  it('persiste cargas SUNARP normalizadas en registry_charges (T5.6)', async () => {
+    const { db, inserted, updated } = makeDb();
+    const manual = makeManualActions();
+    const service = new RemateIntakeService({
+      db: db as never,
+      manualActions: manual as never,
+      storage: makeStorage().storage as never,
+    });
+
+    const result = await service.complete('ma-7', {
+      payload: {
+        partida: 'P9',
+        cargas: [
+          { tipo: 'HIPOTECA', monto: 'S/ 1,234,567.89', moneda: 'S/', acreedor: 'BANCO DE CREDITO DEL PERU S.A.', fechaInscripcion: '20/05/2020', estado: 'VIGENTE' },
+          { tipo: 'EMBARGO', monto: 'US$ 45,000.00', moneda: 'US$', estado: 'Cancelado' },
+        ],
+      },
+      completedBy: 'analista',
+    });
+
+    // registry_properties + registry_owners (vacío, no inserta) + registry_charges.
+    expect(inserted).toHaveLength(2);
+    expect(inserted[0].table).toBe(registryProperties);
+    expect(inserted[1].table).toBe(registryCharges);
+
+    const cargas = inserted[1].values as unknown as Array<Record<string, unknown>>;
+    expect(cargas).toHaveLength(2);
+    expect(cargas[0]).toMatchObject({
+      registryPropertyId: 'reg-1',
+      chargeType: 'hipoteca',
+      amount: '1234567.89',
+      currency: 'PEN',
+      creditor: 'Banco De Credito Del Peru S.A.',
+      registeredDate: '2020-05-20',
+      isActive: 'si',
+      source: 'sunarp',
+    });
+    expect(cargas[1]).toMatchObject({
+      chargeType: 'embargo',
+      amount: '45000',
+      currency: 'USD',
+      isActive: 'no',
+    });
+
+    expect(result.registryId).toBe('reg-1');
+    expect(result.chargesPersisted).toBe(2);
     expect(updated).toHaveLength(0);
   });
 

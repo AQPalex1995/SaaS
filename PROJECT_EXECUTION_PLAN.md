@@ -841,13 +841,13 @@ T4.9 monitoring — result:
   inyectado). Suite completa **157/157 (24 archivos)**; typecheck server+root y
   build OK.
 
-siguiente tarea del plan: **Fase 5 — SUNARP** (T5.6 Charges).
+siguiente tarea del plan: **Fase 5 — SUNARP** (T5.7 Titles).
 
 ============================================================
 PHASE 5 — SUNARP
 ============================================================
 
-STATUS: IN PROGRESS (T5.1–T5.5 DONE)
+STATUS: IN PROGRESS (T5.1–T5.6 DONE)
 
 Dividir:
 
@@ -921,7 +921,22 @@ T5.5 Owners — DONE (2026-09-19). Titulares de la partida capturados por el
     (persistencia → 2 INSERTs: registry + owners). Suite **191/191 (27 archivos)**;
     typecheck server+root y build OK.
 
-T5.6 Charges
+T5.6 Charges — DONE (2026-09-19). Cargas/gravámenes de la partida capturados
+  por el operador persistidos en `registry_charges`, vinculados a la fila de
+  `registry_properties` del intake manual:
+  - `planRemateIntake` acepta `cargas` (array o un único objeto) y las normaliza
+    con `normalizeCargas` (reutiliza `CargaNormalizada` de T5.4); solo se
+    persisten cargas aprovechables (tipo/descripción/monto/acreedor) y se
+    advierte si la captura no deja ninguna.
+  - `RemateIntakeService.saveCharges` inserta el lote en un solo INSERT con
+    `source: 'sunarp'`, monto en texto numérico `numeric(15,2)`, moneda
+    (PEN/USD), estado si/no/unknown y `rawData: { parserVersion }`;
+    `RemateIntakeResult.chargesPersisted` expone el número de filas creadas.
+  - Tests: +1 `sunarp-normalize.test.ts` (normalizeCargas), +2
+    `remate-manual.test.ts` (planner) y +1 `remate-intake.service.test.ts`
+    (persistencia → 2 INSERTs: registry + charges). Suite **195/195 (27 archivos)**;
+    typecheck server+root y build OK.
+
 T5.7 Titles
 T5.8 Historical data
 T5.9 Provenance

@@ -375,6 +375,15 @@ function normalizeCarga(input: Record<string, unknown>): CargaNormalizada {
   };
 }
 
+/** Normaliza un array (o un único objeto) de cargas/gravámenes de la partida (T5.6). */
+export function normalizeCargas(raw: unknown): CargaNormalizada[] {
+  if (raw == null) return [];
+  const list = Array.isArray(raw) ? raw : [raw];
+  return list
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+    .map(normalizeCarga);
+}
+
 /**
  * Normaliza una captura registral completa para persistir en
  * `registry_properties` / `registry_owners` / `registry_charges`.

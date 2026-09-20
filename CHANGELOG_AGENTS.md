@@ -797,3 +797,20 @@ Next:
 
 Next:
 - **T5.6 - Charges**: persistir cargas/gravámenes normalizados de la captura manual en `registry_charges` (igual patrón: `planRemateIntake` → `saveCharges`, FK `registry_property_id`).
+
+## 2026-09-19 - OpenCode - Fase 5 / T5.6 (Charges - persistir cargas SUNARP)
+
+- `sunarp-normalize.ts`: nuevo export `normalizeCargas(raw)` (acepta array o un único objeto; reutiliza `normalizeCarga`/`CargaNormalizada` de T5.4).
+- `remate-manual.ts` (`planRemateIntake`):
+  - `RemateManualInput` gana `cargas?` (Array<Record> | Record | null) — captura manual SUNARP.
+  - Las cargas se normalizan y solo se persisten las aprovechables (`meaningfulCharges`: tipo/descripción/monto/acreedor); si la captura no deja ninguna, warning `captura SUNARP sin cargas normalizables`.
+  - `RegistryPlanRow.charges` y `RemateManualNormalized.cargas` exponen el lote normalizado.
+- `remate-intake.service.ts`:
+  - `saveCharges(registryId, cargas)`: un solo INSERT en `registry_charges` (FK `registry_property_id` = registryId, `source: 'sunarp'`, monto `numeric(15,2)` en texto, moneda PEN/USD, estado si/no/unknown, `rawData: { parserVersion }`).
+  - `RemateIntakeResult.chargesPersisted` + `chargesPersisted` en el payload/log del intake.
+- Tests (+4): `sunarp-normalize.test.ts` (1 normalizeCargas: array/objeto único/vacío/no-objeto + tipos/monto/moneda/estado), `remate-manual.test.ts` (2: lote normalizado al shape canónico + warning para captura sin cargas), `remate-intake.service.test.ts` (1: complete() con cargas → 2 INSERTs registry+charges con shape correcto y chargesPersisted=2).
+- Suite **195/195 (27 files)**; typecheck server+root y build OK.
+- Docs: SUNARP.md (T5.6 DONE + sección), PROJECT_EXECUTION_PLAN (T5.6 DONE, next T5.7, STATUS T5.1–T5.6), PROJECT_STATUS (Current Task T5.7, 195/195/27), NEXT_STEPS.md, CHANGELOG.
+
+Next:
+- **T5.7 - Titles**: persistir historial de títulos/asientos de la captura manual en `registry_titles` (normalizar `registry_titles`: titleNumber/titleDate/titleType/notary/description).

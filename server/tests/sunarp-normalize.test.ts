@@ -16,6 +16,7 @@ import {
   normalizePropietarios,
   normalizeChargeType,
   normalizeIsActive,
+  normalizeCargas,
   normalizeAreaM2,
   parseAmount,
   normalizeCurrency,
@@ -209,6 +210,32 @@ describe('T5.4 — Cargas (charges)', () => {
     expect(normalizeCurrency('USD')).toBe('USD');
     expect(normalizeCurrency('US$')).toBe('USD');
     expect(normalizeCurrency('DÓLARES')).toBe('USD');
+  });
+
+  it('normalizeCargas: array o un único objeto → lista normalizada (T5.6)', () => {
+    const list = normalizeCargas([
+      { tipo: 'HIPOTECA', monto: 'S/ 1,234,567.89', moneda: 'S/', acreedor: 'BANCO DE CREDITO DEL PERU S.A.', fechaInscripcion: '20/05/2020', estado: 'VIGENTE' },
+      { tipo: 'EMBARGO', monto: 'US$ 45,000.00', moneda: 'US$', estado: 'Cancelado' },
+    ]);
+    expect(list).toHaveLength(2);
+    expect(list[0]).toEqual({
+      chargeType: 'hipoteca',
+      description: null,
+      amount: 1234567.89,
+      currency: 'PEN',
+      creditor: 'Banco De Credito Del Peru S.A.',
+      registeredDate: '2020-05-20',
+      isActive: 'si',
+    });
+    expect(list[1]).toMatchObject({ chargeType: 'embargo', currency: 'USD', isActive: 'no' });
+
+    const single = normalizeCargas({ tipo: 'USUFRUCTO' });
+    expect(single).toHaveLength(1);
+    expect(single[0].chargeType).toBe('usufructo');
+
+    expect(normalizeCargas(null)).toHaveLength(0);
+    expect(normalizeCargas(undefined)).toHaveLength(0);
+    expect(normalizeCargas(['not-an-object'])).toHaveLength(0);
   });
 });
 

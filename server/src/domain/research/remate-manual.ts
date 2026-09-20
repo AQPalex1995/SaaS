@@ -11,8 +11,10 @@
  */
 
 import {
+  normalizeCargas,
   normalizePropietarios,
   registryLookupKey,
+  type CargaNormalizada,
   type PropietarioNormalizado,
 } from '../../connectors/implementations/sunarp-normalize.js';
 
@@ -42,6 +44,8 @@ export interface RemateManualInput {
   sourceUrlPdf?: string | null;
   /** Titulares de la partida capturados del detalle SUNARP (T5.5). */
   propietarios?: Array<Record<string, unknown>> | Record<string, unknown> | null;
+  /** Cargas/gravámenes capturados del detalle SUNARP (T5.6). */
+  cargas?: Array<Record<string, unknown>> | Record<string, unknown> | null;
 }
 
 export interface RemateManualNormalized {
@@ -59,6 +63,8 @@ export interface RemateManualNormalized {
   sourceUrlPdf: string | null;
   /** Titulares normalizados de la partida (T5.5). */
   propietarios: PropietarioNormalizado[];
+  /** Cargas/gravámenes normalizados de la partida (T5.6). */
+  cargas: CargaNormalizada[];
 }
 
 export interface RegistryPlanRow {
@@ -67,6 +73,8 @@ export interface RegistryPlanRow {
   registeredDistrict: string | null;
   /** Titulares de la partida a persistir en `registry_owners` (T5.5). */
   owners: PropietarioNormalizado[];
+  /** Cargas/gravámenes a persistir en `registry_charges` (T5.6). */
+  charges: CargaNormalizada[];
   source: 'remaju';
   confidence: 'medium';
   verification: 'reported';
@@ -144,6 +152,17 @@ function meaningfulOwners(owners: PropietarioNormalizado[]): PropietarioNormaliz
   );
 }
 
+/** Solo cargas aprovechables para `registry_charges` (alguna información real). */
+function meaningfulCharges(charges: CargaNormalizada[]): CargaNormalizada[] {
+  return charges.filter(
+    (c) =>
+      c.chargeType !== 'other' ||
+      c.description !== null ||
+      c.amount !== null ||
+      c.creditor !== null,
+  );
+}
+
 /**
  * Normaliza el payload humano y planifica los efectos. Función pura.
  */
@@ -166,6 +185,13 @@ export function planRemateIntake(input: RemateManualInput): RemateManualPlan {
     warnings.push('captura SUNARP sin propietarios normalizables (revisar campos)');
   }
 
+  // Cargas/gravámenes capturados de SUNARP (T5.6): se normalizan y se preparan
+  // para persistir en `registry_charges` vinculados al registry row.
+  const charges = meaningfulCharges(normalizeCargas(input.cargas));
+  if (input.cargas && charges.length === 0) {
+    warnings.push('captura SUNARP sin cargas normalizables (revisar campos)');
+  }
+
   const normalized: RemateManualNormalized = {
     partida,
     distrito,
@@ -180,6 +206,7 @@ export function planRemateIntake(input: RemateManualInput): RemateManualPlan {
     longitude: toCoordinate(input.longitude, 180),
     sourceUrlPdf: cleanText(input.sourceUrlPdf),
     propietarios: owners,
+    cargas: charges,
   };
 
   const registry: RegistryPlanRow | null =
@@ -189,6 +216,7 @@ export function planRemateIntake(input: RemateManualInput): RemateManualPlan {
           registeredAddress: direccion,
           registeredDistrict: distrito,
           owners,
+          charges,
           source: 'remaju',
           confidence: 'medium',
           verification: 'reported',
