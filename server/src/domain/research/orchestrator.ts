@@ -598,6 +598,7 @@ export class ResearchOrchestrator {
           actionKind: status.status === 'requires_auth' ? 'login' : 'user_action',
           instructions: description,
           source: sourceId,
+          url: status.url ?? null,
         });
       } catch (err: any) {
         logger.warn(

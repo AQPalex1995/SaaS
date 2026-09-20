@@ -945,3 +945,53 @@ Next:
   SUNARP en la plataforma. Aún sin definir en el plan → acotar alcance al
   iniciar (candidato: guía/URL del analista en la UI `/manual-actions` y
   verificación de la acción tras el intake).
+
+## 2026-09-19 - OpenCode - Fase 5 / T5.10 (Manual actions - Intake SUNARP end-to-end)
+
+- Alcance acotado con el usuario (T5.10 sin definir en el plan): **"Intake
+  SUNARP end-to-end"** — cerrar el ciclo de acciones manuales de SUNARP dentro
+  de la plataforma, sin nueva infraestructura (reutiliza intake y persistencia
+  existentes).
+- `connectors/base.ts`: nuevo campo opcional `ConnectorStatus.url` — la
+  superficie oficial que el operador debe abrir cuando la fuente exige acción
+  manual. `sunarp.ts` → `SUNARP_CONOCE_AQUI_URL`; `sunarp-sprl.ts` →
+  `SUNARP_SPRL_URL`.
+- `orchestrator.ts` (`executeConnectorTask`): la `manual_action` creada al caer
+  en `requires_manual_action` ahora lleva `url: status.url` (kind `login`,
+  `source` sunarp/sunarp_sprl). Antes la acción no tenía URL y el operador debía
+  buscar el servicio a mano.
+- UI `/manual-actions` (`remate-intake.routes.ts`): tarjetas de acción con badge
+  de `actionKind`, link "abrir servicio" (URL) e instrucciones; al seleccionar
+  una acción SUNARP se habilita el panel **Captura registral SUNARP** con
+  titulares/cargas/títulos (JSON) + URL consultada. Los JSON se validan
+  (`parseJsonList`) y se envían en `payload` (mismo shape que la captura T5.4);
+  el resultado muestra `owners/charges/titlesPersisted`. Antes el formulario era
+  solo REM@JU.
+- **Atribución real de la captura** (regla de trazabilidad AGENTS §3.5): antes
+  toda captura manual se registraba como `manual`/`remaju` aunque viniera de
+  SUNARP. Ahora `planRemateIntake(input, retrievedAt?, context)` acepta un
+  `IntakeContext { source, url }`; `RemateIntakeService.complete` lo deriva del
+  `source` de la manual action (`resolveCaptureSource`). Para capturas SUNARP
+  fija `source: 'sunarp'/'sunarp_sprl'/'sunarp_bgr'` con `parserVersion: 'v1'`
+  (SUNARP_PARSER_VERSION) en `RemateManualNormalized.provenance` y en
+  `RegistryPlanRow.source/provenance`; `sourceUrl` = `sourceUrlPdf` del operador
+  o la URL del contexto. REM@JU conserva provenance `manual`/`remaju` y el
+  estado derivado sigue marcándose `sunarp` + `verification: 'inferred'`.
+- Tests (+3 netos, 1 archivo nuevo): nuevo `sunarp-intake.test.ts` (E2E offline:
+  tarea `registry` → manual action con URL → operador completa captura →
+  `registry_properties` + titulares/cargas/títulos persistidos → task settled →
+  provenance de la captura en `research_results.data`), +2 `remate-manual.test.ts`
+  (contexto SUNARP; precedencia `sourceUrlPdf` sobre la URL del contexto),
+  `sunarp.test.ts`/`sunarp-sprl.test.ts` (url en `getStatus`/manual action),
+  `remate-intake.routes.test.ts` (header de la UI).
+- Suite **213/213 (29 files)**; typecheck server+root y build OK.
+- Docs: SUNARP.md (T5.10 DONE + sección), PROJECT_EXECUTION_PLAN (T5.10 DONE,
+  next T5.11, STATUS T5.1–T5.10), PROJECT_STATUS (Current Task T5.11,
+  213/213/29 + bullet T5.10), NEXT_STEPS.md, AGENTS.md (Estado Actual + conteo),
+  CHANGELOG.
+
+Next:
+- **T5.11 - Tests** (Fase 5): pasada de pruebas integral de SUNARP (regresión
+  del ciclo T5.1–T5.10). Aún sin definir en el plan → acotar alcance al iniciar;
+  tras ella quedan las subfases RP.1–RP.11 de PHASE 5.5 (PLANNED, requieren
+  aprobación explícita + Decision Gates AGENTS.md §2.3-bis).

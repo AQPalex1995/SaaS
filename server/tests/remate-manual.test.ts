@@ -262,4 +262,35 @@ describe('REM@JU manual intake planner (T4.5b)', () => {
     expect(plan.registry?.provenance.sourceUrl).toBeNull();
     expect(plan.normalized.historical.provenance.sourceUrl).toBeNull();
   });
+
+  it('contexto SUNARP atribuye la captura a la fuente real, no a transcripción manual (T5.10)', () => {
+    const plan = planRemateIntake(
+      { partida: 'P9', cargas: [{ tipo: 'HIPOTECA', monto: 'S/ 1,000', estado: 'VIGENTE' }] },
+      new Date('2026-09-19T13:00:00.000Z'),
+      { source: 'sunarp', url: 'https://conoce-aqui.sunarp.gob.pe/…' },
+    );
+
+    expect(plan.normalized.provenance).toEqual({
+      source: 'sunarp',
+      sourceUrl: 'https://conoce-aqui.sunarp.gob.pe/…',
+      retrievedAt: '2026-09-19T13:00:00.000Z',
+      confidence: 'medium',
+      verification: 'reported',
+      parserVersion: 'v1',
+    });
+    expect(plan.normalized.provenance.source).not.toBe('manual');
+    expect(plan.registry?.source).toBe('sunarp');
+    expect(plan.registry?.provenance.source).toBe('sunarp');
+    expect(plan.registry?.provenance.parserVersion).toBe('v1');
+  });
+
+  it('la URL del operador (sourceUrlPdf) tiene precedencia sobre la del contexto (T5.10)', () => {
+    const plan = planRemateIntake(
+      { partida: 'P9', sourceUrlPdf: 'https://sprl.sunarp.gob.pe/partida/9' },
+      undefined,
+      { source: 'sunarp', url: 'https://sprl.sunarp.gob.pe' },
+    );
+    expect(plan.normalized.provenance.sourceUrl).toBe('https://sprl.sunarp.gob.pe/partida/9');
+    expect(plan.normalized.provenance.parserVersion).toBe('v1');
+  });
 });

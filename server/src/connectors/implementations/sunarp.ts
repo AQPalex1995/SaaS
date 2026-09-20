@@ -69,6 +69,7 @@ export class SunarpConnector extends PropertyDataSource {
       status: 'requires_auth',
       requiresManualAction: true,
       manualActionDescription: sunarpRegistryManualActionDescription(),
+      url: SUNARP_CONOCE_AQUI_URL,
       message:
         'SUNARP requiere identidad + CAPTCHA (Conoce Aquí: DNI + fecha de emisión + CAPTCHA; Consulta de Propiedad: igual + correo) — no automatizable',
       lastChecked: new Date(),

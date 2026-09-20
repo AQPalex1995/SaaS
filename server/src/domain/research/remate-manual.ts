@@ -28,6 +28,24 @@ import {
 
 export type OrigenUbicacion = 'partida' | 'direccion' | 'maps';
 
+/** Fuente real de la que proviene la captura ingresada por el operador. */
+export type IntakeSource = 'manual' | 'sunarp' | 'sunarp_sprl' | 'sunarp_bgr';
+
+/** Origen que se persiste en `registry_properties.source`. */
+export type RegistrySource = 'remaju' | 'sunarp' | 'sunarp_sprl' | 'sunarp_bgr';
+
+export interface IntakeContext {
+  /**
+   * Fuente real de la captura (T5.10). Si no se provee, se asume 'manual'
+   * (REM@JU u otra fuente transcrita a mano). Para capturas SUNARP el origen
+   * de la provenance es 'sunarp'/'sunarp_sprl'/'sunarp_bgr', nunca 'manual'
+   * (regla de trazabilidad AGENTS §3.5).
+   */
+  source?: IntakeSource;
+  /** URL consultada (ej. la página de Conoce Aquí) cuando no hay PDF. */
+  url?: string | null;
+}
+
 export interface RemateManualInput {
   partida?: string | null;
   distrito?: string | null;
@@ -95,7 +113,7 @@ export interface RegistryPlanRow {
   titles: TituloNormalizado[];
   /** Estado registral derivado (T5.8). */
   historical: RegistryHistoricalState;
-  source: 'remaju';
+  source: RegistrySource;
   confidence: 'medium';
   verification: 'reported';
   /** Provenance de superficie de la fila registral a persistir (T5.9). */
@@ -203,10 +221,13 @@ function meaningfulTitles(titles: TituloNormalizado[]): TituloNormalizado[] {
  * @param input          Payload humano del intake manual.
  * @param retrievedAt    Cuándo se capturó/ingresó el dato (default: ahora).
  *                       Se propaga a todos los bloques de provenance (T5.9).
+ * @param context        Contexto de la acción manual (T5.10): la fuente real
+ *                       de la captura (p. ej. 'sunarp') y la URL consultada.
  */
 export function planRemateIntake(
   input: RemateManualInput,
   retrievedAt: Date = new Date(),
+  context: IntakeContext = {},
 ): RemateManualPlan {
   const warnings: string[] = [];
   // Clave canónica SUNARP 'P-XXXXXXXX' (Zona Registral XII — Arequipa): lo que
@@ -243,15 +264,28 @@ export function planRemateIntake(
   const retrievedAtIso = retrievedAt.toISOString();
   const sourceUrlPdf = cleanText(input.sourceUrlPdf);
 
+  // Fuente real de la captura (T5.10): SUNARP cuando el operador transcribió el
+  // detalle registral, 'manual'/'remaju' en el intake clásico de REM@JU.
+  const captureSource: IntakeSource = context.source ?? 'manual';
+  const captureUrl =
+    sourceUrlPdf ?? context.url ?? null;
+  const captureParser =
+    captureSource === 'manual' ? 'manual-v1' : SUNARP_PARSER_VERSION;
+  const registrySource: RegistrySource =
+    captureSource === 'manual' ? 'remaju' : captureSource;
+  const registryUrl =
+    registrySource === 'remaju' ? sourceUrlPdf : captureUrl;
+
   // Provenance de superficie del intake (T5.9): dato ingresado por un humano
-  // (source 'manual'), referenciado por el PDF del aviso cuando existe.
+  // (source 'manual' o la fuente real consultada), referenciado por el PDF del
+  // aviso o la URL del servicio cuando existe.
   const intakeProvenance: IntakeProvenance = {
-    source: 'manual',
-    sourceUrl: sourceUrlPdf,
+    source: captureSource,
+    sourceUrl: captureUrl,
     retrievedAt: retrievedAtIso,
     confidence: 'medium',
     verification: 'reported',
-    parserVersion: 'manual-v1',
+    parserVersion: captureParser,
   };
 
   const normalized: RemateManualNormalized = {
@@ -284,12 +318,12 @@ export function planRemateIntake(
           charges,
           titles,
           historical: deriveHistoricalState(titles, charges, { retrievedAt: retrievedAtIso }),
-          source: 'remaju',
+          source: registrySource,
           confidence: 'medium',
           verification: 'reported',
           provenance: {
-            source: 'remaju',
-            sourceUrl: sourceUrlPdf,
+            source: registrySource,
+            sourceUrl: registryUrl,
             retrievedAt: retrievedAtIso,
             confidence: 'medium',
             verification: 'reported',

@@ -50,6 +50,7 @@ export class SunarpSprlConnector extends PropertyDataSource {
       status: 'requires_auth',
       requiresManualAction: true,
       manualActionDescription: sunarpSprlManualActionDescription(),
+      url: SUNARP_SPRL_URL,
       message:
         'SUNARP SPRL requiere suscripción + pago por servicio (valor legal) — no automatizable',
       lastChecked: new Date(),

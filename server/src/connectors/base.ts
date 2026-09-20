@@ -51,6 +51,12 @@ export interface ConnectorStatus {
   lastChecked: Date;
   requiresManualAction?: boolean;
   manualActionDescription?: string;
+  /**
+   * URL oficial de la superficie que el humano debe operar cuando la fuente
+   * requiere acción manual (ej. Conoce Aquí, SPRL). El orchestrator la lleva
+   * a la `manual_action` para que el operador abra el servicio correcto.
+   */
+  url?: string | null;
 }
 
 export interface SearchParams {

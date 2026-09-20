@@ -2,7 +2,7 @@
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
 > El estado del repositorio refleja la **Fase 4 (REM@JU) completada** y la
-> **Fase 5 (SUNARP) en progreso (T5.1 + T5.2 + T5.3 + T5.4 + T5.5 + T5.6 + T5.7 + T5.8 + T5.9 DONE)**.
+> **Fase 5 (SUNARP) en progreso (T5.1 + T5.2 + T5.3 + T5.4 + T5.5 + T5.6 + T5.7 + T5.8 + T5.9 + T5.10 DONE)**.
 > Las fases 0–2.5, la Fase 3 (T3.1 → T3.9), la Fase 4 (T4.1 → T4.9) y el
 > arranque de la Fase 5 (T5.1) están implementadas en `main`
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
@@ -449,11 +449,24 @@ cd server && npm.cmd run sync:sqlite
 > `server/tests/sunarp-sprl.test.ts` (5). Suite **167/167 (26 archivos)**;
 > typecheck server+root y build OK.
 >
-> **Siguiente tarea del plan**: **Fase 5 — SUNARP / T5.10 (Manual actions)** —
-> el detalle concreto aún no está definido en `PROJECT_EXECUTION_PLAN.md` (solo
-> el título); al iniciarla, acotar alcance (candidato natural: cerrar el ciclo
-> de acciones manuales de SUNARP — por ejemplo guía/URL del analista en la UI
-> `/manual-actions` y verificación de la acción tras el intake).
+> **Siguiente tarea del plan**: **Fase 5 — SUNARP / T5.11 (Tests)** — cerrar la
+> fase con la pasada de pruebas integral de SUNARP (regresión de TODO el ciclo
+> T5.1–T5.10, no una funcionalidad nueva). Al iniciarla, acotar alcance.
+> T5.10 completada (2026‑09‑19, alcance acotado con el usuario: "Intake SUNARP
+> end-to-end"): cierre del ciclo de acciones manuales de SUNARP en la plataforma.
+> `ConnectorStatus.url` (`connectors/base.ts`) expone la superficie oficial y
+> `getStatus()` de `sunarp`/`sunarp_sprl` la devuelven (`CONOCE_AQUI`/`SPRL`);
+> `executeConnectorTask` la lleva a la `manual_action` (kind `login`). La UI
+> `/manual-actions` (`remate-intake.routes.ts`) muestra badge de `actionKind`,
+> link al servicio e instrucciones, y activa el panel **Captura registral
+> SUNARP** (titulares/cargas/títulos JSON + URL) al seleccionar una acción
+> SUNARP. `planRemateIntake(input, retrievedAt?, context)` atribuye la captura a
+> la fuente real (`sunarp`/`sunarp_sprl`/`sunarp_bgr`, parser `v1`) en
+> `RemateManualNormalized.provenance` y `RegistryPlanRow`; REM@JU sigue
+> `manual`/`remaju`. Tests: nuevo `sunarp-intake.test.ts` (E2E offline) + 2
+> `remate-manual` + `sunarp`/`sunarp-sprl` + `remate-intake.routes`. Suite
+> **213/213 (29 archivos)**; typecheck server+root y build OK. Ver
+> `PROJECT_EXECUTION_PLAN.md` (PHASE 5).
 > T5.9 completada (2026‑09‑19): **provenance de superficie** del intake manual y
 > del estado registral derivado. Tipo `IntakeProvenance`
 > (`sunarp-historical.ts`, `{ source, sourceUrl, retrievedAt, confidence,

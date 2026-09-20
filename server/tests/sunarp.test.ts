@@ -38,6 +38,8 @@ describe('Fase 5 / T5.1–T5.2 — SUNARP Conoce Aquí + Consulta de Propiedad',
     expect(status.status).toBe('requires_auth');
     expect(status.requiresManualAction).toBe(true);
     expect(status.message).toContain('CAPTCHA');
+    // La superficie que el operador debe abrir llega en `url` (T5.10).
+    expect(status.url).toBe(SUNARP_CONOCE_AQUI_URL);
     // El operador debe poder localizar la partida (Consulta de Propiedad) y
     // luego ver su contenido (Conoce Aquí).
     expect(status.manualActionDescription).toContain(SUNARP_CONSULTA_PROPERTY_URL);
@@ -111,6 +113,7 @@ describe('Fase 5 / T5.1–T5.2 — SUNARP Conoce Aquí + Consulta de Propiedad',
     expect(state.manualActions[0]).toMatchObject({
       actionKind: 'login',
       source: 'sunarp',
+      url: SUNARP_CONOCE_AQUI_URL,
     });
     const instructions = state.manualActions[0].instructions;
     expect(instructions).toContain('DNI');

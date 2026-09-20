@@ -1,6 +1,6 @@
 # SUNARP — Registro y Titularidad (Fase 5)
 
-> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ + T5.3 (SPRL) ✅ + T5.4 (Registry normalization) ✅ + T5.5 (Owners) ✅ + T5.6 (Charges) ✅ + T5.7 (Titles) ✅ + T5.8 (Historical data) ✅ + T5.9 (Provenance superficie) ✅ — DONE (2026‑09‑19).
+> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ + T5.3 (SPRL) ✅ + T5.4 (Registry normalization) ✅ + T5.5 (Owners) ✅ + T5.6 (Charges) ✅ + T5.7 (Titles) ✅ + T5.8 (Historical data) ✅ + T5.9 (Provenance superficie) ✅ + T5.10 (Manual actions — Intake SUNARP) ✅ — DONE hasta T5.10 (2026‑09‑19).
 > Reporte de discovery, postura del conector `sunarp` y normalización registral.
 
 ## 1. Qué es SUNARP
@@ -83,10 +83,11 @@ Detalle de **SPRL** (T5.3):
      **Conoce Aquí** (contenido de partida conocida).
 3. **Impacto en el Research Engine**: la tarea `registry` (Tarea 3) y `bgr`
    transicionan a `requires_manual_action` creando una `manual_actions`
-   (kind `login`) con la descripción, en lugar de `unavailable`. El operador
-   consulta Conoce Aquí/SPRL de forma manual (usuario humano, identidad propia)
-   y el resultado (partida, titular, cargas) se persiste vía el intake de
-   `registry_properties` existente (T4.5) o el flujo general (T5.10).
+   (kind `login`, con `url` a la superficie desde T5.10). El operador consulta
+   Conoce Aquí/SPRL de forma manual (usuario humano, identidad propia) y el
+   resultado (partida, titulares, cargas, títulos) se persiste vía el intake de
+   `registry_properties` existente (T4.5), cerrado end-to-end para SUNARP en
+   T5.10 (formulario + captura registral + provenance de la fuente real).
 
 ## 4. Recomendaciones por servicio (plan Fase 5)
 
@@ -216,6 +217,39 @@ Detalle de **SPRL** (T5.3):
     +1 `remate-intake.service.test.ts` (provenance en result y en el payload de
     `completeManualAction`). Suite **210/210 (28 archivos)**; typecheck
     server+root y build OK.
+- **T5.10 Manual actions (Intake SUNARP)** → ✅ DONE (2026‑09‑19, alcance
+  acotado con el usuario: "Intake SUNARP end-to-end"). Cierra el ciclo de
+  acciones manuales de SUNARP en la plataforma:
+  - `ConnectorStatus.url` (`connectors/base.ts`): la superficie oficial que el
+    operador debe abrir. `getStatus()` de `sunarp` → `SUNARP_CONOCE_AQUI_URL` y
+    de `sunarp_sprl` → `SUNARP_SPRL_URL`.
+  - `executeConnectorTask` (`orchestrator.ts`) lleva `status.url` a la
+    `manual_action` (kind `login`, `source` sunarp/sunarp_sprl).
+  - UI `/manual-actions` (`remate-intake.routes.ts`): cada tarjeta muestra badge
+    de `actionKind`, link a la URL del servicio e instrucciones; al seleccionar
+    una acción SUNARP se activa el panel **Captura registral SUNARP** con
+    titulares/cargas/títulos (JSON validados, mismo shape que la captura T5.4)
+    y la URL consultada. Nada de eso existía: antes el formulario era solo REM@JU.
+  - Atribución real de la captura (regla de trazabilidad AGENTS §3.5):
+    `planRemateIntake(input, retrievedAt?, context)` recibe la fuente de la
+    manual action (`resolveCaptureSource`) y, para capturas SUNARP, fija
+    `source: 'sunarp'/'sunarp_sprl'/'sunarp_bgr'` con parser `v1` en
+    `RemateManualNormalized.provenance` y en `RegistryPlanRow.source/`
+    `.provenance` (antes decía `manual`/`remaju`). `sourceUrl` =
+    `sourceUrlPdf` del operador o la URL del contexto. REM@JU mantiene
+    provenance `manual`/`remaju`. El estado derivado sigue marcándose
+    `sunarp` + `inferred`.
+  - El resultado persiste igual en `registry_owners`/`registry_charges`/
+    `registry_titles` (source `'sunarp'` ya desde T5.5–T5.7) y la tarea se
+    asienta como `completed` vía `completeManualAction`.
+  - Tests: nuevo `sunarp-intake.test.ts` (ciclo E2E offline completo: tarea
+    `registry` → manual action con URL → operador completa la captura → fila
+    registral + titulares/cargas/títulos + task settled y provenance de la
+    captura en `research_results.data`), +2 `remate-manual.test.ts` (contexto
+    SUNARP y precedencia de URL), `sunarp.test.ts`/`sunarp-sprl.test.ts` (url
+    en `getStatus` y en la manual action), `remate-intake.routes.test.ts`
+    (header de la UI). Suite **213/213 (29 archivos)**; typecheck server+root
+    y build OK.
 - **BGR (Fase 6, visor)** → DNI + CAPTCHA: misma postura `requires_auth` en
   `sunarp_bgr`.
 - **SPRL histórico** (T5.8) → via copias literales manuales.

@@ -89,7 +89,10 @@ Los intakes manuales exponen además un bloque `IntakeProvenance` en la
 `RegistryHistoricalState` (Fase 5 / T5.9) — para que el consumidor vea
 `source/sourceUrl/retrievedAt/confidence/verification/parserVersion` sin excavar
 `rawData`. Las derivaciones del sistema (p. ej. el estado registral de T5.8)
-se marcan `verification: 'inferred'`, nunca como HECHO verificado.
+se marcan `verification: 'inferred'`, nunca como HECHO verificado. Desde T5.10
+el intake atribuye además la **fuente real** de la captura
+(`sunarp`/`sunarp_sprl`/`sunarp_bgr`, parser `v1`) en lugar de registrarla como
+`manual`/`remaju`, de modo que `source` siempre identifica de dónde vino el dato.
 
 ---
 

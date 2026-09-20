@@ -40,7 +40,7 @@ describe('REM@JU manual intake routes (T4.5b)', () => {
     const res = await app.inject({ method: 'GET', url: '/manual-actions' });
     expect(res.statusCode).toBe(200);
     expect(res.headers['content-type']).toContain('text/html');
-    expect(res.body).toContain('Ingreso manual de remates');
+    expect(res.body).toContain('Ingreso manual de acciones');
     expect(res.body).toContain('/api/v1/manual-actions');
   });
 

@@ -101,7 +101,7 @@ const MANUAL_INTAKE_HTML = `<!doctype html>
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>REM@JU — Ingreso manual</title>
+<title>Ingreso manual — REM@JU y captura SUNARP</title>
 <style>
   :root { color-scheme: light dark; }
   body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; background:#0f172a; color:#e2e8f0; }
@@ -126,8 +126,8 @@ const MANUAL_INTAKE_HTML = `<!doctype html>
 </head>
 <body>
 <div class="wrap">
-  <h1>REM@JU — Ingreso manual de remates</h1>
-  <p class="sub">Solo se guardan partida, dirección, coordenadas y datos públicos del remate. Nunca datos personales.</p>
+  <h1>Ingreso manual de acciones — REM@JU y captura SUNARP</h1>
+  <p class="sub">REM@JU: partida, dirección, coordenadas y datos públicos del remate. SUNARP: captura del detalle registral (titulares, cargas, títulos). Nunca datos personales del operador.</p>
 
   <div class="card">
     <strong>Acciones manuales pendientes</strong>
@@ -182,6 +182,14 @@ const MANUAL_INTAKE_HTML = `<!doctype html>
       <div><label>Fecha remate</label><input name="fechaRemate" type="date" /></div>
       <div><label>PDF del aviso</label><input name="pdf" type="file" accept="application/pdf" /></div>
     </div>
+    <div id="sunarpCapture" style="display:none;margin-top:14px;border-top:1px solid #334155;padding-top:10px">
+      <strong>Captura registral SUNARP (Conoce Aquí / SPRL)</strong>
+      <div class="muted">Pega el detalle que ves en SUNARP. El sistema normaliza y persiste titulares, cargas y títulos en la partida.</div>
+      <div><label>URL consultada (Conoce Aquí / SPRL)</label><input name="sourceUrlPdf" placeholder="https://conoce-aqui.sunarp.gob.pe/…" /></div>
+      <div><label>Propietarios / titulares — JSON (ej. {"nombre":"JUAN PEREZ","tipoDocumento":"DNI","numDocumento":"12345678"})</label><textarea name="capPropietarios" rows="2" placeholder='[{"nombre":"JUAN PEREZ","tipoDocumento":"DNI","numDocumento":"12345678"}]'></textarea></div>
+      <div><label>Cargas / gravámenes — JSON (ej. {"tipo":"HIPOTECA","monto":"S/ 100,000","moneda":"S/","estado":"VIGENTE"})</label><textarea name="capCargas" rows="2" placeholder='[{"tipo":"HIPOTECA","monto":"S/ 100,000","moneda":"S/","estado":"VIGENTE"}]'></textarea></div>
+      <div><label>Títulos / asientos — JSON (ej. {"titulo":"006-2020","fechaTitulo":"15/03/2020","tipoTitulo":"INDEPENDIZACION"})</label><textarea name="capTitulos" rows="2" placeholder='[{"titulo":"006-2020","fechaTitulo":"15/03/2020","tipoTitulo":"INDEPENDIZACION"}]'></textarea></div>
+    </div>
     <button type="submit" id="submit">Guardar y completar</button>
     <div id="msg"></div>
   </form>
@@ -193,9 +201,38 @@ const form = $('#form');
 const msg = $('#msg');
 let selected = null;
 
-function fmt(a) {
-  const d = new Date(a.requestedAt).toLocaleString();
-  return (a.instructions || '(sin instrucciones)') + ' · ' + (a.source || '') + ' · ' + d;
+function isSunarp(a) { return /^sunarp/.test(a.source || ''); }
+
+function buildItem(a) {
+  const li = document.createElement('li');
+  const top = document.createElement('div');
+  const head = document.createElement('span');
+  head.textContent = (a.actionKind ? '[' + a.actionKind + '] ' : '') + (a.source || '');
+  top.appendChild(head);
+  if (a.url) {
+    const link = document.createElement('a');
+    link.href = a.url;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = ' · abrir servicio';
+    top.appendChild(link);
+  }
+  const meta = document.createElement('div');
+  meta.className = 'muted';
+  meta.textContent = new Date(a.requestedAt).toLocaleString();
+  const desc = document.createElement('div');
+  desc.textContent = a.instructions || '(sin instrucciones)';
+  li.appendChild(top);
+  li.appendChild(meta);
+  li.appendChild(desc);
+  li.onclick = () => {
+    selected = a.id;
+    form.actionId.value = a.id;
+    $('#sunarpCapture').style.display = isSunarp(a) ? 'block' : 'none';
+    [...listEl.children].forEach((c) => c.classList.remove('active'));
+    li.classList.add('active');
+  };
+  return li;
 }
 
 async function loadList() {
@@ -206,17 +243,7 @@ async function loadList() {
     const items = body.data || [];
     if (!items.length) { listEl.innerHTML = '<li class="muted">No hay acciones pendientes.</li>'; return; }
     listEl.innerHTML = '';
-    for (const a of items) {
-      const li = document.createElement('li');
-      li.textContent = fmt(a);
-      li.onclick = () => {
-        selected = a.id;
-        form.actionId.value = a.id;
-        [...listEl.children].forEach((c) => c.classList.remove('active'));
-        li.classList.add('active');
-      };
-      listEl.appendChild(li);
-    }
+    for (const a of items) listEl.appendChild(buildItem(a));
   } catch (e) { listEl.innerHTML = '<li class="err">Error: ' + e.message + '</li>'; }
 }
 
@@ -233,6 +260,14 @@ function readPdf(file) {
   });
 }
 
+function parseJsonList(raw, label) {
+  const v = (raw || '').trim();
+  if (!v) return null;
+  const parsed = JSON.parse(v);
+  if (!Array.isArray(parsed)) throw new Error(label + ': se espera un JSON de lista ([...])');
+  return parsed;
+}
+
 form.addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const f = new FormData(form);
@@ -240,6 +275,9 @@ form.addEventListener('submit', async (ev) => {
   if (!id) { msg.className = 'err'; msg.textContent = 'Selecciona una acción manual.'; return; }
   const btn = $('#submit'); btn.disabled = true; msg.textContent = 'Guardando…';
   try {
+    const propietarios = parseJsonList(f.get('capPropietarios'), 'Propietarios');
+    const cargas = parseJsonList(f.get('capCargas'), 'Cargas');
+    const titulos = parseJsonList(f.get('capTitulos'), 'Títulos');
     const pdf = await readPdf(f.get('pdf'));
     const payload = {
       partida: f.get('partida'), distrito: f.get('distrito'),
@@ -247,6 +285,8 @@ form.addEventListener('submit', async (ev) => {
       valorDeuda: f.get('valorDeuda'), tasacion: f.get('tasacion'), precioRemate: f.get('precioRemate'),
       convocatoria: f.get('convocatoria'), fechaRemate: f.get('fechaRemate'),
       origenUbicacion: f.get('origenUbicacion'), latitude: f.get('latitude'), longitude: f.get('longitude'),
+      propietarios, cargas, titulos,
+      sourceUrlPdf: f.get('sourceUrlPdf'),
     };
     const res = await fetch('/api/v1/manual-actions/' + encodeURIComponent(id) + '/complete', {
       method: 'POST', headers: { 'content-type': 'application/json' },
@@ -254,8 +294,9 @@ form.addEventListener('submit', async (ev) => {
     });
     const body = await res.json();
     if (!res.ok) throw new Error(body.error || res.statusText);
+    const extra = body.ownersPersisted != null ? ' · titular: ' + body.ownersPersisted + ' · cargas: ' + body.chargesPersisted + ' · títulos: ' + body.titlesPersisted : '';
     msg.className = 'ok';
-    msg.textContent = 'OK — partida guardada: ' + (body.registryId || 'n/d') + ' · geo: ' + (body.locationApplied ? 'sí' : 'no') + ' · PDF: ' + (body.pdfKey || 'no');
+    msg.textContent = 'OK — partida guardada: ' + (body.registryId || 'n/d') + extra + ' · geo: ' + (body.locationApplied ? 'sí' : 'no') + ' · PDF: ' + (body.pdfKey || 'no');
     await loadList();
   } catch (e) {
     msg.className = 'err'; msg.textContent = 'Error: ' + e.message;

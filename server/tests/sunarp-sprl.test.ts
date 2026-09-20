@@ -24,6 +24,7 @@ describe('Fase 5 / T5.3 — SUNARP SPRL (postura honesta)', () => {
     expect(status.status).toBe('requires_auth');
     expect(status.requiresManualAction).toBe(true);
     expect(status.message).toContain('pago');
+    expect(status.url).toBe(SUNARP_SPRL_URL);
     expect(status.manualActionDescription).toContain(SUNARP_SPRL_URL);
   });
 

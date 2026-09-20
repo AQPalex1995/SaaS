@@ -3,7 +3,7 @@
 > **Nota (2026-09-19)**: la fuente de verdad del plan de ejecución es
 > `PROJECT_EXECUTION_PLAN.md` (16 fases + etapa transversal). Este documento
 > resume la evolución técnica. La **Fase 5 (SUNARP)** está en progreso
-> (T5.1–T5.8 DONE, siguiente T5.9) y la etapa transversal del producto está
+> (T5.1–T5.10 DONE, siguiente T5.11) y la etapa transversal del producto está
 > **registrada como PLANNED** (nada implementado).
 
 ```text

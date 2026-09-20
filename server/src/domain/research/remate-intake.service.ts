@@ -36,6 +36,7 @@ import type { StorageProvider } from '../../storage/types.js';
 import { ManualActionService } from './manual-action.service.js';
 import {
   planRemateIntake,
+  type IntakeSource,
   type RemateManualInput,
   type RemateManualPlan,
 } from './remate-manual.js';
@@ -76,6 +77,16 @@ export interface RemateIntakeDeps {
 }
 
 const MAX_PDF_BYTES = 8 * 1024 * 1024;
+
+/** Fuente real de la captura según el `source` de la action manual (T5.10).
+ *  Solo las fuentes SUNARP se atribuyen como tales; cualquier otra (REM@JU,
+ *  CEJ, …) es transcripción manual → 'manual'. */
+function resolveCaptureSource(source: string | null | undefined): IntakeSource {
+  if (source === 'sunarp') return 'sunarp';
+  if (source === 'sunarp_sprl') return 'sunarp_sprl';
+  if (source === 'sunarp_bgr') return 'sunarp_bgr';
+  return 'manual';
+}
 
 function safeFileName(name: string): string {
   const base = name.split(/[\\/]/).pop() ?? 'aviso.pdf';
@@ -131,7 +142,11 @@ export class RemateIntakeService {
     if (!action) throw new Error(`Manual action ${id} not found`);
     if (action.status !== 'requested') throw new Error(`Manual action ${id} already ${action.status}`);
 
-    const plan = planRemateIntake(input.payload);
+    const captureSource = resolveCaptureSource(action.source);
+    const plan = planRemateIntake(input.payload, undefined, {
+      source: captureSource,
+      url: action.url ?? null,
+    });
     const propertyId = action.propertyId;
 
     const registryId = await this.saveRegistry(propertyId, plan);

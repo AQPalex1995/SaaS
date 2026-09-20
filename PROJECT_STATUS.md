@@ -39,18 +39,18 @@ PostGIS:
 ## Tests
 
 Server:
-✅ 210/210 (28 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3 + `sunarp-normalize.test.ts` T5.4/T5.5/T5.6/T5.7 + `sunarp-historical.test.ts` T5.8 + provenance superficie T5.9)
+✅ 213/213 (29 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3 + `sunarp-normalize.test.ts` T5.4/T5.5/T5.6/T5.7 + `sunarp-historical.test.ts` T5.8 + provenance superficie T5.9 + `sunarp-intake.test.ts` T5.10)
 
 Root:
 ✅
 
 ## Current Phase
 
-Phase 5 — ✅ SUNARP EN PROGRESO (T5.1–T5.9 DONE, 2026-09-19). Fase 4 — REM@JU COMPLETED.
+Phase 5 — ✅ SUNARP EN PROGRESO (T5.1–T5.10 DONE, 2026-09-19). Fase 4 — REM@JU COMPLETED.
 
 ## Current Task
 
-Fase 5 / T5.10 (Manual actions) — próximo paso. T5.1–T5.9 completados:
+Fase 5 / T5.11 (Tests) — próximo paso. T5.1–T5.10 completados:
 - **T5.1 Conoce Aquí**: discovery (`docs/SUNARP.md`): **ninguna superficie consultable
   sin identidad (DNI + fecha de emisión) + CAPTCHA** → no automatizable (Ley 29733, no
   bypass CAPTCHA, 3–5 consultas/día). Conector real de postura `SunarpConnector`
@@ -127,6 +127,22 @@ Suite **205/205 (28 archivos)**; typecheck server+root y build OK.
     `registry_properties.raw_data`.
   - Tests: +2 `remate-manual`, +2 `sunarp-historical`, +1 `remate-intake.service`.
   Suite **210/210 (28 archivos)**; typecheck server+root y build OK.
+- **T5.10 Manual actions (Intake SUNARP)**:
+  - `ConnectorStatus.url` (`connectors/base.ts`): `getStatus()` de `sunarp` y
+    `sunarp_sprl` exponen la superficie oficial (`Conoce Aquí` / `SPRL`);
+    `executeConnectorTask` la lleva a la `manual_action` (kind `login`).
+  - UI `/manual-actions` (`remate-intake.routes.ts`): tarjetas con badge de
+    `actionKind`, link a la URL del servicio e instrucciones + panel **Captura
+    registral SUNARP** (titulares/cargas/títulos JSON + URL consultada) al
+    seleccionar una acción SUNARP.
+  - Atribución real (regla AGENTS §3.5): `planRemateIntake(input, retrievedAt?,
+    context)` fija `source: 'sunarp'/'sunarp_sprl'/'sunarp_bgr'` (parser `v1`)
+    en `RemateManualNormalized.provenance` y `RegistryPlanRow` para capturas
+    SUNARP; REM@JU mantiene `manual`/`remaju`. `sourceUrl` =
+    `sourceUrlPdf` del operador o la URL del contexto.
+  - Tests: nuevo `sunarp-intake.test.ts` (E2E offline) + 2 `remate-manual` +
+    `sunarp`/`sunarp-sprl` + `remate-intake.routes`.
+  Suite **213/213 (29 archivos)**; typecheck server+root y build OK.
 
 ## Gobernanza y producto (registrado 2026-09-19)
 

@@ -57,7 +57,8 @@ graph TD
   instrucciones combinadas: localizar la partida por NOMBRE del propietario en
   Consulta de Propiedad y ver su contenido en Conoce Aquí). El dato capturado
   manualmente se persiste vía el intake de `registry_properties` existente
-  (T4.5) / flujo general (T5.10). Ver `docs/SUNARP.md`.
+  (T4.5), cerrado end-to-end para SUNARP en T5.10 (manual action con URL +
+  captura registral en `/manual-actions`). Ver `docs/SUNARP.md`.
 
 ### Tarea 4: Base Gráfica Registral (`bgr`)
 - **Objetivo**: Consultar la cartografía registral de SUNARP para verificar la existencia del polígono del predio en la base gráfica y descartar superposiciones de partidas o linderos superpuestos.

@@ -23,7 +23,7 @@ PROJECT STATE
 ============================================================
 
 Current Phase:
-PHASE 5 — SUNARP STATUS (T5.1–T5.9 DONE; T5.10 Manual actions, T5.11 Tests pendientes)
+PHASE 5 — SUNARP STATUS (T5.1–T5.10 DONE; T5.11 Tests pendiente)
 
 Previous Completed:
 PHASE 0 — LOCAL INFRASTRUCTURE
@@ -848,13 +848,13 @@ T4.9 monitoring — result:
   inyectado). Suite completa **157/157 (24 archivos)**; typecheck server+root y
   build OK.
 
-siguiente tarea del plan: **Fase 5 — SUNARP** (T5.10 Manual actions).
+siguiente tarea del plan: **Fase 5 — SUNARP** (T5.11 Tests).
 
 ============================================================
 PHASE 5 — SUNARP
 ============================================================
 
-STATUS: IN PROGRESS (T5.1–T5.9 DONE)
+STATUS: IN PROGRESS (T5.1–T5.10 DONE)
 
 Dividir:
 
@@ -991,7 +991,32 @@ T5.9 Provenance — DONE (2026-09-19). Provenance de superficie del intake manua
     `remate-intake.service.test.ts`. Suite **210/210 (28 archivos)**; typecheck
     server+root y build OK.
 
-T5.10 Manual actions
+T5.10 Manual actions (Intake SUNARP) — DONE (2026-09-19, alcance acotado con el
+  usuario: "Intake SUNARP end-to-end"). Cierre del ciclo de acciones manuales de
+  SUNARP dentro de la plataforma:
+  - `ConnectorStatus.url` (connectors/base.ts): la superficie oficial que el
+    humano debe operar. `getStatus()` de `sunarp` → `SUNARP_CONOCE_AQUI_URL` y
+    de `sunarp_sprl` → `SUNARP_SPRL_URL`.
+  - `executeConnectorTask` (orchestrator.ts) lleva `status.url` a la
+    `manual_action` (kind `login`).
+  - UI `/manual-actions` (remate-intake.routes.ts): tarjetas con badge de kind,
+    link a la URL del servicio e instrucciones; al seleccionar una acción SUNARP
+    se activa el panel **Captura registral SUNARP** (titulares, cargas, títulos
+    en JSON + URL consultada). Los JSON se validan y se envían en `payload`.
+  - Attribution real de la captura (regla AGENTS §3.5): `planRemateIntake(input,
+    retrievedAt?, context)` recibe la fuente de la manual action y, para
+    capturas SUNARP, fija `source: 'sunarp'/'sunarp_sprl'/'sunarp_bgr'`
+    (parser `v1`) en `RemateManualNormalized.provenance` y en
+    `RegistryPlanRow` (antes decía `manual`/`remaju`); `sourceUrl` =
+    `sourceUrlPdf` del operador o la URL del contexto. Rem@JU sigue con
+    provenance `manual`/`remaju`.
+  - Tests: nuevo `sunarp-intake.test.ts` (ciclo E2E offline: registry → manual
+    action con URL → operador completa captura → registry_owners/charges/
+    titles + task settled), +2 `remate-manual.test.ts` (contexto SUNARP +
+    precedencia de URL), `sunarp.test.ts`/`sunarp-sprl.test.ts` (url en
+    getStatus/manual action), `remate-intake.routes.test.ts` (header UI).
+    Suite **213/213 (29 archivos)**; typecheck server+root y build OK.
+
 T5.11 Tests
 
 ============================================================
