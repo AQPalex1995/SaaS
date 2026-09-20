@@ -398,6 +398,10 @@ describe('T3.8 — Research flows', () => {
     const second = await service.createResearch(PROP_ID, 'tester');
 
     expect(first.id).not.toBe(second.id);
+    // Case/Run separation (RP.1): each createResearch is an independent
+    // execution — run 1 then run 2 in the property's history (runNumber).
+    expect(first.runNumber).toBe(1);
+    expect(second.runNumber).toBe(2);
     expect(db._state.cases.length).toBe(2);
     expect(db._state.tasks.length).toBe(16); // 8 tasks per case
     expect(db._state.tasks.filter((t: any) => t.researchCaseId === first.id).length).toBe(8);

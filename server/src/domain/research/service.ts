@@ -47,11 +47,23 @@ export class ResearchService {
       throw new Error(`Property ${propertyId} not found`);
     }
 
+    // Compute the next run number for this property (Case/Run separation).
+    // The run identifies the execution order within a property's research
+    // history: run 1 is the first investigation, run 2 the next, etc.
+    // Unique per property — see unique index idx_research_property_run.
+    const prev = await this.db
+      .select({ runNumber: researchCases.runNumber })
+      .from(researchCases)
+      .where(eq(researchCases.propertyId, propertyId));
+
+    const runNumber = (prev.reduce((max, r) => Math.max(max, r.runNumber), 0) ?? 0) + 1;
+
     // Create the research case (lifecycle: created → queued → running → ...)
     const [researchCase] = await this.db
       .insert(researchCases)
       .values({
         propertyId,
+        runNumber,
         status: 'created',
         totalTaskCount: DEFAULT_TASK_TYPES.length,
         createdBy: createdBy ?? 'system',
@@ -152,6 +164,7 @@ export class ResearchService {
     return {
       id: row.id,
       propertyId: row.propertyId,
+      runNumber: row.runNumber ?? 0,
       status: row.status ?? 'pending',
       summary: row.summary,
       errorCount: row.errorCount ?? 0,

@@ -7,6 +7,7 @@ import {
   timestamp,
   jsonb,
   index,
+  uniqueIndex,
   boolean,
 } from 'drizzle-orm/pg-core';
 import {
@@ -26,6 +27,11 @@ import { properties } from './properties.js';
  *
  * A ResearchCase groups multiple ResearchTasks and their results.
  * One property can have multiple research cases over time.
+ *
+ * Each case is an *execution* (attempt) of a research on a property. The
+ * `runNumber` identifies the execution order within a property's history:
+ * run 1 is the first investigation, run 2 the next, etc. It is unique per
+ * property (documented separation Case/Run — see docs/RESEARCH_GOVERNANCE.md).
  */
 export const researchCases = pgTable(
   'research_cases',
@@ -34,6 +40,8 @@ export const researchCases = pgTable(
     propertyId: uuid('property_id')
       .notNull()
       .references(() => properties.id, { onDelete: 'cascade' }),
+
+    runNumber: integer('run_number').default(0).notNull(),
 
     status: researchStatusEnum('status').default('created').notNull(),
     summary: text('summary'),
@@ -53,6 +61,10 @@ export const researchCases = pgTable(
   (table) => ({
     idxResearchProperty: index('idx_research_property').on(table.propertyId),
     idxResearchStatus: index('idx_research_status').on(table.status),
+    idxResearchRunNumber: uniqueIndex('idx_research_property_run').on(
+      table.propertyId,
+      table.runNumber
+    ),
   })
 );
 

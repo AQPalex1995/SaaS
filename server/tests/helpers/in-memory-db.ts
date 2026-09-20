@@ -75,6 +75,7 @@ export function createInMemoryDb(seed: InMemorySeed = {}) {
       ...t,
     })),
     cases: (seed.cases ?? []).map((c) => ({
+      runNumber: 1,
       status: 'created',
       completedTaskCount: 0,
       totalTaskCount: (seed.tasks ?? []).length,

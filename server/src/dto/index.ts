@@ -68,6 +68,7 @@ export interface PropertyListing {
 export interface ResearchCaseDTO {
   id: string;
   propertyId: string;
+  runNumber: number;
   status: string;
   summary: string | null;
   errorCount: number;

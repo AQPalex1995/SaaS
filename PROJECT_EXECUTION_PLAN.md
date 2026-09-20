@@ -1051,7 +1051,10 @@ cada una requiere su propio checkpoint y los Decision Gates de AGENTS.md
 Subfases (RP = Research Platform; todas PLANNED):
 
 RP.1 Domain model — separar Listing / Property / ResearchCase / ResearchRun;
-decidir tabla `research_runs` (DECISION REQUIRED).
+**DONE (2026-09-20)**: separación Case/Run resuelta por ADR-007/ADR-008 — `run_number`
+aditivo sobre `research_cases` + índice único `idx_research_property_run`
+(migración drizzle 0004 aplicada a DB viva 5433, DB `land_intel`). Tabla
+`research_runs` queda PLANNED hasta que el modelo de ejecución lo exija.
 RP.2 Search Property flow — módulo Buscar Predio independiente de las
 publicaciones (entrada B); crear ResearchCase sin Listing.
 RP.3 Research history — historial PROPERTY / RESEARCH_CASE / RESEARCH_RUN.

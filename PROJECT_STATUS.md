@@ -50,7 +50,18 @@ Phase 5 — ✅ SUNARP COMPLETED (T5.1–T5.11 DONE, 2026-09-19). Fase 4 — REM
 
 ## Current Task
 
-Fase 5 / T5.11 (Tests) — ✅ DONE. Cierra la Fase 5 (T5.1–T5.11 completados):
+**Fase 5.5 / RP.1 (Domain model — Case/Run) — ✅ DONE (2026-09-20)**.
+Implementado en disco (schema `research.ts` runNumber + índice único
+`idx_research_property_run`; service `research.ts` compute
+`run_number = max(run_number previo por property_id) + 1` en una transacción;
+DTO `ResearchCaseDTO.runNumber`; migración drizzle **0004** con backfill
+`ROW_NUMBER()` y CREATE UNIQUE INDEX). Aplicada a DB viva `land_intel`
+(puerto 5433). Tests `research-flows.test.ts:400-404` (run 1→2, cases
+independientes). Decisiones: **ADR-007** (no tabla `research_runs` en RP.1)
+y **ADR-008** (migración aditiva + backfill) en `DECISIONS.md`.
+Suite **218/218 (30 files)**; typecheck server+root + build OK.
+
+Sesión previa — Fase 5 / T5.11 (Tests) — ✅ DONE. Cierra la Fase 5 (T5.1–T5.11 completados):
 - **T5.1 Conoce Aquí**: discovery (`docs/SUNARP.md`): **ninguna superficie consultable
   sin identidad (DNI + fecha de emisión) + CAPTCHA** → no automatizable (Ley 29733, no
   bypass CAPTCHA, 3–5 consultas/día). Conector real de postura `SunarpConnector`

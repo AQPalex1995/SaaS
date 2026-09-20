@@ -76,3 +76,29 @@ Este documento registra las decisiones arquitectónicas clave tomadas durante el
   - Elimina el riesgo de "simulaciones falsas" o datos inventados.
   - Define con precisión las firmas de entrada y salida de cada fuente.
   - Permite probar el registro y la API de fuentes de inmediato (`GET /api/v1/sources`).
+
+---
+
+## ADR-007: Separación Case/Run — un_number como identidad de ejecución
+
+- **Estado**: Aceptado (RP.1 — Fase 5.5)
+- **Contexto**: Un ResearchCase agrupa tareas de investigación sobre un predio, pero la plataforma necesita distinguir entre el **expediente** (el objeto que persiste) y cada **ejecución** (investigación disparada por el usuario). Sin esa distinción, el histórico de un predio queda ambiguo: no se puede responder "¿cuál fue la 1ª investigación y cuál la 2ª?" de forma ordenada ni garantizar unicidad de (property_id, run_number).
+- **Decisión explícita del Stakeholder (2026‑09‑19)**: **NO crear tabla esearch_runs en RP.1**. esearch_cases sigue siendo el contenedor de tareas/resultados **y** la ejecución; se añade la columna aditiva un_number (entero, NOT NULL default 0) sobre esearch_cases con un **índice único (property_id, run_number)**. La tabla esearch_runs queda **PLANNED** para una fase posterior cuando el modelo de ejecución lo exija (ver PROJECT_EXECUTION_PLAN.md RP.x). No se refactorizan los stubs/workers ni el core engine.
+- **Justificación**:
+  - Estrategia A (case=run + un_number): cero cambios destructivos, migración aditiva y 218/218 tests en verde. Separación Case/Run documentada (ver docs/DOMAIN_MODEL.md §Research + docs/RESEARCH_GOVERNANCE.md §3).
+  - El un_number expone el orden de ejecución en el histórico del predio (1ª, 2ª, 3ª…), permitiendo deduplicar consultas duplicadas y auditar la línea temporal.
+- **Consecuencias**:
+  - ResearchCaseDTO gana el campo unNumber.
+  - La creación de un case computa un_number = max(run_number previo por property) + 1 dentro de una misma transacción/servicio, garantizando unicidad por predio.
+  - Cualquier consulta duplicada (createResearch repetido) genera un case independiente — **no hay dedup implícito** (aserciones de test 2→ independent cases, esearch-flows.test.ts:400-404).
+
+---
+
+## ADR-008: Migración aditiva y única indexación por ejecución
+
+- **Estado**: Aceptado (RP.1 — Fase 5.5)
+- **Contexto**: Añadir un_number a esearch_cases sin romper datos existentes.
+- **Decisión**: Migración 0004 (drizzle) que (1) añade columna un_number INTEGER DEFAULT 0 NOT NULL, (2) **backfill**: UPDATE research_cases SET run_number = ROW_NUMBER() OVER (PARTITION BY property_id ORDER BY created_at, id) para numerar el histórico existente por predio, y (3) crea **índice único idx_research_property_run** sobre (property_id, run_number).
+- **Justificación**: El backfill con ROW_NUMBER garantiza que la indexación única no falle por datos históricos duplicados (mismo predio con N casos previos todos en un_number=0).
+- **Consecuencias**: Aplica a DB viva land_intel (puerto 5433) vía 
+pm run db:migrate; sin cambios en el DTO público más allá de unNumber.

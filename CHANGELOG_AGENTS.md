@@ -1,5 +1,55 @@
 # AGENT CHANGELOG
 
+## 2026-09-20 — OpenCode — Fase 5.5 / RP.1 (Domain model — Case/Run separation) — DONE
+
+Completado:
+- **RP.1 Domain model**: separe Listing (publicación) / Property (predio) /
+  ResearchCase (expediente) / ResearchRun (ejecución). **Decisión del Stakeholder
+  (2026-09-19)**: NO crear tabla `research_runs` (queda PLANNED); la separación se
+  modela con la columna aditiva `run_number` sobre `research_cases` + índice único
+  `(property_id, run_number)` (ADR-007 + ADR-008 en `docs/DECISIONS.md`).
+- Migración drizzle **0004** (aditiva, no destructiva): ALTER ADD COLUMN
+  `run_number INTEGER DEFAULT 0 NOT NULL` → **backfill** `UPDATE ... SET run_number
+  = ROW_NUMBER() OVER (PARTITION BY property_id ORDER BY created_at, id)` (numerar
+  histórico existente por predio, garantiza unicidad de la indexación sobre datos
+  viejos con N casos por predio) → CREATE UNIQUE INDEX `idx_research_property_run`.
+  Aplicada a DB viva (5433) + tests actualizados.
+- Service `research.ts`: `createResearch` computa `run_number` por property_id (+1)
+  y el DTO ganó `runNumber` (aditivo).
+- Tests: `research-flows.test.ts:400-404` — run 1 → 2 independientes (aserciones de
+  Case/Run separation, casos NO deduplicados implícitamente).
+- DDR Migration 0004 con backfill ROW_NUMBER antes del índice único → la DB viva
+  queda con 0º duplicados.
+- Suite **218/218 (30 files)**; typecheck server+root y build OK. Docker
+  auto-arrancado + Postgres/Redis healthy + `db:migrate` aplicado a 5433.
+
+Hallazgo:
+- Backfill con ROW_NUMBER (en lugar de valores manuales) evita violación del índice
+  único por histórico duplicado (mismos property_id con N run previos todos en 0).
+
+Siguiente: RP.2 — módulo Buscar Predio (flow de entrada B, ResearchCase sin
+Listing). Requiere aprobación (Decision Gates).
+
+## 2026-09-20 — OpenCode — RP.1 Domain model (Case/Run separation) — Fase 5.5
+
+Completed:
+- **RP.1 Domain model — separación Listing/Property/ResearchCase/ResearchRun** (Fase 5.5, primera subfase de la transversal RP.1–RP.11). Decisión explícita del Stakeholder (2026‑09‑19): **NO tabla `research_runs` en RP.1** (queda PLANNED). Se añade la columna aditiva `run_number` (INTEGER NOT NULL DEFAULT 0) sobre `research_cases` con **índice único (property_id, run_number)**. ADR-007 + ADR-008 en `docs/DECISIONS.md`; `docs/RESEARCH_GOVERNANCE.md` §3 y `docs/DOMAIN_MODEL.md` actualizados.
+- `server/src/db/schema/research.ts`: columna `run_number` + `uniqueIndex` aditivo `idx_research_property_run`.
+- `server/src/domain/research/service.ts`: `createResearch` computa `run_number = max(run_number por property_id) + 1` dentro de la misma transacción/servicio → unicidad por predio garantizada.
+- `server/src/dto/index.ts`: `ResearchCaseDTO` gana el campo `runNumber`.
+- Migración **0004 (drizzle)**: (1) añade columna aditiva, (2) **backfill** `UPDATE research_cases SET run_number = ROW_NUMBER() OVER (PARTITION BY property_id ORDER BY created_at, id)` para numerar el histórico existente por predio, (3) crea índice único `idx_research_property_run`. Aplicada a DB viva `land_intel` (5433).
+- Tests: `tests/research-flows.test.ts:403-404` (case 1 → run 1->2 independientes; no hay dedup implícito) + helper `tests/helpers/in-memory-db.ts` (run_number: 1).
+- Verificación: suite **218/218 (30 archivos)**, typecheck server+root y build server OK.
+
+Important rule (RP.1):
+- Cada `createResearch` disparado por el usuario es una **ejecución independiente** (ResearchRun implícito via run_number); **no** hay deduplicación automática de consultas repetidas. El histórico del predio se ordena por run_number (1ª, 2ª, 3ª…).
+
+Important finding:
+- Separación Case/Run documentada en `docs/RESEARCH_GOVERNANCE.md` §3; la tabla `research_runs` queda **PLANNED** para cuando el modelo de ejecución lo exija (ver `PROJECT_EXECUTION_PLAN.md` RP.x).
+
+Next:
+- **RP.2 Search Property flow** — módulo Buscar Predio independiente de las publicaciones (entrada B); crear ResearchCase sin Listing. Requiere aprobación explícita (Decision Gate).
+
 ## 2026-09-16 — OpenCode
 
 Completed:
