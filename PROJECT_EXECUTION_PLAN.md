@@ -23,7 +23,7 @@ PROJECT STATE
 ============================================================
 
 Current Phase:
-PHASE 5 — SUNARP STATUS (T5.1–T5.10 DONE; T5.11 Tests pendiente)
+PHASE 5 — SUNARP STATUS (COMPLETED — T5.1–T5.11 DONE); siguiente: PHASE 5.5 (PLANNED)
 
 Previous Completed:
 PHASE 0 — LOCAL INFRASTRUCTURE
@@ -848,13 +848,13 @@ T4.9 monitoring — result:
   inyectado). Suite completa **157/157 (24 archivos)**; typecheck server+root y
   build OK.
 
-siguiente tarea del plan: **Fase 5 — SUNARP** (T5.11 Tests).
+siguiente tarea del plan: **Fase 5 — SUNARP** (T5.1 Conoce Aquí).
 
 ============================================================
 PHASE 5 — SUNARP
 ============================================================
 
-STATUS: IN PROGRESS (T5.1–T5.10 DONE)
+STATUS: COMPLETED (T5.1–T5.11 DONE)
 
 Dividir:
 
@@ -1017,7 +1017,25 @@ T5.10 Manual actions (Intake SUNARP) — DONE (2026-09-19, alcance acotado con e
     getStatus/manual action), `remate-intake.routes.test.ts` (header UI).
     Suite **213/213 (29 archivos)**; typecheck server+root y build OK.
 
-T5.11 Tests
+T5.11 Tests — DONE (2026-09-19). Acceptance/regresión integral de la fase SUNARP
+  (T5.1–T5.10), offline y sin red:
+  - Nuevo `server/tests/sunarp-acceptance.test.ts` (5) que consolida las
+    garantías de la fase: (1) postura honesta de `sunarp` y `sunarp_sprl`
+    (`requires_auth` + `requiresManualAction` + `url`) y **cero red** (spy de
+    `fetch` que falla) + anti-datos-inventados (search/getDetails vacíos);
+    (2) pipeline del fixture real `registry-capture.json` → partida canónica
+    `P-01234567`, 2 titulares, 2 cargas, estado derivado `cargado`
+    (`totalActiveDebtPen` 1234567.89) y provenance `sunarp`/`reported`/`v1` con
+    el estado derivado en `inferred`; (3) atribución de la fuente de captura
+    (manual/remaju por defecto; `sunarp`/`sunarp_sprl`/`sunarp_bgr` explícitas);
+    (4) ciclo manual completo de la variante **SPRL (de pago)**: manual action
+    `source: 'sunarp_sprl'` + URL SPRL → captura → `registry`/provenance
+    `sunarp_sprl` y task settled; (5) el singleton `sunarpConnector` expone la
+    misma URL.
+  - Sin cambios de código productivo (solo test). Suite **218/218 (30
+    archivos)**; typecheck server+root y build OK.
+  - Cierre de Fase 5. Siguiente: **PHASE 5.5 — RESEARCH PLATFORM UX + IDENTITY**
+    (PLANNED; RP.1–RP.11 requieren aprobación explícita y Decision Gates).
 
 ============================================================
 PHASE 5.5 — RESEARCH PLATFORM UX + IDENTITY (transversal)

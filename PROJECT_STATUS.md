@@ -39,18 +39,18 @@ PostGIS:
 ## Tests
 
 Server:
-✅ 213/213 (29 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3 + `sunarp-normalize.test.ts` T5.4/T5.5/T5.6/T5.7 + `sunarp-historical.test.ts` T5.8 + provenance superficie T5.9 + `sunarp-intake.test.ts` T5.10)
+✅ 218/218 (30 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3 + `sunarp-normalize.test.ts` T5.4/T5.5/T5.6/T5.7 + `sunarp-historical.test.ts` T5.8 + provenance superficie T5.9 + `sunarp-intake.test.ts` T5.10 + `sunarp-acceptance.test.ts` T5.11)
 
 Root:
 ✅
 
 ## Current Phase
 
-Phase 5 — ✅ SUNARP EN PROGRESO (T5.1–T5.10 DONE, 2026-09-19). Fase 4 — REM@JU COMPLETED.
+Phase 5 — ✅ SUNARP COMPLETED (T5.1–T5.11 DONE, 2026-09-19). Fase 4 — REM@JU COMPLETED.
 
 ## Current Task
 
-Fase 5 / T5.11 (Tests) — próximo paso. T5.1–T5.10 completados:
+Fase 5 / T5.11 (Tests) — ✅ DONE. Cierra la Fase 5 (T5.1–T5.11 completados):
 - **T5.1 Conoce Aquí**: discovery (`docs/SUNARP.md`): **ninguna superficie consultable
   sin identidad (DNI + fecha de emisión) + CAPTCHA** → no automatizable (Ley 29733, no
   bypass CAPTCHA, 3–5 consultas/día). Conector real de postura `SunarpConnector`
@@ -143,6 +143,20 @@ Suite **205/205 (28 archivos)**; typecheck server+root y build OK.
   - Tests: nuevo `sunarp-intake.test.ts` (E2E offline) + 2 `remate-manual` +
     `sunarp`/`sunarp-sprl` + `remate-intake.routes`.
   Suite **213/213 (29 archivos)**; typecheck server+root y build OK.
+- **T5.11 Tests** (aceptación/regresión integral, offline):
+  - Nuevo `sunarp-acceptance.test.ts` (5): postura honesta `sunarp`/`sunarp_sprl`
+    + **cero red** (spy `fetch` que falla) + anti-datos-inventados; pipeline del
+    fixture → normalización/estado derivado/provenance; atribución
+    manual/remaju/sunarp/sunarp_sprl/sunarp_bgr; ciclo manual completo de la
+    variante **SPRL (de pago)**; URL del singleton.
+  - Sin cambios de código productivo. Suite **218/218 (30 archivos)**; typecheck
+    server+root y build OK. Fase 5 cerrada.
+
+## Next Task
+
+**PHASE 5.5 — Research Platform UX + Identity (PLANNED)** — subfases RP.1–RP.11
+sin implementar; requieren aprobación explícita y Decision Gates (AGENTS.md
+§2.3-bis). Ver `docs/NEXT_STEPS.md` y `docs/PRODUCT.md`.
 
 ## Gobernanza y producto (registrado 2026-09-19)
 

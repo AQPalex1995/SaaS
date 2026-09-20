@@ -995,3 +995,48 @@ Next:
   del ciclo T5.1–T5.10). Aún sin definir en el plan → acotar alcance al iniciar;
   tras ella quedan las subfases RP.1–RP.11 de PHASE 5.5 (PLANNED, requieren
   aprobación explícita + Decision Gates AGENTS.md §2.3-bis).
+
+## 2026-09-19 - OpenCode - Fase 5 / T5.11 (Tests - acceptance integral SUNARP) — Fase 5 COMPLETED
+
+Completed:
+- Nuevo `server/tests/sunarp-acceptance.test.ts` (5 tests) — acceptance/regresión
+  integral de la fase SUNARP (T5.1–T5.10), **offline y sin red**. Consolida las
+  garantías de la fase en un solo lugar:
+  1. **Postura honesta + cero red**: `sunarp` y `sunarp_sprl` →
+     `requires_auth` + `requiresManualAction` + `url`
+     (`SUNARP_CONOCE_AQUI_URL`/`SUNARP_SPRL_URL`), `search()`/`getDetails()`
+     vacíos (anti-datos-inventados) y un spy de `fetch` que lanza si alguien
+     intenta red → `expect(fetchSpy).not.toHaveBeenCalled()`.
+  2. **Pipeline del fixture real** `registry-capture.json`: partida canónica
+     `P-01234567`, 2 titulares, 2 cargas, estado derivado `cargado`
+     (`activeCharges` 1, `totalActiveDebtPen` 1234567.89,
+     `totalActiveDebtUsd` 0) y provenance de superficie
+     `sunarp`/`reported`/`v1` con el estado derivado en `inferred`.
+  3. **Atribución de la fuente de captura**: por defecto `manual`/`remaju`;
+     explícita `sunarp`/`sunarp_sprl`/`sunarp_bgr` (nunca `manual` en la
+     superficie del intake SUNARP).
+  4. **Ciclo manual completo de la variante SPRL (de pago)**: manual action
+     `source: 'sunarp_sprl'` + URL SPRL → captura (titular + hipoteca) →
+     `registry`/provenance `sunarp_sprl` y task `completed`.
+  5. El singleton `sunarpConnector` expone la misma URL de Conoce Aquí.
+- Sin cambios de código productivo (solo test nuevo).
+- Suite **218/218 (30 files)**; typecheck server+root y build OK. **Fase 5
+  cerrada.**
+- Docs: SUNARP.md (T5.11 DONE + header Fase 5 COMPLETED),
+  PROJECT_EXECUTION_PLAN (PHASE 5 COMPLETED, T5.11 DONE, siguiente PHASE 5.5),
+  PROJECT_STATUS (218/218/30, Current Task T5.11 DONE, Next Task PHASE 5.5),
+  NEXT_STEPS.md, AGENTS.md (Estado Actual + conteo 218 + inventario de test),
+  ROADMAP.md, CHANGELOG.
+
+Findings:
+- La fase SUNARP queda con 11 subfases verificadas end-to-end sin red; la
+  variante SPRL de pago reutiliza exactamente el mismo ciclo manual (la única
+  diferencia es la fuente atribuida), lo que valida el diseño de T5.10.
+
+Next:
+- **PHASE 5.5 — Research Platform UX + Identity** (PLANNED): comenzar por RP.1
+  requiere aprobación explícita y Decision Gates (AGENTS.md §2.3-bis:
+  autenticación, pagos/planes, acceso comercial a fuentes, documentos, datos
+  personales). Acotar alcance al iniciar. Decisiones pendientes: tabla
+  `research_runs`, proveedor de autenticación, pagos/planes, acceso comercial a
+  fuentes, almacenamiento de documentos, retención/borrado de datos.

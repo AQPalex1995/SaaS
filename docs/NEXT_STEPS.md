@@ -2,9 +2,10 @@
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
 > El estado del repositorio refleja la **Fase 4 (REM@JU) completada** y la
-> **Fase 5 (SUNARP) en progreso (T5.1 + T5.2 + T5.3 + T5.4 + T5.5 + T5.6 + T5.7 + T5.8 + T5.9 + T5.10 DONE)**.
-> Las fases 0–2.5, la Fase 3 (T3.1 → T3.9), la Fase 4 (T4.1 → T4.9) y el
-> arranque de la Fase 5 (T5.1) están implementadas en `main`
+> **Fase 5 (SUNARP) completada (T5.1 → T5.11 DONE)**; lo siguiente es la etapa
+> transversal **PHASE 5.5 — Research Platform UX + Identity (PLANNED)**.
+> Las fases 0–2.5, la Fase 3 (T3.1 → T3.9), la Fase 4 (T4.1 → T4.9) y la
+> Fase 5 (T5.1 → T5.11) están implementadas en `main`.
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
 > Lee atentamente este documento antes de escribir código.
 > **Reglas operativas vigentes (AGENTS.md)**: el agente inicia **automáticamente** Docker/PostgreSQL
@@ -449,9 +450,25 @@ cd server && npm.cmd run sync:sqlite
 > `server/tests/sunarp-sprl.test.ts` (5). Suite **167/167 (26 archivos)**;
 > typecheck server+root y build OK.
 >
-> **Siguiente tarea del plan**: **Fase 5 — SUNARP / T5.11 (Tests)** — cerrar la
-> fase con la pasada de pruebas integral de SUNARP (regresión de TODO el ciclo
-> T5.1–T5.10, no una funcionalidad nueva). Al iniciarla, acotar alcance.
+> **Fase 5 — SUNARP / T5.11 (Tests) ✅ DONE (2026‑09‑19)**: acceptance/regresión
+> integral de la fase (T5.1–T5.10), offline y sin red. Nuevo
+> `server/tests/sunarp-acceptance.test.ts` (5): postura honesta de
+> `sunarp`/`sunarp_sprl` + **cero red** (spy de `fetch` que falla) +
+> anti-datos-inventados; pipeline del fixture `registry-capture.json` →
+> partida `P-01234567`/2 titulares/2 cargas/estado `cargado` + provenance
+> `sunarp`/`reported`/`v1` con derivación `inferred`; atribución
+> manual/remaju/sunarp/sunarp_sprl/sunarp_bgr; ciclo manual completo de la
+> variante **SPRL (de pago)** (manual action `source: 'sunarp_sprl'` → captura →
+> `sunarp_sprl` + task settled); URL del singleton. Sin cambios de código
+> productivo. Suite **218/218 (30 archivos)**; typecheck server+root y build OK.
+> **Fase 5 cerrada.**
+>
+> **Siguiente tarea del plan**: **PHASE 5.5 — Research Platform UX + Identity
+> (PLANNED)**. Empezaría por **RP.1**; todas las subfases RP.1–RP.11 requieren
+> aprobación explícita y Decision Gates (AGENTS.md §2.3-bis: autenticación,
+> pagos/planes, acceso comercial a fuentes, documentos, datos personales). Al
+> iniciar RP.1, acotar alcance con el usuario.
+>
 > T5.10 completada (2026‑09‑19, alcance acotado con el usuario: "Intake SUNARP
 > end-to-end"): cierre del ciclo de acciones manuales de SUNARP en la plataforma.
 > `ConnectorStatus.url` (`connectors/base.ts`) expone la superficie oficial y

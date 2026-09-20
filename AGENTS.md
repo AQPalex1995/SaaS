@@ -10,7 +10,7 @@
 - **Objetivo**: Plataforma de inteligencia territorial e inmobiliaria para terrenos en Arequipa, Perú (con expansión nacional).
 - **Evolución**: De un scraper local básico de Facebook Marketplace/Grupos (`FB Terreno Scout`) hacia una plataforma modular de due diligence inmobiliario, valuación y análisis registral/urbano (`Land Intelligence`).
 - **Producto definido (2026‑09‑19)**: **Land Intelligence — plataforma de investigación y due diligence inmobiliario de predios**. Las publicaciones de Facebook/Marketplace son SOLO una fuente de descubrimiento (entrada A). El sistema debe permitir además registrar predios NO publicados, solicitados directamente por un usuario (entrada B). **No asumir `Listing = Property = ResearchCase`**; se puede crear un `ResearchCase` sin `Listing`. El resultado completo vive en un **expediente** propio (`/investigaciones/:id`), no solo en el Drawer. Detalle de producto, flujos, Buscar Predio y Due Diligence PRO en `docs/PRODUCT.md`; gobernanza de investigación en `docs/RESEARCH_GOVERNANCE.md`; UX en `docs/UX_ARCHITECTURE.md`; datos en `docs/DATA_GOVERNANCE.md`; seguridad en `docs/SECURITY.md`.
-- **Estado Actual**: **Fase 5 — SUNARP EN PROGRESO (2026‑09‑19, T5.1 Conoce Aquí + T5.2 Consulta de Propiedad + T5.3 SPRL + T5.4 Registry normalization + T5.5 Owners + T5.6 Charges + T5.7 Titles + T5.8 Historical data + T5.9 Provenance superficie + T5.10 Manual actions/Intake SUNARP DONE)**. Fase 4 — REM@JU COMPLETED (T4.1–T4.9: discovery, parser, normalization, dedup, linking + intake manual, research connector, manual action handling, tests, monitoring). Siguiente tarea **T5.11 (Tests)**. SUNARP no tiene superficie consultable sin identidad + CAPTCHA → postura `requires_auth` (conectores reales de postura, ver §3.4). Ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). Fases 0–3 completadas (infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ, Research Engine T3.x).
+- **Estado Actual**: **Fase 5 — SUNARP COMPLETED (2026‑09‑19, T5.1 Conoce Aquí + T5.2 Consulta de Propiedad + T5.3 SPRL + T5.4 Registry normalization + T5.5 Owners + T5.6 Charges + T5.7 Titles + T5.8 Historical data + T5.9 Provenance superficie + T5.10 Manual actions/Intake SUNARP + T5.11 Tests/acceptance DONE)**. Fase 4 — REM@JU COMPLETED (T4.1–T4.9: discovery, parser, normalization, dedup, linking + intake manual, research connector, manual action handling, tests, monitoring). Siguiente: **PHASE 5.5 — Research Platform UX + Identity (PLANNED; RP.1–RP.11 requieren aprobación explícita y Decision Gates)**. SUNARP no tiene superficie consultable sin identidad + CAPTCHA → postura `requires_auth` (conectores reales de postura, ver §3.4). Ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). Fases 0–3 completadas (infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ, Research Engine T3.x).
 - **Gobernanza**: este documento contiene las **Checkpoint Rules**, **Decision Gates** y **reglas de ejecución autónoma** (sección 2). Todo agente DEBE leer `PROJECT_EXECUTION_PLAN.md`, `PROJECT_STATUS.md` y `CHANGELOG_AGENTS.md` antes de escribir código.
 - **Enfoque**: Modular Monolith en TypeScript (Node.js ESM), Fastify, PostgreSQL 16 + PostGIS 3.4, Drizzle ORM, BullMQ, Vitest.
 
@@ -267,7 +267,7 @@ d:\SaaS\fb-terreno-scout\
 │   ├── drizzle/               # Migraciones SQL generadas (0000_military_salo.sql … 0003_natural_mysterio.sql)
 │   ├── scripts/
 │   │   └── queue-health.mjs   # Healthcheck Redis para el worker en Docker
-│   ├── tests/                 # Suite de pruebas Vitest (213 tests pasando)
+│   ├── tests/                 # Suite de pruebas Vitest (218 tests pasando)
 │   │   ├── app.test.ts        # Tests de API Fastify, /health, /sources
 │   │   ├── connector.test.ts  # Tests de registro y conectores stubs
 │   │   ├── research.test.ts   # Tests del motor de investigación
@@ -294,6 +294,7 @@ d:\SaaS\fb-terreno-scout\
 │   │   └── sunarp-normalize.test.ts # Tests de normalización registral SUNARP (T5.4) + titulares/cargas/títulos (T5.5/T5.6/T5.7)
 │   │   └── sunarp-historical.test.ts # Tests de estado registral derivado SUNARP (T5.8)
 │   │   └── sunarp-intake.test.ts # Tests E2E del intake SUNARP (manual action con URL + captura) (T5.10)
+│   │   └── sunarp-acceptance.test.ts # Acceptance/regresión integral de Fase 5 SUNARP (T5.1–T5.11)
 │   └── fixtures/
 │       └── remaju-home.html   # Fixture offline del home público REM@JU (T4.2)
 │       └── remate-manual-payload.json # Fixture del payload de intake manual REM@JU (T4.5/T4.8)
@@ -356,7 +357,7 @@ d:\SaaS\fb-terreno-scout\
     ├── DOMAIN_MODEL.md        # Entidades, invariantes y estados
     ├── API.md                 # Especificación de endpoints Fastify
     ├── CONNECTORS.md          # Arquitectura de conectores
-    ├── SUNARP.md              # Reporte de discovery SUNARP + Fase 5 (T5.1–T5.8)
+    ├── SUNARP.md              # Reporte de discovery SUNARP + Fase 5 (T5.1–T5.11)
     ├── RESEARCH_ENGINE.md     # Motor de 8 tareas de investigación
     ├── GIS.md                 # Inteligencia geoespacial y PDM Arequipa
     ├── QUEUES.md              # Infraestructura BullMQ y Redis
@@ -432,7 +433,7 @@ npm.cmd run db:seed       # Inserta usuario de sistema, fuentes y datos de prueb
 ### Paso 5: Ejecutar la suite de tests
 ```bash
 cd server
-npm.cmd test               # Ejecuta Vitest (213 tests automáticos)
+npm.cmd test               # Ejecuta Vitest (218 tests automáticos)
 npm.cmd run typecheck      # Verifica que TypeScript esté al 100% sin errores
 ```
 

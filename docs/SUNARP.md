@@ -1,6 +1,6 @@
 # SUNARP — Registro y Titularidad (Fase 5)
 
-> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ + T5.3 (SPRL) ✅ + T5.4 (Registry normalization) ✅ + T5.5 (Owners) ✅ + T5.6 (Charges) ✅ + T5.7 (Titles) ✅ + T5.8 (Historical data) ✅ + T5.9 (Provenance superficie) ✅ + T5.10 (Manual actions — Intake SUNARP) ✅ — DONE hasta T5.10 (2026‑09‑19).
+> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ + T5.3 (SPRL) ✅ + T5.4 (Registry normalization) ✅ + T5.5 (Owners) ✅ + T5.6 (Charges) ✅ + T5.7 (Titles) ✅ + T5.8 (Historical data) ✅ + T5.9 (Provenance superficie) ✅ + T5.10 (Manual actions — Intake SUNARP) ✅ + T5.11 (Tests — acceptance integral) ✅ — **Fase 5 COMPLETED** (2026‑09‑19).
 > Reporte de discovery, postura del conector `sunarp` y normalización registral.
 
 ## 1. Qué es SUNARP
@@ -250,6 +250,16 @@ Detalle de **SPRL** (T5.3):
     en `getStatus` y en la manual action), `remate-intake.routes.test.ts`
     (header de la UI). Suite **213/213 (29 archivos)**; typecheck server+root
     y build OK.
+- **T5.11 Tests (acceptance integral)** → ✅ DONE (2026‑09‑19). Nuevo
+  `server/tests/sunarp-acceptance.test.ts` (5) que consolida las garantías de la
+  fase sin red: postura honesta + `url` de `sunarp`/`sunarp_sprl` (spy de
+  `fetch` que falla → cero peticiones) y anti-datos-inventados; pipeline del
+  fixture `registry-capture.json` (partida `P-01234567`, 2 titulares, 2 cargas,
+  estado `cargado`, `totalActiveDebtPen` 1234567.89, provenance
+  `sunarp`/`reported`/`v1` con derivación `inferred`); atribución
+  manual/remaju/sunarp/sunarp_sprl/sunarp_bgr; ciclo manual completo de la
+  variante **SPRL (de pago)**; URL del singleton. Sin cambios de código
+  productivo. Suite **218/218 (30 archivos)**; typecheck server+root y build OK.
 - **BGR (Fase 6, visor)** → DNI + CAPTCHA: misma postura `requires_auth` en
   `sunarp_bgr`.
 - **SPRL histórico** (T5.8) → via copias literales manuales.
