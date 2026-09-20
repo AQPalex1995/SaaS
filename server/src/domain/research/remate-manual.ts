@@ -10,7 +10,7 @@
  * solo partida, dirección, coordenadas y datos públicos del remate.
  */
 
-import { normalizePartida } from '../../connectors/implementations/remaju-link.js';
+import { registryLookupKey } from '../../connectors/implementations/sunarp-normalize.js';
 
 export type OrigenUbicacion = 'partida' | 'direccion' | 'maps';
 
@@ -132,7 +132,9 @@ function normalizeOrigen(origen: OrigenUbicacion | null | undefined): OrigenUbic
  */
 export function planRemateIntake(input: RemateManualInput): RemateManualPlan {
   const warnings: string[] = [];
-  const partida = normalizePartida(input.partida);
+  // Clave canónica SUNARP 'P-XXXXXXXX' (Zona Registral XII — Arequipa): lo que
+  // se persiste en registry_properties.registry_number para deduplicar el cache.
+  const partida = registryLookupKey(input.partida);
   const distrito = cleanText(input.distrito);
   const direccion = composeDireccion(input.direccion, distrito);
   const origenUbicacion = normalizeOrigen(input.origenUbicacion);

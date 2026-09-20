@@ -39,18 +39,18 @@ PostGIS:
 ## Tests
 
 Server:
-✅ 167/167 (26 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3)
+✅ 187/187 (27 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3 + `sunarp-normalize.test.ts` T5.4)
 
 Root:
 ✅
 
 ## Current Phase
 
-Phase 5 — ✅ SUNARP EN PROGRESO (T5.1 + T5.2 + T5.3 DONE, 2026-09-18). Fase 4 — REM@JU COMPLETED.
+Phase 5 — ✅ SUNARP EN PROGRESO (T5.1–T5.4 DONE, 2026-09-18). Fase 4 — REM@JU COMPLETED.
 
 ## Current Task
 
-Fase 5 / T5.4 (Registry normalization) — próximo paso. T5.1–T5.3 completados:
+Fase 5 / T5.5 (Owners) — próximo paso. T5.1–T5.4 completados:
 - **T5.1 Conoce Aquí**: discovery (`docs/SUNARP.md`): **ninguna superficie consultable
   sin identidad (DNI + fecha de emisión) + CAPTCHA** → no automatizable (Ley 29733, no
   bypass CAPTCHA, 3–5 consultas/día). Conector real de postura `SunarpConnector`
@@ -64,9 +64,18 @@ Fase 5 / T5.4 (Registry normalization) — próximo paso. T5.1–T5.3 completado
   (`server/src/connectors/implementations/sunarp-sprl.ts`, index.ts 1e) — servicio con
   valor legal, suscripción gratuita + **pago por consulta**; `requires_auth` +
   `requiresManualAction` (no se automatiza compra ni se guardan credenciales).
+- **T5.4 Registry normalization**:
+  `server/src/connectors/implementations/sunarp-normalize.ts` (WIP no commitado,
+  terminado y testeado): `normalizeRegistryPartida`/`registryLookupKey` → clave
+  canónica `P-XXXXXXXX` (prefijo `110` de la Zona XII) para dedup del cache SPRL;
+  `normalizeRegistryCapture` tipa titulares/cargas para
+  `registry_properties`/`registry_owners`/`registry_charges`. `planRemateIntake`
+  (intake manual T4.5) persiste ahora la clave canónica. Bugs reales corregidos
+  (`normalizeAreaM2` "380 m2"→380 y montos con miles vía `parseAmount`).
+  Tests `sunarp-normalize.test.ts` (20) + fixture `registry-capture.json`.
 Tareas `registry`/`bgr` → `requires_manual_action` (manual action kind `login`).
-Tests: `sunarp.test.ts` (5) + `sunarp-sprl.test.ts` (5). Suite **167/167 (26 archivos)**;
-typecheck server+root y build OK.
+Tests: `sunarp.test.ts` (5) + `sunarp-sprl.test.ts` (5) + `sunarp-normalize.test.ts` (20).
+Suite **187/187 (27 archivos)**; typecheck server+root y build OK.
 
 ## Blockers
 

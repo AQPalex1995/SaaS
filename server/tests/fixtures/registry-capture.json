@@ -1,0 +1,46 @@
+{
+  "partida": "P 110 0123 4567",
+  "area": "550.75 m2",
+  "direccion": "AV. LOS GERANIOS 240, URB. LA FLORIDA",
+  "distrito": "AREQUIPA",
+  "oficina": "Zona Registral N° XII - Sede Arequipa",
+  "zona": "OFICINA REGISTRAL AREQUIPA",
+  "propietarios": [
+    {
+      "titular": "JOSE LUIS TORRES GOMEZ",
+      "tipo": "NATURAL",
+      "tipoDocumento": "DNI",
+      "numeroDocumento": "29384756",
+      "porcentaje": "50%",
+      "fechaInscripcion": "2020-05-10"
+    },
+    {
+      "titular": "INVERSIONES ANDINAS S.A.C.",
+      "tipo": "JURIDICA",
+      "tipoDocumento": "RUC",
+      "numeroDocumento": "20452687123",
+      "porcentaje": 50,
+      "fechaInscripcion": "15/06/2021"
+    }
+  ],
+  "cargas": [
+    {
+      "tipo": "HIPOTECA",
+      "descripcion": "Hipoteca a favor del Banco de Crédito",
+      "monto": "S/ 1,234,567.89",
+      "moneda": "S/",
+      "acreedor": "BANCO DE CREDITO DEL PERU S.A.",
+      "fechaInscripcion": "20/05/2020",
+      "estado": "VIGENTE"
+    },
+    {
+      "tipo": "EMBARGO",
+      "descripcion": "Embargo preventivo",
+      "monto": "US$ 45,000.00",
+      "moneda": "US$",
+      "acreedor": "SUPERINTENDENCIA NACIONAL DE ADUANAS",
+      "fechaInscripcion": "2022-01-15",
+      "estado": "Cancelado"
+    }
+  ]
+}

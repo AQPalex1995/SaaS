@@ -736,13 +736,13 @@ Next:
 
 ## 2026-09-18 - OpenCode - Fase 5 / T5.2 (SUNARP Consulta de Propiedad)
 
-- Discovery adicional (docs/SUNARP.md): "Consulta de Propiedad" (www2.sunarp.gob.pe/consulta-propiedad) localiza partidas a NOMBRE del propietario; formulario DNI/carnet + numero + fecha de emision + correo + verificaci�n de seguridad (CAPTCHA), validaci�n por correo OTP; resultados con homonimia; Vista Simple = titular/partida/cargas vigentes. Igual que Conoce Aqui: NO automatizable (identidad + CAPTCHA + OTP; Ley 29733).
+- Discovery adicional (docs/SUNARP.md): "Consulta de Propiedad" (www2.sunarp.gob.pe/consulta-propiedad) localiza partidas a NOMBRE del propietario; formulario DNI/carnet + numero + fecha de emision + correo + verificaci�n de seguridad (CAPTCHA), validaci�n por correo OTP; resultados con homonimia; Vista Simple = titular/partida/cargas vigentes. Igual que Conoce Aqui: NO automatizable (identidad + CAPTCHA + OTP; Ley 29733).
 - Conector sunarp ampliado (T5.2):
   - `SearchResult` (base.ts) gano campos opcionales `requiresManualAction`/`manualActionDescription` (aditivo, contrato de conectores intacto).
   - `search()` ahora devuelve vacio + `requiresManualAction: true` con instrucciones orientadas a Consulta de Propiedad (busqueda por propietario), via helper `sunarpOwnerSearchManualActionDescription()`.
   - `getStatus()` usa `sunarpRegistryManualActionDescription()` (guia combinada: localizar partida -> Consulta de Propiedad; ver contenido -> Conoce Aqui) que alimenta la manual action de las tareas registry/bgr.
   - `getDetails()` mantiene orientacion a Conoce Aqui.
-- Tests `sunarp.test.ts` actualizados (5): search se�ala Consulta de Propiedad; getStatus incluye ambas URLs; guia combinada; E2E offline registry->requires_manual_action con instructions que contienen ambas superficies.
+- Tests `sunarp.test.ts` actualizados (5): search se�ala Consulta de Propiedad; getStatus incluye ambas URLs; guia combinada; E2E offline registry->requires_manual_action con instructions que contienen ambas superficies.
 - Suite **162/162 (25 files)**; typecheck server+root y build OK.
 - Docs: SUNARP.md (detalle Consulta de Propiedad + secciones T5.1/T5.2 DONE), PROJECT_EXECUTION_PLAN (T5.2 DONE, next T5.3), PROJECT_STATUS (Current Task T5.3, 162/162), NEXT_STEPS.md, AGENTS.md, CONNECTORS.md, RESEARCH_ENGINE.md (T3 nota).
 
@@ -762,3 +762,21 @@ Next:
 
 Next:
 - **T5.4 - Registry normalization**: normalizar formato de partida de la Zona Registral XII (Arequipa, P-XXXXXXXX) y campos del registro capturados manualmente (titular, cargas) antes de persistir en registry_properties/registry_owners/registry_charges; parser puro + fixtures + tests offline.
+
+## 2026-09-19 - OpenCode - Fase 5 / T5.4 (Registry normalization)
+
+- Completado `server/src/connectors/implementations/sunarp-normalize.ts` (estaba como WIP sin commitear y sin tests) y añadido al flujo de intake:
+  - `normalizeRegistryPartida()` / `registryLookupKey()` -> clave canónica `P-XXXXXXXX` (Zona Registral XII — Arequipa, prefijo de oficina `110`: acepta `P-12345678`, `p12345678`, `P 1234 5678`, `12345678` y `11012345678`). Es lo que se persiste en `registry_properties.registry_number` para **deduplicar el cache de pagos de SPRL** (primera consulta pagada -> almacenada; siguientes por clave canónica sin volver a pagar).
+  - `normalizeRegistryCapture()` -> shape canónico tipado para `registry_properties`/`registry_owners`/`registry_charges`: titular (Title Case con acrónimos `S.A.C.`, tipo DNI/RUC/CE/PASAPORTE, natural/jurídica/desconocido, porcentaje 0–100), cargas (hipoteca/embargo/medida_cautelar/anotación/prohibición/servidumbre/usufructo, monto S//US$ vía `parseAmount`, estado si/no/unknown), fechas dd/MM/yyyy->ISO, m². Nunca inventa valores (null/desconocido + warnings).
+  - Helprs `toText` (valores `unknown` no rompen), `titleCase`, `parseAmount`, `normalizeAreaM2`, `parseRegistralDate`.
+- Integración "antes de persistir": `server/src/domain/research/remate-manual.ts` ahora usa `registryLookupKey` (import desde `sunarp-normalize.js`) para el `registry_properties.registry_number` del intake manual (T4.5). `remaju-link.normalizePartida` se mantiene para matching (quita guiones -> ambos formatos coinciden).
+- Bugs reales detectados y corregidos por la batería de tests:
+  - `normalizeAreaM2("380 m2")` devolvía **3802** (el dígito de la unidad "m2" sobrevivía al strip). Ahora la unidad (`m2/mt2/m²/metros2/cuadrados`) se quita antes de extraer dígitos -> 380; "550.75 m2" -> 550.75.
+  - `normalizeCarga`/amount: `Number("1,234.56")` = NaN con separadores de miles -> se parsea vía `parseAmount` (S/ 1,234.56 -> 1234.56).
+- Tests `server/tests/sunarp-normalize.test.ts` (20): claves canónicas (8 variantes), inválidos -> null, tolva, campos null-safe, cargas con miles/desconocidos, fixture E2E `normalizeRegistryCapture`; fixture `server/tests/fixtures/registry-capture.json`.
+- Aserciones actualizadas a `P-12345678`: `remate-manual.test.ts` (+ `registry.registryNumber`) y `phase4-acceptance.test.ts` (línea aserción partida/intake).
+- Suite **187/187 (27 files)**; typecheck server+root y build OK.
+- Docs: SUNARP.md (T5.4 DONE + sección detallada), PROJECT_EXECUTION_PLAN (T5.4 DONE, next T5.5, STATUS T5.1–T5.4), PROJECT_STATUS (Current Task T5.5, 187/187/27), NEXT_STEPS.md, CHANGELOG.
+
+Next:
+- **T5.5 - Owners**: persistir titulares normalizados de la captura manual en `registry_owners` (seed desde la captura; vincular por `propertyId` + `registryId`).

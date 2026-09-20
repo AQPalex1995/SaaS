@@ -841,13 +841,13 @@ T4.9 monitoring — result:
   inyectado). Suite completa **157/157 (24 archivos)**; typecheck server+root y
   build OK.
 
-siguiente tarea del plan: **Fase 5 — SUNARP** (T5.4 Registry normalization).
+siguiente tarea del plan: **Fase 5 — SUNARP** (T5.5 Owners).
 
 ============================================================
 PHASE 5 — SUNARP
 ============================================================
 
-STATUS: IN PROGRESS (T5.1–T5.3 DONE)
+STATUS: IN PROGRESS (T5.1–T5.4 DONE)
 
 Dividir:
 
@@ -883,8 +883,28 @@ Dividir:
   `server/tests/sunarp-sprl.test.ts` (5) — suite completa **167/167
   (26 archivos)**; typecheck server+root y build OK.
 
-T5.4 Registry normalization
-T5.4 Registry normalization
+- T5.4 Registry normalization — DONE (2026-09-18). Normalización pura del
+  registro capturado manualmente en
+  `server/src/connectors/implementations/sunarp-normalize.ts` (iniciada como WIP
+  sin commitear y completada en esta tarea):
+  - `normalizeRegistryPartida()` / `registryLookupKey()` → clave canónica
+    `P-XXXXXXXX` (Zona Registral XII — Arequipa, prefijo de oficina `110`
+    opcional; acepta `P-12345678`, `p12345678`, `P 1234 5678`, `12345678`,
+    `11012345678`). Permite **deduplicar el cache de pagos de SPRL**.
+  - `normalizeRegistryCapture()` → shape canónico tipado para
+    `registry_properties` / `registry_owners` / `registry_charges`: titular
+    (Title Case, tipo DNI/RUC/CE/PASAPORTE, natural/jurídica, porcentaje),
+    cargas (hipoteca/embargo/medida_cautelar/anotación/prohibición/servidumbre/
+    usufructo, monto S//US$, estado si/no/unknown), fechas dd/MM/yyyy→ISO,
+    m² y área de la Zona XII. Nunca inventa valores (null/desconocido + warnings).
+  - Integración "antes de persistir": `planRemateIntake` (intake manual T4.5)
+    ahora persiste la clave canónica en `registry_properties.registry_number`.
+  - Bugs reales corregidos por la batería: `normalizeAreaM2` ("380 m2" → 380, no
+    3802) y `amount` con separadores de miles (vía `parseAmount`).
+  - Tests `server/tests/sunarp-normalize.test.ts` (20) + fixture
+    `server/tests/fixtures/registry-capture.json`. Suite **187/187 (27 archivos)**;
+    typecheck server+root y build OK.
+
 T5.5 Owners
 T5.6 Charges
 T5.7 Titles

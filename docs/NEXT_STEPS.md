@@ -2,7 +2,7 @@
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
 > El estado del repositorio refleja la **Fase 4 (REM@JU) completada** y la
-> **Fase 5 (SUNARP) en progreso (T5.1 + T5.2 + T5.3 DONE)**.
+> **Fase 5 (SUNARP) en progreso (T5.1 + T5.2 + T5.3 + T5.4 DONE)**.
 > Las fases 0–2.5, la Fase 3 (T3.1 → T3.9), la Fase 4 (T4.1 → T4.9) y el
 > arranque de la Fase 5 (T5.1) están implementadas en `main`
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
@@ -449,11 +449,21 @@ cd server && npm.cmd run sync:sqlite
 > `server/tests/sunarp-sprl.test.ts` (5). Suite **167/167 (26 archivos)**;
 > typecheck server+root y build OK.
 >
-> **Siguiente tarea del plan**: **Fase 5 — SUNARP / T5.4 (Registry normalization)**
-> — normalizar el formato de partida de la Zona Registral XII (Arequipa,
-> `P-XXXXXXXX`) y los campos del registro capturados manualmente (titular,
-> cargas) antes de persistir en `registry_properties`/`registry_owners`/
-> `registry_charges`; parser puro + fixtures + tests offline.
+> **Siguiente tarea del plan**: **Fase 5 — SUNARP / T5.5 (Owners)** — persistir
+> los titulares normalizados de la captura manual en `registry_owners`.
+> T5.4 completada (2026‑09‑18): normalización pura del registro capturado
+> manualmente en `server/src/connectors/implementations/sunarp-normalize.ts`
+> (`normalizeRegistryPartida`/`registryLookupKey` → clave canónica `P-XXXXXXXX`,
+> prefijo de oficina `110` de la Zona XII; `normalizeRegistryCapture` → shape
+> canónico tipado para `registry_properties`/`registry_owners`/
+> `registry_charges`) e integración "antes de persistir" vía `planRemateIntake`
+> (`registry_properties.registry_number` canónico → dedup del cache de pagos
+> SPRL). Bugs reales corregidos por la batería: `normalizeAreaM2` ("380 m2"→380,
+> no 3802) y montos con separadores de miles (vía `parseAmount`). Tests
+> `server/tests/sunarp-normalize.test.ts` (20) + fixture
+> `server/tests/fixtures/registry-capture.json`; aserciones de los tests
+> `remate-manual` y `phase4-acceptance` actualizadas al formato canónico.
+> Suite **187/187 (27 archivos)**; typecheck server+root y build OK.
 > Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 5).
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.

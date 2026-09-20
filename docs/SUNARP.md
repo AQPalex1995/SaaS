@@ -1,7 +1,7 @@
 # SUNARP — Registro y Titularidad (Fase 5)
 
-> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ + T5.3 (SPRL) ✅ — DONE (2026‑09‑18).
-> Reporte de discovery y postura del conector `sunarp`.
+> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ + T5.3 (SPRL) ✅ + T5.4 (Registry normalization) ✅ — DONE (2026‑09‑18).
+> Reporte de discovery, postura del conector `sunarp` y normalización registral.
 
 ## 1. Qué es SUNARP
 
@@ -102,8 +102,30 @@ Detalle de **SPRL** (T5.3):
   `index.ts` 1e): `requires_auth` + `requiresManualAction` que documenta
   suscripción gratuita + **pago por servicio** (kind `payment` en el flujo
   manual del operador; copias legales/certificados). No se automatiza la compra.
-- **T5.4 Registry normalization** → la normalización de partidas (formato
-  `P-XXXXXXXX` de la Zona XII) se hace sobre datos que captura el operador.
+- **T5.4 Registry normalization** → ✅ DONE (2026‑09‑18): normalización pura de
+  la captura manual del registro en
+  `server/src/connectors/implementations/sunarp-normalize.ts`
+  (`normalizeRegistryPartida`, `registryLookupKey`, `normalizeRegistryCapture`).
+  - **Clave canónica** `P-XXXXXXXX` (Zona Registral XII — Arequipa, prefijo de
+    oficina `110` opcional): es lo que se persiste en
+    `registry_properties.registry_number` y permite **deduplicar el cache de
+    pagos de SPRL** (primera consulta pagada → almacenada; búsquedas siguientes
+    por clave canónica sin volver a pagar). Acepta `P-12345678`, `p12345678`,
+    `P 1234 5678`, `12345678` y `11012345678` (11 dígitos con oficina).
+  - **Campos de la captura** (titulares y cargas) se tipan y normalizan para
+    `registry_owners` / `registry_charges`: nombre (Title Case), tipo de
+    documento (DNI/RUC/CE/PASAPORTE), tipo de titular
+    (natural/jurídica/desconocido), porcentaje (0–100), tipo de carga
+    (hipoteca/embargo/medida_cautelar/anotación/prohibición/servidumbre/usufructo),
+    estado (si/no/unknown), montos S/ y US$, fechas dd/MM/yyyy→ISO y m².
+  - Integrado en el intake manual (T4.5): `planRemateIntake` ahora persiste la
+    clave canónica en `registry_properties.registry_number` ("antes de persistir").
+  - Tests offline `server/tests/sunarp-normalize.test.ts` (20) + fixture
+    `server/tests/fixtures/registry-capture.json`. Dos bugs reales detectados por
+    la batería y corregidos: `normalizeAreaM2` dejaba el dígito de "m2" en "380 m2"
+    → 3802, y `normalizeCarga`/`amount` no parseaba separadores de miles
+    ("S/ 1,234.56" → null). Suite **187/187 (27 archivos)**; typecheck server+root
+    y build OK.
 - **T5.6/5.7 cargas y asientos** → se rellenan desde el detalle manual.
 - **BGR (Fase 6, visor)** → DNI + CAPTCHA: misma postura `requires_auth` en
   `sunarp_bgr`.

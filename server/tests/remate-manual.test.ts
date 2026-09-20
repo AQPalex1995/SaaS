@@ -25,12 +25,12 @@ describe('REM@JU manual intake planner (T4.5b)', () => {
       convocatoria: 'primera',
       fechaRemate: '2026-10-01',
     });
-    expect(plan.normalized.partida).toBe('P12345678');
+    expect(plan.normalized.partida).toBe('P-12345678');
     expect(plan.normalized.valorDeuda).toBe(150000.5);
     expect(plan.normalized.tasacion).toBe(200000);
     expect(plan.normalized.precioRemate).toBe(180000);
     expect(plan.registry).toMatchObject({
-      registryNumber: 'P12345678',
+      registryNumber: 'P-12345678',
       source: 'remaju',
       confidence: 'medium',
       verification: 'reported',

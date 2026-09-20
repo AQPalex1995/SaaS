@@ -117,7 +117,7 @@ describe('Fase 4 acceptance (T4.8)', () => {
 
     const plan = planRemateIntake(payload as never);
 
-    expect(plan.normalized.partida).toBe('P12345678');
+    expect(plan.normalized.partida).toBe('P-12345678');
     expect(plan.normalized.valorDeuda).toBe(150000.5);
     expect(plan.normalized.tasacion).toBe(200000);
     expect(plan.normalized.precioRemate).toBe(180000);
