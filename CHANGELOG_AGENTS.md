@@ -814,3 +814,20 @@ Next:
 
 Next:
 - **T5.7 - Titles**: persistir historial de títulos/asientos de la captura manual en `registry_titles` (normalizar `registry_titles`: titleNumber/titleDate/titleType/notary/description).
+
+## 2026-09-19 - OpenCode - Fase 5 / T5.7 (Titles - persistir historial de títulos SUNARP)
+
+- `sunarp-normalize.ts`: nuevo export `normalizeTitulos(raw)` (acepta array o un único objeto; shape `TituloNormalizado`: titleNumber/titleDate/titleType/notary/description; fechas ISO vía `parseFechaISO`, notario title-case via `normalizeOwnerName`).
+- `remate-manual.ts` (`planRemateIntake`):
+  - `RemateManualInput` gana `titulos?` (Array<Record> | Record | null) — historial de asientos de la captura manual SUNARP.
+  - Los títulos se normalizan y solo se persisten los aprovechables (`meaningfulTitles`: cualquier dato real); si la captura no deja ninguno, warning `captura SUNARP sin títulos normalizables`.
+  - `RegistryPlanRow.titles` y `RemateManualNormalized.titulos` exponen el lote normalizado.
+- `remate-intake.service.ts`:
+  - `saveTitles(registryId, titulos)`: un solo INSERT en `registry_titles` (FK `registry_property_id` = registryId, `source: 'sunarp'`, fechas ISO, `rawData: { parserVersion }`).
+  - `RemateIntakeResult.titlesPersisted` + `titlesPersisted` en el payload/log del intake.
+- Tests (+4): `sunarp-normalize.test.ts` (1 normalizeTitulos: array/objeto único/vacío/no-objeto + fechas/notary/tipos), `remate-manual.test.ts` (2: lote normalizado al shape canónico + warning para captura sin títulos), `remate-intake.service.test.ts` (1: complete() con títulos → 2 INSERTs registry+titles con shape correcto y titlesPersisted=2).
+- Suite **199/199 (27 files)**; typecheck server+root y build OK.
+- Docs: SUNARP.md (T5.7 DONE + sección), PROJECT_EXECUTION_PLAN (T5.7 DONE, next T5.8, STATUS T5.1–T5.7), PROJECT_STATUS (Current Task T5.8, 199/199/27), NEXT_STEPS.md, CHANGELOG.
+
+Next:
+- **T5.8 - Historical data**: derivar el estado registral de la partida desde los datos históricos de asientos (leer `registry_titles` + `registry_charges` del mismo registry row) en vez de duplicar cargas.

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { RemateIntakeService } from '../src/domain/research/remate-intake.service';
-import { registryCharges, registryOwners, registryProperties } from '../src/db/schema/registry';
+import { registryCharges, registryOwners, registryProperties, registryTitles } from '../src/db/schema/registry';
 
 function makeManualActions(overrides: Record<string, unknown> = {}) {
   return {
@@ -243,6 +243,55 @@ describe('RemateIntakeService.complete (T4.5b)', () => {
 
     expect(result.registryId).toBe('reg-1');
     expect(result.chargesPersisted).toBe(2);
+    expect(updated).toHaveLength(0);
+  });
+
+  it('persiste títulos SUNARP normalizados en registry_titles (T5.7)', async () => {
+    const { db, inserted, updated } = makeDb();
+    const manual = makeManualActions();
+    const service = new RemateIntakeService({
+      db: db as never,
+      manualActions: manual as never,
+      storage: makeStorage().storage as never,
+    });
+
+    const result = await service.complete('ma-8', {
+      payload: {
+        partida: 'P9',
+        titulos: [
+          { numeroTitulo: '2019-00012345', fecha: '10/01/2019', tipo: 'COMPRAVENTA', notario: 'LUIS GARCIA VARGAS', descripcion: 'Título de propiedad del terreno' },
+          { titulo: '006-2020', fechaTitulo: '15/03/2020', tipoTitulo: 'INDEPENDIZACION' },
+        ],
+      },
+      completedBy: 'analista',
+    });
+
+    // registry_properties + registry_owners (vacío, no inserta) + registry_titles.
+    expect(inserted).toHaveLength(2);
+    expect(inserted[0].table).toBe(registryProperties);
+    expect(inserted[1].table).toBe(registryTitles);
+
+    const titulos = inserted[1].values as unknown as Array<Record<string, unknown>>;
+    expect(titulos).toHaveLength(2);
+    expect(titulos[0]).toMatchObject({
+      registryPropertyId: 'reg-1',
+      titleNumber: '2019-00012345',
+      titleDate: '2019-01-10',
+      titleType: 'COMPRAVENTA',
+      notary: 'Luis Garcia Vargas',
+      description: 'Título de propiedad del terreno',
+      source: 'sunarp',
+    });
+    expect(titulos[1]).toMatchObject({
+      titleNumber: '006-2020',
+      titleDate: '2020-03-15',
+      titleType: 'INDEPENDIZACION',
+      notary: null,
+      description: null,
+    });
+
+    expect(result.registryId).toBe('reg-1');
+    expect(result.titlesPersisted).toBe(2);
     expect(updated).toHaveLength(0);
   });
 

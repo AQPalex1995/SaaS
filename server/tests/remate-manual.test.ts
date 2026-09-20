@@ -153,4 +153,37 @@ describe('REM@JU manual intake planner (T4.5b)', () => {
     expect(plan.normalized.cargas).toHaveLength(0);
     expect(plan.warnings.some((w) => w.includes('cargas normalizables'))).toBe(true);
   });
+
+  it('normaliza títulos SUNARP de la captura manual para registry_titles (T5.7)', () => {
+    const plan = planRemateIntake({
+      partida: 'P9',
+      titulos: [
+        { numeroTitulo: '2019-00012345', fecha: '10/01/2019', tipo: 'COMPRAVENTA', notario: 'LUIS GARCIA VARGAS', descripcion: 'Título de propiedad del terreno' },
+        { titulo: '006-2020', fechaTitulo: '15/03/2020', tipoTitulo: 'INDEPENDIZACION' },
+      ],
+    });
+    expect(plan.registry?.titles).toHaveLength(2);
+    expect(plan.registry?.titles[0]).toEqual({
+      titleNumber: '2019-00012345',
+      titleDate: '2019-01-10',
+      titleType: 'COMPRAVENTA',
+      notary: 'Luis Garcia Vargas',
+      description: 'Título de propiedad del terreno',
+    });
+    expect(plan.registry?.titles[1]).toMatchObject({
+      titleNumber: '006-2020',
+      titleDate: '2020-03-15',
+      titleType: 'INDEPENDIZACION',
+      notary: null,
+      description: null,
+    });
+    expect(plan.normalized.titulos).toHaveLength(2);
+  });
+
+  it('advierte si la captura SUNARP no deja títulos normalizables (T5.7)', () => {
+    const plan = planRemateIntake({ partida: 'P9', titulos: [{ foo: 'SIN VALOR' }] });
+    expect(plan.registry?.titles).toHaveLength(0);
+    expect(plan.normalized.titulos).toHaveLength(0);
+    expect(plan.warnings.some((w) => w.includes('títulos normalizables'))).toBe(true);
+  });
 });

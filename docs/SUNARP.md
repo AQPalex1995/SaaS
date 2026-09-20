@@ -1,6 +1,6 @@
 # SUNARP — Registro y Titularidad (Fase 5)
 
-> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ + T5.3 (SPRL) ✅ + T5.4 (Registry normalization) ✅ + T5.5 (Owners) ✅ + T5.6 (Charges) ✅ — DONE (2026‑09‑19).
+> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ + T5.3 (SPRL) ✅ + T5.4 (Registry normalization) ✅ + T5.5 (Owners) ✅ + T5.6 (Charges) ✅ + T5.7 (Titles) ✅ — DONE (2026‑09‑19).
 > Reporte de discovery, postura del conector `sunarp` y normalización registral.
 
 ## 1. Qué es SUNARP
@@ -157,6 +157,21 @@ Detalle de **SPRL** (T5.3):
   - Tests: `sunarp-normalize.test.ts` (`normalizeCargas`), `remate-manual.test.ts`
     (planner) y `remate-intake.service.test.ts` (persistencia). Suite
     **195/195 (27 archivos)**; typecheck server+root y build OK.
+- **T5.7 Titles** → ✅ DONE (2026‑09‑19): el **historial de títulos/asientos**
+  de la partida capturado por el operador se normaliza (helper `normalizeTitulos`,
+  shape `TituloNormalizado`: titleNumber/titleDate/titleType/notary/description)
+  y se **persiste en `registry_titles`** vinculado a la fila de
+  `registry_properties` (FK `registry_property_id` → `registryId` del intake):
+  - `planRemateIntake` acepta `titulos` (array o un único objeto) en el payload
+    manual; solo persiste títulos aprovechables (algún dato real) y advierte si
+    la captura no deja ninguno.
+  - `RemateIntakeService.saveTitles` inserta el lote en un solo INSERT con
+    `source: 'sunarp'`, fechas en ISO (YYYY‑MM‑DD) y `rawData: { parserVersion }`;
+    `RemateIntakeResult.titlesPersisted` reporta cuántas filas se crearon.
+  - Tests: +1 `sunarp-normalize.test.ts` (`normalizeTitulos`), +2
+    `remate-manual.test.ts` (planner) y +1 `remate-intake.service.test.ts`
+    (persistencia → 2 INSERTs: registry + titles). Suite
+    **199/199 (27 archivos)**; typecheck server+root y build OK.
 - **BGR (Fase 6, visor)** → DNI + CAPTCHA: misma postura `requires_auth` en
   `sunarp_bgr`.
 - **SPRL histórico** (T5.8) → via copias literales manuales.

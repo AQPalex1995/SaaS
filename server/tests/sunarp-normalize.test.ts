@@ -17,6 +17,7 @@ import {
   normalizeChargeType,
   normalizeIsActive,
   normalizeCargas,
+  normalizeTitulos,
   normalizeAreaM2,
   parseAmount,
   normalizeCurrency,
@@ -236,6 +237,40 @@ describe('T5.4 — Cargas (charges)', () => {
     expect(normalizeCargas(null)).toHaveLength(0);
     expect(normalizeCargas(undefined)).toHaveLength(0);
     expect(normalizeCargas(['not-an-object'])).toHaveLength(0);
+  });
+
+  it('normalizeTitulos: array o un único objeto → lista normalizada (T5.7)', () => {
+    const list = normalizeTitulos([
+      {
+        numeroTitulo: '2019-00012345',
+        fecha: '10/01/2019',
+        tipo: 'COMPRAVENTA',
+        notario: 'LUIS GARCIA VARGAS',
+        descripcion: 'Título de propiedad del terreno',
+      },
+      { titulo: '006-2020', fechaTitulo: '15/03/2020', tipoTitulo: 'INDEPENDIZACION' },
+    ]);
+    expect(list).toHaveLength(2);
+    expect(list[0]).toEqual({
+      titleNumber: '2019-00012345',
+      titleDate: '2019-01-10',
+      titleType: 'COMPRAVENTA',
+      notary: 'Luis Garcia Vargas',
+      description: 'Título de propiedad del terreno',
+    });
+    expect(list[1]).toMatchObject({
+      titleNumber: '006-2020',
+      titleDate: '2020-03-15',
+      titleType: 'INDEPENDIZACION',
+    });
+
+    const single = normalizeTitulos({ numeroTitulo: 'A-1' });
+    expect(single).toHaveLength(1);
+    expect(single[0].titleNumber).toBe('A-1');
+
+    expect(normalizeTitulos(null)).toHaveLength(0);
+    expect(normalizeTitulos(undefined)).toHaveLength(0);
+    expect(normalizeTitulos(['not-an-object'])).toHaveLength(0);
   });
 });
 

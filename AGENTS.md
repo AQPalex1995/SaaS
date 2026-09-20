@@ -9,7 +9,7 @@
 
 - **Objetivo**: Plataforma de inteligencia territorial e inmobiliaria para terrenos en Arequipa, Perú (con expansión nacional).
 - **Evolución**: De un scraper local básico de Facebook Marketplace/Grupos (`FB Terreno Scout`) hacia una plataforma modular de due diligence inmobiliario, valuación y análisis registral/urbano (`Land Intelligence`).
-- **Estado Actual**: **Fase 5 — SUNARP EN PROGRESO (2026‑09‑19, T5.1 Conoce Aquí + T5.2 Consulta de Propiedad + T5.3 SPRL + T5.4 Registry normalization + T5.5 Owners + T5.6 Charges DONE)**. Fase 4 — REM@JU COMPLETED (T4.1–T4.9: discovery, parser, normalization, dedup, linking + intake manual, research connector, manual action handling, tests, monitoring). Siguiente tarea **T5.7 (Titles)**. SUNARP no tiene superficie consultable sin identidad + CAPTCHA → postura `requires_auth` (conectores reales de postura, ver §3.4). Ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). Fases 0–3 completadas (infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ, Research Engine T3.x).
+- **Estado Actual**: **Fase 5 — SUNARP EN PROGRESO (2026‑09‑19, T5.1 Conoce Aquí + T5.2 Consulta de Propiedad + T5.3 SPRL + T5.4 Registry normalization + T5.5 Owners + T5.6 Charges + T5.7 Titles DONE)**. Fase 4 — REM@JU COMPLETED (T4.1–T4.9: discovery, parser, normalization, dedup, linking + intake manual, research connector, manual action handling, tests, monitoring). Siguiente tarea **T5.8 (Historical data)**. SUNARP no tiene superficie consultable sin identidad + CAPTCHA → postura `requires_auth` (conectores reales de postura, ver §3.4). Ver `PROJECT_STATUS.md` (estado vivo) y `PROJECT_EXECUTION_PLAN.md` (plan maestro). Fases 0–3 completadas (infra local, arquitectura, ingesta SQLite→PostgreSQL, conector OSM/Nominatim real, workers BullMQ, Research Engine T3.x).
 - **Gobernanza**: este documento contiene las **Checkpoint Rules**, **Decision Gates** y **reglas de ejecución autónoma** (sección 2). Todo agente DEBE leer `PROJECT_EXECUTION_PLAN.md`, `PROJECT_STATUS.md` y `CHANGELOG_AGENTS.md` antes de escribir código.
 - **Enfoque**: Modular Monolith en TypeScript (Node.js ESM), Fastify, PostgreSQL 16 + PostGIS 3.4, Drizzle ORM, BullMQ, Vitest.
 
@@ -235,7 +235,7 @@ d:\SaaS\fb-terreno-scout\
 │   ├── drizzle/               # Migraciones SQL generadas (0000_military_salo.sql … 0003_natural_mysterio.sql)
 │   ├── scripts/
 │   │   └── queue-health.mjs   # Healthcheck Redis para el worker en Docker
-│   ├── tests/                 # Suite de pruebas Vitest (195 tests pasando)
+│   ├── tests/                 # Suite de pruebas Vitest (199 tests pasando)
 │   │   ├── app.test.ts        # Tests de API Fastify, /health, /sources
 │   │   ├── connector.test.ts  # Tests de registro y conectores stubs
 │   │   ├── research.test.ts   # Tests del motor de investigación
@@ -259,7 +259,7 @@ d:\SaaS\fb-terreno-scout\
 │   │   └── remaju-research.test.ts # Tests de matching REM@JU→property para research (T4.6)
 │   │   └── sunarp.test.ts  # Tests del conector SUNARP postura requires_auth (T5.1–T5.2)
 │   │   └── sunarp-sprl.test.ts # Tests del conector SUNARP SPRL postura pago (T5.3)
-│   │   └── sunarp-normalize.test.ts # Tests de normalización registral SUNARP (T5.4) + titulares/cargas (T5.5/T5.6)
+│   │   └── sunarp-normalize.test.ts # Tests de normalización registral SUNARP (T5.4) + titulares/cargas/títulos (T5.5/T5.6/T5.7)
 │   └── fixtures/
 │       └── remaju-home.html   # Fixture offline del home público REM@JU (T4.2)
 │       └── remate-manual-payload.json # Fixture del payload de intake manual REM@JU (T4.5/T4.8)
@@ -283,7 +283,7 @@ d:\SaaS\fb-terreno-scout\
 │       │       ├── remaju-link.ts # Linking REM@JU → properties (T4.5)
 │       │       └── sunarp.ts  # Conector REAL SUNARP (postura requires_auth; Conoce Aquí + Consulta de Propiedad, sin fetch) (T5.1–T5.2)
 │       │       └── sunarp-sprl.ts # Conector REAL SUNARP SPRL (postura requires_auth + pago, sin fetch) (T5.3)
-│       │       └── sunarp-normalize.ts # Normalización registral SUNARP (clave canónica P-XXXXXXXX + captura) (T5.4/T5.5/T5.6)
+│       │       └── sunarp-normalize.ts # Normalización registral SUNARP (clave canónica P-XXXXXXXX + captura) (T5.4/T5.5/T5.6/T5.7)
 │       ├── db/
 │       │   ├── connection.ts  # Pool pg + Drizzle DB + testConnection()
 │       │   ├── init.ts        # ensureExtensions() + migrationsFolder() robusto
@@ -321,7 +321,7 @@ d:\SaaS\fb-terreno-scout\
     ├── DOMAIN_MODEL.md        # Entidades, invariantes y estados
     ├── API.md                 # Especificación de endpoints Fastify
     ├── CONNECTORS.md          # Arquitectura de conectores
-    ├── SUNARP.md              # Reporte de discovery SUNARP + Fase 5 (T5.1–T5.6)
+    ├── SUNARP.md              # Reporte de discovery SUNARP + Fase 5 (T5.1–T5.7)
     ├── RESEARCH_ENGINE.md     # Motor de 8 tareas de investigación
     ├── GIS.md                 # Inteligencia geoespacial y PDM Arequipa
     ├── QUEUES.md              # Infraestructura BullMQ y Redis
@@ -392,7 +392,7 @@ npm.cmd run db:seed       # Inserta usuario de sistema, fuentes y datos de prueb
 ### Paso 5: Ejecutar la suite de tests
 ```bash
 cd server
-npm.cmd test               # Ejecuta Vitest (195 tests automáticos)
+npm.cmd test               # Ejecuta Vitest (199 tests automáticos)
 npm.cmd run typecheck      # Verifica que TypeScript esté al 100% sin errores
 ```
 

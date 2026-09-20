@@ -2,7 +2,7 @@
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
 > El estado del repositorio refleja la **Fase 4 (REM@JU) completada** y la
-> **Fase 5 (SUNARP) en progreso (T5.1 + T5.2 + T5.3 + T5.4 + T5.5 + T5.6 DONE)**.
+> **Fase 5 (SUNARP) en progreso (T5.1 + T5.2 + T5.3 + T5.4 + T5.5 + T5.6 + T5.7 DONE)**.
 > Las fases 0–2.5, la Fase 3 (T3.1 → T3.9), la Fase 4 (T4.1 → T4.9) y el
 > arranque de la Fase 5 (T5.1) están implementadas en `main`
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
@@ -449,20 +449,22 @@ cd server && npm.cmd run sync:sqlite
 > `server/tests/sunarp-sprl.test.ts` (5). Suite **167/167 (26 archivos)**;
 > typecheck server+root y build OK.
 >
-> **Siguiente tarea del plan**: **Fase 5 — SUNARP / T5.7 (Titles)** — persistir
-> el historial de títulos/asientos de la captura manual en `registry_titles`.
-> T5.6 completada (2026‑09‑19): cargas/gravámenes de la partida capturados por
-> el operador persistidos en `registry_charges`, vinculados a la fila de
-> `registry_properties` del intake manual (`registry_property_id` = `registryId`).
-> `planRemateIntake` acepta `cargas` (array u objeto único) y las normaliza con
-> `normalizeCargas` (reutiliza `CargaNormalizada` de T5.4); solo se persisten
-> cargas aprovechables (tipo/descripción/monto/acreedor) y se advierte si la
-> captura no deja ninguna. `RemateIntakeService.saveCharges` inserta el lote en
-> un solo INSERT (`source: 'sunarp'`, monto `numeric(15,2)` en texto, moneda
-> PEN/USD, estado si/no/unknown, `rawData: { parserVersion }`) y expone
-> `chargesPersisted`. Tests +1 `sunarp-normalize.test.ts`, +2
+> **Siguiente tarea del plan**: **Fase 5 — SUNARP / T5.8 (Historical data)** — usar
+> los datos históricos de asientos para derivar el estado registral de la partida
+> en vez de solo cargas (requiere lectura de `registry_titles` +
+> `registry_charges` del mismo registry row).
+> T5.7 completada (2026‑09‑19): historial de títulos/asientos de la partida
+> capturados por el operador persistidos en `registry_titles`, vinculados a la
+> fila de `registry_properties` del intake manual (`registry_property_id` =
+> `registryId`). `planRemateIntake` acepta `titulos` (array u objeto único) y los
+> normaliza con `normalizeTitulos` (shape `TituloNormalizado`: titleNumber/
+> titleDate/titleType/notary/description); solo se persisten títulos
+> aprovechables (algún dato real) y se advierte si la captura no deja ninguno.
+> `RemateIntakeService.saveTitles` inserta el lote en un solo INSERT
+> (`source: 'sunarp'`, fechas ISO, `rawData: { parserVersion }`) y expone
+> `titlesPersisted`. Tests +1 `sunarp-normalize.test.ts`, +2
 > `remate-manual.test.ts`, +1 `remate-intake.service.test.ts`. Suite
-> **195/195 (27 archivos)**; typecheck server+root y build OK.
+> **199/199 (27 archivos)**; typecheck server+root y build OK.
 > Ver `PROJECT_EXECUTION_PLAN.md` (PHASE 5).
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.

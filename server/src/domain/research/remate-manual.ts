@@ -13,9 +13,11 @@
 import {
   normalizeCargas,
   normalizePropietarios,
+  normalizeTitulos,
   registryLookupKey,
   type CargaNormalizada,
   type PropietarioNormalizado,
+  type TituloNormalizado,
 } from '../../connectors/implementations/sunarp-normalize.js';
 
 export type OrigenUbicacion = 'partida' | 'direccion' | 'maps';
@@ -46,6 +48,8 @@ export interface RemateManualInput {
   propietarios?: Array<Record<string, unknown>> | Record<string, unknown> | null;
   /** Cargas/gravámenes capturados del detalle SUNARP (T5.6). */
   cargas?: Array<Record<string, unknown>> | Record<string, unknown> | null;
+  /** Historial de títulos/asientos capturados del detalle SUNARP (T5.7). */
+  titulos?: Array<Record<string, unknown>> | Record<string, unknown> | null;
 }
 
 export interface RemateManualNormalized {
@@ -65,6 +69,8 @@ export interface RemateManualNormalized {
   propietarios: PropietarioNormalizado[];
   /** Cargas/gravámenes normalizados de la partida (T5.6). */
   cargas: CargaNormalizada[];
+  /** Historial de títulos normalizado de la partida (T5.7). */
+  titulos: TituloNormalizado[];
 }
 
 export interface RegistryPlanRow {
@@ -75,6 +81,8 @@ export interface RegistryPlanRow {
   owners: PropietarioNormalizado[];
   /** Cargas/gravámenes a persistir en `registry_charges` (T5.6). */
   charges: CargaNormalizada[];
+  /** Títulos/asientos a persistir en `registry_titles` (T5.7). */
+  titles: TituloNormalizado[];
   source: 'remaju';
   confidence: 'medium';
   verification: 'reported';
@@ -163,6 +171,18 @@ function meaningfulCharges(charges: CargaNormalizada[]): CargaNormalizada[] {
   );
 }
 
+/** Solo títulos aprovechables para `registry_titles` (alguna información real). */
+function meaningfulTitles(titles: TituloNormalizado[]): TituloNormalizado[] {
+  return titles.filter(
+    (t) =>
+      t.titleNumber !== null ||
+      t.titleDate !== null ||
+      t.titleType !== null ||
+      t.notary !== null ||
+      t.description !== null,
+  );
+}
+
 /**
  * Normaliza el payload humano y planifica los efectos. Función pura.
  */
@@ -192,6 +212,13 @@ export function planRemateIntake(input: RemateManualInput): RemateManualPlan {
     warnings.push('captura SUNARP sin cargas normalizables (revisar campos)');
   }
 
+  // Historial de títulos/asientos capturado de SUNARP (T5.7): se normaliza y se
+  // prepara para persistir en `registry_titles` vinculados al registry row.
+  const titles = meaningfulTitles(normalizeTitulos(input.titulos));
+  if (input.titulos && titles.length === 0) {
+    warnings.push('captura SUNARP sin títulos normalizables (revisar campos)');
+  }
+
   const normalized: RemateManualNormalized = {
     partida,
     distrito,
@@ -207,6 +234,7 @@ export function planRemateIntake(input: RemateManualInput): RemateManualPlan {
     sourceUrlPdf: cleanText(input.sourceUrlPdf),
     propietarios: owners,
     cargas: charges,
+    titulos: titles,
   };
 
   const registry: RegistryPlanRow | null =
@@ -217,6 +245,7 @@ export function planRemateIntake(input: RemateManualInput): RemateManualPlan {
           registeredDistrict: distrito,
           owners,
           charges,
+          titles,
           source: 'remaju',
           confidence: 'medium',
           verification: 'reported',

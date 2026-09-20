@@ -39,18 +39,18 @@ PostGIS:
 ## Tests
 
 Server:
-✅ 195/195 (27 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3 + `sunarp-normalize.test.ts` T5.4/T5.5/T5.6)
+✅ 199/199 (27 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3 + `sunarp-normalize.test.ts` T5.4/T5.5/T5.6/T5.7)
 
 Root:
 ✅
 
 ## Current Phase
 
-Phase 5 — ✅ SUNARP EN PROGRESO (T5.1–T5.6 DONE, 2026-09-19). Fase 4 — REM@JU COMPLETED.
+Phase 5 — ✅ SUNARP EN PROGRESO (T5.1–T5.7 DONE, 2026-09-19). Fase 4 — REM@JU COMPLETED.
 
 ## Current Task
 
-Fase 5 / T5.7 (Titles) — próximo paso. T5.1–T5.6 completados:
+Fase 5 / T5.8 (Historical data) — próximo paso. T5.1–T5.7 completados:
 - **T5.1 Conoce Aquí**: discovery (`docs/SUNARP.md`): **ninguna superficie consultable
   sin identidad (DNI + fecha de emisión) + CAPTCHA** → no automatizable (Ley 29733, no
   bypass CAPTCHA, 3–5 consultas/día). Conector real de postura `SunarpConnector`
@@ -94,6 +94,16 @@ Tests: `sunarp.test.ts` (5) + `sunarp-sprl.test.ts` (5) + `sunarp-normalize.test
   resultado del intake. Solo se persisten cargas aprovechables (+warnings).
   Tests: +1 sunarp-normalize, +2 remate-manual, +1 remate-intake.service.
 Suite **195/195 (27 archivos)**; typecheck server+root y build OK.
+- **T5.7 Titles**:
+  `planRemateIntake` acepta `titulos` (array u objeto único) de la captura
+  SUNARP y los normaliza con `normalizeTitulos` (shape `TituloNormalizado`) →
+  `registry_titles` vinculados a la fila de `registry_properties` (FK
+  `registry_property_id`). `RemateIntakeService.saveTitles` inserta el lote en
+  un solo INSERT (`source: 'sunarp'`, fechas ISO, `rawData` con parserVersion);
+  `titlesPersisted` en el resultado del intake. Solo se persisten títulos
+  aprovechables (+warnings). Tests: +1 sunarp-normalize, +2 remate-manual, +1
+  remate-intake.service.
+Suite **199/199 (27 archivos)**; typecheck server+root y build OK.
 
 ## Blockers
 

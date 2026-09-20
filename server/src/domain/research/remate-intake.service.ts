@@ -21,11 +21,13 @@ import {
   registryCharges,
   registryOwners,
   registryProperties,
+  registryTitles,
 } from '../../db/schema/index.js';
 import {
   SUNARP_PARSER_VERSION,
   type CargaNormalizada,
   type PropietarioNormalizado,
+  type TituloNormalizado,
 } from '../../connectors/implementations/sunarp-normalize.js';
 import type { ManualActionDTO } from '../../dto/index.js';
 import { logger } from '../../logger.js';
@@ -59,6 +61,8 @@ export interface RemateIntakeResult {
   ownersPersisted: number;
   /** Cargas SUNARP persistidas en `registry_charges` (T5.6). */
   chargesPersisted: number;
+  /** Títulos SUNARP persistidos en `registry_titles` (T5.7). */
+  titlesPersisted: number;
   pdfKey: string | null;
   locationApplied: boolean;
 }
@@ -135,6 +139,8 @@ export class RemateIntakeService {
       registryId && plan.registry ? await this.saveOwners(registryId, plan.registry.owners) : 0;
     const chargesPersisted =
       registryId && plan.registry ? await this.saveCharges(registryId, plan.registry.charges) : 0;
+    const titlesPersisted =
+      registryId && plan.registry ? await this.saveTitles(registryId, plan.registry.titles) : 0;
     const locationApplied = await this.applyLocation(propertyId, plan);
     const pdfKey = input.pdf ? await this.savePdf(propertyId, id, input.pdf) : null;
 
@@ -143,6 +149,7 @@ export class RemateIntakeService {
       registryId,
       ownersPersisted,
       chargesPersisted,
+      titlesPersisted,
       pdfKey,
       warnings: plan.warnings,
     };
@@ -159,6 +166,7 @@ export class RemateIntakeService {
         registryId,
         ownersPersisted,
         chargesPersisted,
+        titlesPersisted,
         pdfKey,
         locationApplied,
       },
@@ -171,6 +179,7 @@ export class RemateIntakeService {
       registryId,
       ownersPersisted,
       chargesPersisted,
+      titlesPersisted,
       pdfKey,
       locationApplied,
     };
@@ -234,6 +243,23 @@ export class RemateIntakeService {
       rawData: { parserVersion: SUNARP_PARSER_VERSION },
     }));
     await this.db().insert(registryCharges).values(rows);
+    return rows.length;
+  }
+
+  /** Persiste el historial de títulos/asientos SUNARP de la partida en `registry_titles` (T5.7). */
+  private async saveTitles(registryId: string, titles: TituloNormalizado[]): Promise<number> {
+    if (titles.length === 0) return 0;
+    const rows = titles.map((t) => ({
+      registryPropertyId: registryId,
+      titleNumber: t.titleNumber,
+      titleDate: t.titleDate,
+      titleType: t.titleType,
+      notary: t.notary,
+      description: t.description,
+      source: 'sunarp',
+      rawData: { parserVersion: SUNARP_PARSER_VERSION },
+    }));
+    await this.db().insert(registryTitles).values(rows);
     return rows.length;
   }
 

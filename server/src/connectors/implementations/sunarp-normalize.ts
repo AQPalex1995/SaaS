@@ -314,6 +314,14 @@ export interface CargaNormalizada {
   isActive: string;
 }
 
+export interface TituloNormalizado {
+  titleNumber: string | null;
+  titleDate: string | null;
+  titleType: string | null;
+  notary: string | null;
+  description: string | null;
+}
+
 export interface CapturaRegistralInput {
   partida?: unknown;
   propietarios?: Array<Record<string, unknown>>;
@@ -382,6 +390,28 @@ export function normalizeCargas(raw: unknown): CargaNormalizada[] {
   return list
     .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
     .map(normalizeCarga);
+}
+
+function normalizeTitulo(input: Record<string, unknown>): TituloNormalizado {
+  return {
+    titleNumber:
+      collapseSpaces(toText(readField(input, ['titleNumber', 'numeroTitulo', 'titulo']))) || null,
+    titleDate: parseFechaISO(toText(readField(input, ['titleDate', 'fechaTitulo', 'fecha']))),
+    titleType:
+      collapseSpaces(toText(readField(input, ['titleType', 'tipoTitulo', 'tipo']))) || null,
+    notary: normalizeOwnerName(readField(input, ['notary', 'notario'])),
+    description:
+      collapseSpaces(toText(readField(input, ['description', 'descripcion']))) || null,
+  };
+}
+
+/** Normaliza un array (o un único objeto) de títulos/asientos de la partida (T5.7). */
+export function normalizeTitulos(raw: unknown): TituloNormalizado[] {
+  if (raw == null) return [];
+  const list = Array.isArray(raw) ? raw : [raw];
+  return list
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+    .map(normalizeTitulo);
 }
 
 /**
