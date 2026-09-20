@@ -23,7 +23,7 @@ PROJECT STATE
 ============================================================
 
 Current Phase:
-PHASE 5 — SUNARP STATUS (T5.1–T5.8 DONE; T5.9 Provenance, T5.10 Manual actions, T5.11 Tests pendientes)
+PHASE 5 — SUNARP STATUS (T5.1–T5.9 DONE; T5.10 Manual actions, T5.11 Tests pendientes)
 
 Previous Completed:
 PHASE 0 — LOCAL INFRASTRUCTURE
@@ -848,13 +848,13 @@ T4.9 monitoring — result:
   inyectado). Suite completa **157/157 (24 archivos)**; typecheck server+root y
   build OK.
 
-siguiente tarea del plan: **Fase 5 — SUNARP** (T5.9 Provenance).
+siguiente tarea del plan: **Fase 5 — SUNARP** (T5.10 Manual actions).
 
 ============================================================
 PHASE 5 — SUNARP
 ============================================================
 
-STATUS: IN PROGRESS (T5.1–T5.8 DONE)
+STATUS: IN PROGRESS (T5.1–T5.9 DONE)
 
 Dividir:
 
@@ -974,7 +974,23 @@ T5.8 Historical data — DONE (2026-09-19). Estado registral derivado del
     `remate-manual.test.ts`. Suite **205/205 (28 archivos)**; typecheck
     server+root y build OK.
 
-T5.9 Provenance
+T5.9 Provenance — DONE (2026-09-19). Provenance de superficie del intake manual
+  y del estado registral derivado (alcance acotado con el usuario: solo
+  superficie/DTOs, sin migración ni DB):
+  - Tipo `IntakeProvenance` (`sunarp-historical.ts`): `{ source, sourceUrl,
+    retrievedAt, confidence, verification, parserVersion }`.
+  - `RemateManualNormalized.provenance` (`manual`, `parserVersion manual-v1`,
+    `sourceUrl` = PDF del aviso) y `RegistryPlanRow.provenance` (`remaju`,
+    `parserVersion SUNARP_PARSER_VERSION`).
+  - `RegistryHistoricalState.provenance` — la derivación se marca
+    `source: 'sunarp'`, `verification: 'inferred'` (regla HECHO/SEÑAL).
+  - `planRemateIntake(input, retrievedAt?)` propaga un único `retrievedAt` a los
+    tres bloques; el provenance fluye por `manualAction.result` →
+    `research_results.data` y `registry_properties.raw_data`.
+  - Tests: +2 `remate-manual.test.ts`, +2 `sunarp-historical.test.ts`, +1
+    `remate-intake.service.test.ts`. Suite **210/210 (28 archivos)**; typecheck
+    server+root y build OK.
+
 T5.10 Manual actions
 T5.11 Tests
 

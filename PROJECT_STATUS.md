@@ -39,18 +39,18 @@ PostGIS:
 ## Tests
 
 Server:
-✅ 205/205 (28 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3 + `sunarp-normalize.test.ts` T5.4/T5.5/T5.6/T5.7 + `sunarp-historical.test.ts` T5.8)
+✅ 210/210 (28 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3 + `sunarp-normalize.test.ts` T5.4/T5.5/T5.6/T5.7 + `sunarp-historical.test.ts` T5.8 + provenance superficie T5.9)
 
 Root:
 ✅
 
 ## Current Phase
 
-Phase 5 — ✅ SUNARP EN PROGRESO (T5.1–T5.8 DONE, 2026-09-19). Fase 4 — REM@JU COMPLETED.
+Phase 5 — ✅ SUNARP EN PROGRESO (T5.1–T5.9 DONE, 2026-09-19). Fase 4 — REM@JU COMPLETED.
 
 ## Current Task
 
-Fase 5 / T5.9 (Provenance) — próximo paso. T5.1–T5.8 completados:
+Fase 5 / T5.10 (Manual actions) — próximo paso. T5.1–T5.9 completados:
 - **T5.1 Conoce Aquí**: discovery (`docs/SUNARP.md`): **ninguna superficie consultable
   sin identidad (DNI + fecha de emisión) + CAPTCHA** → no automatizable (Ley 29733, no
   bypass CAPTCHA, 3–5 consultas/día). Conector real de postura `SunarpConnector`
@@ -115,6 +115,18 @@ Suite **199/199 (27 archivos)**; typecheck server+root y build OK.
   `RegistryPlanRow.historical` (en `rawData`; sin migración ni DB).
   Tests: +5 en `sunarp-historical.test.ts` (nuevo) + 1 en remate-manual.
 Suite **205/205 (28 archivos)**; typecheck server+root y build OK.
+- **T5.9 Provenance (superficie)**:
+  - Tipo `IntakeProvenance` (`sunarp-historical.ts`)
+    (`source/sourceUrl/retrievedAt/confidence/verification/parserVersion`).
+  - `RemateManualNormalized.provenance` (source `manual`, `parserVersion
+    manual-v1`, `sourceUrl` = PDF) y `RegistryPlanRow.provenance` (`remaju`,
+    `SUNARP_PARSER_VERSION`); `RegistryHistoricalState.provenance` deriva con
+    `source: 'sunarp'`, `verification: 'inferred'` (regla hecho/señal).
+  - `planRemateIntake(input, retrievedAt?)` propaga un único `retrievedAt`; el
+    provenance fluye por `manualAction.result` → `research_results.data` y
+    `registry_properties.raw_data`.
+  - Tests: +2 `remate-manual`, +2 `sunarp-historical`, +1 `remate-intake.service`.
+  Suite **210/210 (28 archivos)**; typecheck server+root y build OK.
 
 ## Gobernanza y producto (registrado 2026-09-19)
 

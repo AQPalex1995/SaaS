@@ -8,10 +8,37 @@
  * manual y en `RemateManualNormalized`.
  */
 
-import type { CargaNormalizada, TituloNormalizado } from './sunarp-normalize.js';
+import {
+  SUNARP_PARSER_VERSION,
+  type CargaNormalizada,
+  type TituloNormalizado,
+} from './sunarp-normalize.js';
 
 /** Estado registral derivado: con cargas vigentes, sin cargas vigentes o desconocido. */
 export type RegistryStateLabel = 'cargado' | 'sano' | 'desconocido';
+
+/**
+ * Provenance de superficie (Fase 5 / T5.9): atribución completa de un dato o
+ * bloque para que el consumidor del intake manual sepa de dónde viene, cuándo
+ * se obtuvo, con qué confianza y qué versión de parser lo normalizó. Sin
+ * necesidad de excavar en `rawData`.
+ */
+export interface IntakeProvenance {
+  /** Origen del dato ('remaju' | 'sunarp' | 'manual' | …). */
+  source: string;
+  /** URL/origen consultable (p. ej. el PDF del aviso); null si no hay. */
+  sourceUrl: string | null;
+  /** Cuándo se consultó/capturó/ingresó el dato (ISO-8601). */
+  retrievedAt: string;
+  confidence: 'high' | 'medium' | 'low' | 'unknown';
+  verification:
+    | 'reported'
+    | 'inferred'
+    | 'verified'
+    | 'conflicting'
+    | 'unknown';
+  parserVersion: string;
+}
 
 export interface RegistryHistoricalState {
   titleCount: number;
@@ -27,6 +54,12 @@ export interface RegistryHistoricalState {
   /** Fecha (YYYY-MM-DD) del título/asiento más reciente; null si no hay fechas. */
   lastTitleDate: string | null;
   registryState: RegistryStateLabel;
+  /**
+   * Provenance del estado derivado (T5.9): derivación del sistema sobre la
+   * captura ingresada → `source: 'sunarp'`, `verification: 'inferred'`
+   * (ver `docs/RESEARCH_GOVERNANCE.md` §2).
+   */
+  provenance: IntakeProvenance;
 }
 
 function round2(n: number): number {
@@ -36,6 +69,7 @@ function round2(n: number): number {
 export function deriveHistoricalState(
   titles: TituloNormalizado[],
   charges: CargaNormalizada[],
+  provenance?: Partial<IntakeProvenance> | null,
 ): RegistryHistoricalState {
   const active = charges.filter((c) => c.isActive === 'si');
   const inactive = charges.filter((c) => c.isActive === 'no');
@@ -63,5 +97,14 @@ export function deriveHistoricalState(
     totalActiveDebtUsd: sumBy('USD'),
     lastTitleDate,
     registryState,
+    provenance: {
+      source: 'sunarp',
+      sourceUrl: null,
+      retrievedAt: new Date().toISOString(),
+      confidence: 'medium',
+      verification: 'inferred',
+      parserVersion: SUNARP_PARSER_VERSION,
+      ...provenance,
+    },
   };
 }

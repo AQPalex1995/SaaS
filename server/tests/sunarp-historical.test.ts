@@ -100,4 +100,36 @@ describe('T5.8 — deriveHistoricalState', () => {
     const s = deriveHistoricalState([{ ...tituloCompraventa, titleDate: null }], []);
     expect(s.lastTitleDate).toBeNull();
   });
+
+  it('expone un bloque de provenance en el estado derivado (T5.9)', () => {
+    const s = deriveHistoricalState(
+      [tituloCompraventa],
+      [hipotecaVigente],
+      { retrievedAt: '2026-09-19T12:00:00.000Z' },
+    );
+    // El estado derivado es una derivación del sistema: source sunarp,
+    // verification inferred (regla HECHO/SEÑAL de RESEARCH_GOVERNANCE.md §2).
+    expect(s.provenance).toEqual({
+      source: 'sunarp',
+      sourceUrl: null,
+      retrievedAt: '2026-09-19T12:00:00.000Z',
+      confidence: 'medium',
+      verification: 'inferred',
+      parserVersion: 'v1',
+    });
+  });
+
+  it('permite sobrescribir parcialmente el provenance (T5.9)', () => {
+    const s = deriveHistoricalState([], [], {
+      sourceUrl: 'https://sprl.sunarp.gob.pe/consulta',
+      confidence: 'high',
+    });
+    expect(s.provenance).toMatchObject({
+      source: 'sunarp',
+      sourceUrl: 'https://sprl.sunarp.gob.pe/consulta',
+      confidence: 'high',
+      verification: 'inferred',
+      parserVersion: 'v1',
+    });
+  });
 });

@@ -84,6 +84,12 @@ Todo hallazgo importante debe poder responder:
 La plataforma mantiene **trazabilidad completa**. Base técnica existente:
 `research_results` (provenance garantizado por `result-provenance.ts`, T3.5) y
 las tablas `registry_*` (source/confidence/verification/retrievedAt/rawData).
+Los intakes manuales exponen además un bloque `IntakeProvenance` en la
+**superficie** de sus DTOs — `RemateManualNormalized`, `RegistryPlanRow` y
+`RegistryHistoricalState` (Fase 5 / T5.9) — para que el consumidor vea
+`source/sourceUrl/retrievedAt/confidence/verification/parserVersion` sin excavar
+`rawData`. Las derivaciones del sistema (p. ej. el estado registral de T5.8)
+se marcan `verification: 'inferred'`, nunca como HECHO verificado.
 
 ---
 

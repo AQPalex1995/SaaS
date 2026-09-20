@@ -11,6 +11,7 @@
  */
 
 import {
+  SUNARP_PARSER_VERSION,
   normalizeCargas,
   normalizePropietarios,
   normalizeTitulos,
@@ -21,6 +22,7 @@ import {
 } from '../../connectors/implementations/sunarp-normalize.js';
 import {
   deriveHistoricalState,
+  type IntakeProvenance,
   type RegistryHistoricalState,
 } from '../../connectors/implementations/sunarp-historical.js';
 
@@ -77,6 +79,8 @@ export interface RemateManualNormalized {
   titulos: TituloNormalizado[];
   /** Estado registral derivado del historial de asientos y cargas (T5.8). */
   historical: RegistryHistoricalState;
+  /** Provenance de superficie del intake (T5.9). */
+  provenance: IntakeProvenance;
 }
 
 export interface RegistryPlanRow {
@@ -94,6 +98,8 @@ export interface RegistryPlanRow {
   source: 'remaju';
   confidence: 'medium';
   verification: 'reported';
+  /** Provenance de superficie de la fila registral a persistir (T5.9). */
+  provenance: IntakeProvenance;
   rawData: RemateManualNormalized;
 }
 
@@ -193,8 +199,15 @@ function meaningfulTitles(titles: TituloNormalizado[]): TituloNormalizado[] {
 
 /**
  * Normaliza el payload humano y planifica los efectos. Función pura.
+ *
+ * @param input          Payload humano del intake manual.
+ * @param retrievedAt    Cuándo se capturó/ingresó el dato (default: ahora).
+ *                       Se propaga a todos los bloques de provenance (T5.9).
  */
-export function planRemateIntake(input: RemateManualInput): RemateManualPlan {
+export function planRemateIntake(
+  input: RemateManualInput,
+  retrievedAt: Date = new Date(),
+): RemateManualPlan {
   const warnings: string[] = [];
   // Clave canónica SUNARP 'P-XXXXXXXX' (Zona Registral XII — Arequipa): lo que
   // se persiste en registry_properties.registry_number para deduplicar el cache.
@@ -227,6 +240,20 @@ export function planRemateIntake(input: RemateManualInput): RemateManualPlan {
     warnings.push('captura SUNARP sin títulos normalizables (revisar campos)');
   }
 
+  const retrievedAtIso = retrievedAt.toISOString();
+  const sourceUrlPdf = cleanText(input.sourceUrlPdf);
+
+  // Provenance de superficie del intake (T5.9): dato ingresado por un humano
+  // (source 'manual'), referenciado por el PDF del aviso cuando existe.
+  const intakeProvenance: IntakeProvenance = {
+    source: 'manual',
+    sourceUrl: sourceUrlPdf,
+    retrievedAt: retrievedAtIso,
+    confidence: 'medium',
+    verification: 'reported',
+    parserVersion: 'manual-v1',
+  };
+
   const normalized: RemateManualNormalized = {
     partida,
     distrito,
@@ -239,11 +266,12 @@ export function planRemateIntake(input: RemateManualInput): RemateManualPlan {
     origenUbicacion,
     latitude: toCoordinate(input.latitude, 90),
     longitude: toCoordinate(input.longitude, 180),
-    sourceUrlPdf: cleanText(input.sourceUrlPdf),
+    sourceUrlPdf,
     propietarios: owners,
     cargas: charges,
     titulos: titles,
-    historical: deriveHistoricalState(titles, charges),
+    historical: deriveHistoricalState(titles, charges, { retrievedAt: retrievedAtIso }),
+    provenance: intakeProvenance,
   };
 
   const registry: RegistryPlanRow | null =
@@ -255,10 +283,18 @@ export function planRemateIntake(input: RemateManualInput): RemateManualPlan {
           owners,
           charges,
           titles,
-          historical: deriveHistoricalState(titles, charges),
+          historical: deriveHistoricalState(titles, charges, { retrievedAt: retrievedAtIso }),
           source: 'remaju',
           confidence: 'medium',
           verification: 'reported',
+          provenance: {
+            source: 'remaju',
+            sourceUrl: sourceUrlPdf,
+            retrievedAt: retrievedAtIso,
+            confidence: 'medium',
+            verification: 'reported',
+            parserVersion: SUNARP_PARSER_VERSION,
+          },
           rawData: normalized,
         }
       : null;

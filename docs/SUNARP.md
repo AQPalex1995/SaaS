@@ -1,6 +1,6 @@
 # SUNARP — Registro y Titularidad (Fase 5)
 
-> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ + T5.3 (SPRL) ✅ + T5.4 (Registry normalization) ✅ + T5.5 (Owners) ✅ + T5.6 (Charges) ✅ + T5.7 (Titles) ✅ + T5.8 (Historical data) ✅ — DONE (2026‑09‑19).
+> **Estado**: Fase 5 / T5.1 (Conoce Aquí) ✅ + T5.2 (Consulta de Propiedad) ✅ + T5.3 (SPRL) ✅ + T5.4 (Registry normalization) ✅ + T5.5 (Owners) ✅ + T5.6 (Charges) ✅ + T5.7 (Titles) ✅ + T5.8 (Historical data) ✅ + T5.9 (Provenance superficie) ✅ — DONE (2026‑09‑19).
 > Reporte de discovery, postura del conector `sunarp` y normalización registral.
 
 ## 1. Qué es SUNARP
@@ -188,6 +188,34 @@ Detalle de **SPRL** (T5.3):
   - Tests: nuevo archivo `sunarp-historical.test.ts` (5 casos) + 1 en
     `remate-manual.test.ts` (plan expone la derivación). Suite
     **205/205 (28 archivos)**; typecheck server+root y build OK.
+- **T5.9 Provenance (superficie)** → ✅ DONE (2026‑09‑19, alcance acotado con el
+  usuario: bloque de provenance en la superficie, sin migración ni DB):
+  - Tipo reutilizable `IntakeProvenance`
+    (`sunarp-historical.ts`): `{ source, sourceUrl, retrievedAt, confidence,
+    verification, parserVersion }` — misma disciplina que
+    `result-provenance.ts` de T3.5, ahora explícita en la **superficie** de los
+    DTOs del intake (sin excavar `rawData`).
+  - `RemateManualNormalized.provenance` — el intake tal como lo ingresó el
+    humano: `source: 'manual'`, `sourceUrl` = `sourceUrlPdf` (PDF del aviso)
+    o `null`, `confidence: 'medium'`, `verification: 'reported'`,
+    `parserVersion: 'manual-v1'`.
+  - `RegistryPlanRow.provenance` — la fila registral a persistir:
+    `source: 'remaju'`, `parserVersion: SUNARP_PARSER_VERSION` (la clave
+    canónica/la captura se normalizan con el parser SUNARP v1).
+  - `RegistryHistoricalState.provenance` (T5.8 + T5.9) — el estado derivado es
+    una **derivación del sistema**: `source: 'sunarp'`,
+    `verification: 'inferred'`, `confidence: 'medium'`
+    (regla HECHO/SEÑAL de `docs/RESEARCH_GOVERNANCE.md` §2: una derivación
+    nunca se presenta como HECHO verificado).
+  - `planRemateIntake(input, retrievedAt?)` propaga un único `retrievedAt`
+    (default: ahora) a los tres bloques; el provenance viaja por
+    `manualAction.result` → `research_results.data` (persistencia ya existente
+    vía `recordResearchResult`) y en `registry_properties.raw_data`.
+  - Tests: +2 `remate-manual.test.ts` (superficie intake/registry/historical +
+    sin PDF), +2 `sunarp-historical.test.ts` (provenance + override parcial),
+    +1 `remate-intake.service.test.ts` (provenance en result y en el payload de
+    `completeManualAction`). Suite **210/210 (28 archivos)**; typecheck
+    server+root y build OK.
 - **BGR (Fase 6, visor)** → DNI + CAPTCHA: misma postura `requires_auth` en
   `sunarp_bgr`.
 - **SPRL histórico** (T5.8) → via copias literales manuales.

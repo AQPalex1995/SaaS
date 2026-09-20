@@ -2,7 +2,7 @@
 
 > **Instrucciones para el Siguiente Agente o Desarrollador**:  
 > El estado del repositorio refleja la **Fase 4 (REM@JU) completada** y la
-> **Fase 5 (SUNARP) en progreso (T5.1 + T5.2 + T5.3 + T5.4 + T5.5 + T5.6 + T5.7 + T5.8 DONE)**.
+> **Fase 5 (SUNARP) en progreso (T5.1 + T5.2 + T5.3 + T5.4 + T5.5 + T5.6 + T5.7 + T5.8 + T5.9 DONE)**.
 > Las fases 0–2.5, la Fase 3 (T3.1 → T3.9), la Fase 4 (T4.1 → T4.9) y el
 > arranque de la Fase 5 (T5.1) están implementadas en `main`
 > Este documento mantiene el detalle de cada tarea, marcando lo ya construido y lo que queda para el siguiente bloque de trabajo.
@@ -449,12 +449,25 @@ cd server && npm.cmd run sync:sqlite
 > `server/tests/sunarp-sprl.test.ts` (5). Suite **167/167 (26 archivos)**;
 > typecheck server+root y build OK.
 >
-> **Siguiente tarea del plan**: **Fase 5 — SUNARP / T5.9 (Provenance)** — el
-> detalle concreto aún no está definido en `PROJECT_EXECUTION_PLAN.md` (solo el
-> título); al iniciarla, acotar alcance (candidato natural: garantizar que el
-> resultado del intake manual y el estado registral derivado expongan full
-> provenance `source/source_url/retrieved_at/confidence/verification/parser_version`
-> en su superficie, siguiendo `result-provenance.ts` de T3.5).
+> **Siguiente tarea del plan**: **Fase 5 — SUNARP / T5.10 (Manual actions)** —
+> el detalle concreto aún no está definido en `PROJECT_EXECUTION_PLAN.md` (solo
+> el título); al iniciarla, acotar alcance (candidato natural: cerrar el ciclo
+> de acciones manuales de SUNARP — por ejemplo guía/URL del analista en la UI
+> `/manual-actions` y verificación de la acción tras el intake).
+> T5.9 completada (2026‑09‑19): **provenance de superficie** del intake manual y
+> del estado registral derivado. Tipo `IntakeProvenance`
+> (`sunarp-historical.ts`, `{ source, sourceUrl, retrievedAt, confidence,
+> verification, parserVersion }`) expuesto en `RemateManualNormalized.provenance`
+> (source `manual`, `parserVersion manual-v1`, `sourceUrl` = PDF del aviso),
+> `RegistryPlanRow.provenance` (`remaju`, `SUNARP_PARSER_VERSION`) y
+> `RegistryHistoricalState.provenance` (`source 'sunarp'`,
+> `verification 'inferred'` — regla hecho/señal de RESEARCH_GOVERNANCE.md).
+> `planRemateIntake(input, retrievedAt?)` propaga un único `retrievedAt` a los
+> tres bloques; el provenance fluye por `manualAction.result` →
+> `research_results.data` y `registry_properties.raw_data` (sin migración ni DB).
+> Tests +5 (2 remate-manual + 2 sunarp-historical + 1 remate-intake.service).
+> Suite **210/210 (28 archivos)**; typecheck server+root y build OK. Ver
+> `PROJECT_EXECUTION_PLAN.md` (PHASE 5).
 > T5.8 completada (2026‑09‑19): estado registral derivado del historial de
 > asientos, sin duplicar cargas. Nuevo módulo puro
 > `server/src/connectors/implementations/sunarp-historical.ts` con

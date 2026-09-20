@@ -295,6 +295,63 @@ describe('RemateIntakeService.complete (T4.5b)', () => {
     expect(updated).toHaveLength(0);
   });
 
+  it('excluye provenance en la superficie del resultado del intake (T5.9)', async () => {
+    const { db, inserted } = makeDb();
+    const storage = makeStorage();
+    const manual = makeManualActions();
+    const service = new RemateIntakeService({
+      db: db as never,
+      manualActions: manual as never,
+      storage: storage.storage as never,
+    });
+
+    const result = await service.complete('ma-9', {
+      payload: {
+        partida: 'P9',
+        sourceUrlPdf: 'https://remaju.pj.gob.pe/aviso-40451.pdf',
+        cargas: [{ tipo: 'HIPOTECA', monto: 'S/ 1,000', moneda: 'S/', estado: 'VIGENTE' }],
+        titulos: [{ titulo: '006-2020', fechaTitulo: '15/03/2020', tipoTitulo: 'INDEPENDIZACION' }],
+      },
+      completedBy: 'analista',
+    });
+
+    // El result que recibe la acción manual (y que persiste en research_results)
+    // lleva el bloque de provenance del intake en su superficie.
+    expect(result.plan.normalized.provenance).toMatchObject({
+      source: 'manual',
+      sourceUrl: 'https://remaju.pj.gob.pe/aviso-40451.pdf',
+      confidence: 'medium',
+      verification: 'reported',
+      parserVersion: 'manual-v1',
+    });
+    expect(result.plan.registry?.provenance).toMatchObject({
+      source: 'remaju',
+      parserVersion: 'v1',
+    });
+    expect(result.plan.registry?.historical.provenance).toMatchObject({
+      source: 'sunarp',
+      verification: 'inferred',
+    });
+
+    // El payload pasado a completeManualAction expone el mismo provenance
+    // (fluye a manual_actions.result y a research_results.data).
+    const call = manual.completeManualAction.mock.calls[0][1] as {
+      result: Record<string, unknown>;
+    };
+    expect(call.result).toMatchObject({
+      provenance: { source: 'manual', parserVersion: 'manual-v1' },
+      historical: expect.objectContaining({
+        provenance: expect.objectContaining({ source: 'sunarp', verification: 'inferred' }),
+      }),
+    });
+    // registry_properties.raw_data incluye el provenance del intake.
+    const regValues = inserted[0].values as Record<string, unknown>;
+    expect((regValues.rawData as Record<string, unknown>).provenance).toMatchObject({
+      source: 'manual',
+      parserVersion: 'manual-v1',
+    });
+  });
+
   it('rechaza acciones inexistentes o ya completadas', async () => {
     const { db } = makeDb();
     const service = new RemateIntakeService({

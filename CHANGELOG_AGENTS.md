@@ -901,3 +901,47 @@ Next:
 - **T5.9 - Provenance** (Fase 5): ver arriba. Tras ella, T5.10 y T5.11; luego
   las subfases RP.1–RP.11 de la etapa transversal requieren aprobación
   explícita (Decision Gates de AGENTS.md §2.3-bis).
+
+## 2026-09-19 - OpenCode - Fase 5 / T5.9 (Provenance - superficie del intake)
+
+- Alcance acotado con el usuario (T5.9 sin definir en el plan): **bloque de
+  provenance en la superficie**, sin migración ni DB.
+- `sunarp-historical.ts`: nuevo tipo `IntakeProvenance`
+  (`{ source, sourceUrl, retrievedAt, confidence, verification, parserVersion }`)
+  y `RegistryHistoricalState.provenance` — la derivación del estado registral se
+  marca **`source: 'sunarp'`, `verification: 'inferred'`** (derivación del
+  sistema, nunca un HECHO verificado; regla de `docs/RESEARCH_GOVERNANCE.md` §2).
+  `deriveHistoricalState(titles, charges, provenance?)` acepta overrides
+  parciales de provenance.
+- `remate-manual.ts` (`planRemateIntake`):
+  - `RemateManualNormalized.provenance` — intake tal como lo ingresó el humano:
+    `source: 'manual'`, `sourceUrl` = `sourceUrlPdf` del aviso (o null),
+    `confidence: 'medium'`, `verification: 'reported'`,
+    `parserVersion: 'manual-v1'`.
+  - `RegistryPlanRow.provenance` — fila registral a persistir: `source: 'remaju'`,
+    `parserVersion: SUNARP_PARSER_VERSION` (clave canónica/captura SUNARP v1),
+    mismo `sourceUrl`/`retrievedAt`.
+  - `planRemateIntake(input, retrievedAt? = new Date())`: un único `retrievedAt`
+    ISO se propaga a los tres bloques (normalized, registry, historical).
+- El provenance viaja en **la superficie** del resultado: `RemateIntakeService.complete()`
+  lo incluye en `plan` (respuesta de `POST /manual-actions/:id/complete`), en el
+  payload de `completeManualAction` (`manual_actions.result` →
+  `research_results.data` vía `recordResearchResult`, persistencia existente) y
+  en `registry_properties.raw_data`.
+- Tests (+5): `remate-manual.test.ts` (+2: superficie normalized/registry/
+  historical con `retrievedAt` fijo y `sourceUrl`; sin PDF → `sourceUrl null`),
+  `sunarp-historical.test.ts` (+2: bloque completo con `retrievedAt` fijo +
+  override parcial), `remate-intake.service.test.ts` (+1: provenance en
+  `result.plan` y en el payload de `completeManualAction` + raw_data del
+  registry). Se ajustó el `toEqual` del test histórico de T5.8 para incluir el
+  nuevo bloque.
+- Suite **210/210 (28 files)**; typecheck server+root y build OK.
+- Docs: SUNARP.md (T5.9 DONE + sección), PROJECT_EXECUTION_PLAN (T5.9 DONE,
+  next T5.10, STATUS T5.1–T5.9), PROJECT_STATUS (Current Task T5.10,
+  210/210/28), NEXT_STEPS.md, AGENTS.md (Estado Actual), CHANGELOG.
+
+Next:
+- **T5.10 - Manual actions** (Fase 5): cerrar el ciclo de acciones manuales de
+  SUNARP en la plataforma. Aún sin definir en el plan → acotar alcance al
+  iniciar (candidato: guía/URL del analista en la UI `/manual-actions` y
+  verificación de la acción tras el intake).

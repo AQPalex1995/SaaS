@@ -207,7 +207,59 @@ describe('REM@JU manual intake planner (T4.5b)', () => {
       totalActiveDebtUsd: 0,
       lastTitleDate: '2020-03-15',
       registryState: 'cargado',
+      provenance: expect.objectContaining({
+        source: 'sunarp',
+        verification: 'inferred',
+        parserVersion: 'v1',
+      }),
     });
     expect(plan.registry?.historical.registryState).toBe('cargado');
+  });
+
+  it('expone un bloque de provenance en la superficie del intake (T5.9)', () => {
+    const plan = planRemateIntake(
+      {
+        partida: 'P9',
+        sourceUrlPdf: 'https://remaju.pj.gob.pe/aviso-40451.pdf',
+        cargas: [{ tipo: 'HIPOTECA', monto: 'S/ 1,000', moneda: 'S/', estado: 'VIGENTE' }],
+        titulos: [{ titulo: '006-2020', fechaTitulo: '15/03/2020', tipoTitulo: 'INDEPENDIZACION' }],
+      },
+      new Date('2026-09-19T12:00:00.000Z'),
+    );
+
+    // Provenance del intake (dato humano).
+    expect(plan.normalized.provenance).toEqual({
+      source: 'manual',
+      sourceUrl: 'https://remaju.pj.gob.pe/aviso-40451.pdf',
+      retrievedAt: '2026-09-19T12:00:00.000Z',
+      confidence: 'medium',
+      verification: 'reported',
+      parserVersion: 'manual-v1',
+    });
+    // La fila registral a persistir tiene su propio bloque (normalización SUNARP).
+    expect(plan.registry?.provenance).toEqual({
+      source: 'remaju',
+      sourceUrl: 'https://remaju.pj.gob.pe/aviso-40451.pdf',
+      retrievedAt: '2026-09-19T12:00:00.000Z',
+      confidence: 'medium',
+      verification: 'reported',
+      parserVersion: 'v1',
+    });
+    // El estado derivado hereda el retrievedAt y marca verification inferred.
+    expect(plan.normalized.historical.provenance).toMatchObject({
+      source: 'sunarp',
+      retrievedAt: '2026-09-19T12:00:00.000Z',
+      verification: 'inferred',
+      parserVersion: 'v1',
+    });
+    // El provenance viaja en el rawData del registry (surface de persistencia).
+    expect(plan.registry?.rawData.provenance).toEqual(plan.normalized.provenance);
+  });
+
+  it('provenance sin sourceUrlPdf → sourceUrl null (T5.9)', () => {
+    const plan = planRemateIntake({ partida: 'P9' });
+    expect(plan.normalized.provenance.sourceUrl).toBeNull();
+    expect(plan.registry?.provenance.sourceUrl).toBeNull();
+    expect(plan.normalized.historical.provenance.sourceUrl).toBeNull();
   });
 });
