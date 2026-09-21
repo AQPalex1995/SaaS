@@ -1,5 +1,36 @@
 # AGENT CHANGELOG
 
+## 2026-09-21 — OpenCode — Fase 5.5 / RP.2 (Search Property flow — entrada B) — DONE
+
+Completado el delta pendiente de RP.2: **acceptance/spec test explícito** de la
+entrada B (crear un `ResearchCase` **sin `Listing`** — predio no publicado que el
+usuario registra directamente en "Buscar Predio").
+
+- Nuevo spec `server/tests/research-entry-b.test.ts` (5 tests, offline, sin red ni
+  Redis; patrón in-memory de `research-flows.test.ts` + Fastify inject de
+  `research-api.test.ts`):
+  1. **Contrato de esquema**: `research_cases` referencia SOLO `properties`
+     (`propertyId` definido, **no existe `listingId`**).
+  2. **Servicio entrada B**: dada una property sin Listing, `createResearch` crea
+     el caso (status `created`, `runNumber` 1, `createdBy`), con las 8 tareas
+     default (`pending`) y `getCaseById` lo devuelve; el DTO no lleva referencia
+     a Listing.
+  3. **Convergencia A/B**: dos ejecuciones sobre el mismo predio → run 1 y run 2
+     (misma forma para entrada A y entrada B; ya afirmado en RP.1).
+  4. **Servicio valida solo la property**: `createResearch` con property
+     inexistente rechaza con "not found" (no hay dependencia de Listing).
+  5. **Contrato API**: `POST /api/v1/properties/:id/research` acepta un UUID de
+     property "pelado" (payload `{}`, sin identificador de publicación) → 201,
+     `data.propertyId` correcto, sin campo `listingId`.
+- Verificación: suite server **223/223 (31 files)** ✅ (antes 218/218); typecheck
+  server ✅; build server ✅; typecheck raíz (Scout Legacy) ✅. Sin cambios
+  productivos en `server/src` (solo se añadió el test de aceptación).
+- Decisiones: no se tocó `server/src` (el dominio ya soportaba entrada B — ver
+  sesión 2026-09-20 RP.2 BLOCKED); RP.2 se cierra con el test de aceptación.
+
+Siguiente: **RP.3 — Research history** (historial PROPERTY / RESEARCH_CASE /
+RESEARCH_RUN). Requiere aprobación explícita (Decision Gates).
+
 ## 2026-09-21 — OpenCode — Scout Legacy (aprobado): captura real de posts de grupos + permalinks
 
 El usuario reportó que los grupos publican ~15 terrenos/hora pero el scraping solo

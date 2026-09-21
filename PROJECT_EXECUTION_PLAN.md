@@ -1057,6 +1057,13 @@ aditivo sobre `research_cases` + índice único `idx_research_property_run`
 `research_runs` queda PLANNED hasta que el modelo de ejecución lo exija.
 RP.2 Search Property flow — módulo Buscar Predio independiente de las
 publicaciones (entrada B); crear ResearchCase sin Listing.
+**DONE (2026-09-21)**: `server/tests/research-entry-b.test.ts` — acceptance/spec
+explícito de entrada B: esquema `research_cases` sin `listing_id` (FK solo a
+`properties`), `ResearchService.createResearch` crea el caso y sus 8 tareas para
+una property sin Listing, converge con entrada A (run 1→2), valida solo la
+property, y `POST /api/v1/properties/:id/research` acepta un UUID pelado (sin
+publicación) → 201. Suite 223/223 (31 files); typecheck server+root y build OK.
+Sin cambios productivos (el dominio ya soportaba entrada B).
 RP.3 Research history — historial PROPERTY / RESEARCH_CASE / RESEARCH_RUN.
 RP.4 Property dossier — expediente propio `/investigaciones/:id` en lugar del
 drawer (secciones Resumen/Registral/Urbanismo/GIS/Infraestructura/Riesgos/

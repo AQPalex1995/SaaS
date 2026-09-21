@@ -39,7 +39,7 @@ PostGIS:
 ## Tests
 
 Server:
-✅ 218/218 (30 files — incl. `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3 + `sunarp-normalize.test.ts` T5.4/T5.5/T5.6/T5.7 + `sunarp-historical.test.ts` T5.8 + provenance superficie T5.9 + `sunarp-intake.test.ts` T5.10 + `sunarp-acceptance.test.ts` T5.11)
+✅ 223/223 (31 files — incl. RP.2 `research-entry-b.test.ts` + `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3 + `sunarp-normalize.test.ts` T5.4/T5.5/T5.6/T5.7 + `sunarp-historical.test.ts` T5.8 + provenance superficie T5.9 + `sunarp-intake.test.ts` T5.10 + `sunarp-acceptance.test.ts` T5.11)
 
 Root:
 ✅
@@ -50,7 +50,16 @@ Phase 5 — ✅ SUNARP COMPLETED (T5.1–T5.11 DONE, 2026-09-19). Fase 4 — REM
 
 ## Current Task
 
-**Fase 5.5 / RP.1 (Domain model — Case/Run) — ✅ DONE (2026-09-20)**.
+**Fase 5.5 / RP.2 (Search Property flow — entrada B) — ✅ DONE (2026-09-21)**.
+Acceptance/spec test explícito de la entrada B (ResearchCase **sin Listing**):
+`server/tests/research-entry-b.test.ts` (5 tests, offline: esquema
+`research_cases` sin `listing_id` — FK solo a `properties`; `createResearch`
+crea caso + 8 tareas para una property sin publicación; convergencia A/B
+run 1→2; valida solo la property; `POST /api/v1/properties/:id/research` con
+UUID pelado → 201). Sin cambios productivos (el dominio ya soportaba entrada B).
+Suite **223/223 (31 files)**; typecheck server+root y build OK.
+
+Fase 5.5 / RP.1 (Domain model — Case/Run) — ✅ DONE (2026-09-20).
 Implementado en disco (schema `research.ts` runNumber + índice único
 `idx_research_property_run`; service `research.ts` compute
 `run_number = max(run_number previo por property_id) + 1` en una transacción;
@@ -165,9 +174,10 @@ Suite **205/205 (28 archivos)**; typecheck server+root y build OK.
 
 ## Next Task
 
-**PHASE 5.5 — Research Platform UX + Identity (PLANNED)** — subfases RP.1–RP.11
-sin implementar; requieren aprobación explícita y Decision Gates (AGENTS.md
-§2.3-bis). Ver `docs/NEXT_STEPS.md` y `docs/PRODUCT.md`.
+**PHASE 5.5 / RP.3 — Research history** (historial PROPERTY / RESEARCH_CASE /
+RESEARCH_RUN). Subfases RP.3–RP.11 sin implementar; requieren aprobación
+explícita y Decision Gates (AGENTS.md §2.3-bis). Ver `docs/NEXT_STEPS.md` y
+`docs/PRODUCT.md`.
 
 ## Gobernanza y producto (registrado 2026-09-19)
 

@@ -77,7 +77,7 @@ implementada**; requiere aprobación explícita y los Decision Gates de
 AGENTS.md §2.3-bis.
 
 - [ ] RP.1 Domain model — separar Listing / Property / ResearchCase / ResearchRun (tabla `research_runs`: DECISION REQUIRED).
-- [ ] RP.2 Search Property flow — módulo Buscar Predio (entrada B, ResearchCase sin Listing).
+- [x] RP.2 Search Property flow — módulo Buscar Predio (entrada B, ResearchCase sin Listing). **DONE (2026-09-21)**: `server/tests/research-entry-b.test.ts` (acceptance/spec de entrada B; suite 223/223).
 - [ ] RP.3 Research history — historial PROPERTY / RESEARCH_CASE / RESEARCH_RUN.
 - [ ] RP.4 Property dossier — expediente `/investigaciones/:id` (11 secciones).
 - [ ] RP.5 Authentication — cuentas, sesiones, email (Decision Gate).
