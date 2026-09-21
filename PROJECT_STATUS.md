@@ -199,13 +199,16 @@ None
 
 ## Known Issues
 
-- **Scout Legacy — enlaces de grupos (2026-09-19)**: corregida la extracción de
-  permalinks de publicaciones de grupos (nuevo `src/links.ts` + `data-ft` en
-  `src/extract.ts`), etiquetado honesto en `src/panel.html`
-  (`link_status`: permalink/búsqueda/raíz) y backfill (`migrate:links` corrido;
-  `recover:links` disponible para recuperación en vivo con sesión de Facebook).
-  Distribución actual en `data/scout.db`: 956 filas de grupo → 50 `permalink` +
-  906 `search`. **Validación real pendiente de corrida con login** (no offline).
+- **Scout Legacy — captura de posts de grupos (2026-09-21)**: implementada la
+  solución aprobada A+B+C (`src/searchers.ts`/`src/extract.ts`/`src/store.ts`):
+  feed `?sort=RECENT_POSTS` + scroll hasta agotar (captura las ~10–15
+  publicaciones nuevas de la hora, no solo los 4 posts fijados del tope), id
+  real por `data-ft`/JSON embebido, firma sintética estable (sin doble fila ni
+  colisiones entre grupos), consolidación cross-key (borra la fila sintética
+  cuando aparece el permalink real) y `recover:links` reforzado. Typecheck raíz
+  ✅. **Validación en vivo pendiente** (ciclo real en el panel 8787 +
+  `npm.cmd run recover:links`). Distribución previa en `data/scout.db`: 956
+  filas de grupo → 50 `permalink` + 906 `search`.
 - El producto definido (2026-09-19: Land Intelligence, Buscar Predio,
   expediente `/investigaciones/:id`, planes) está **documentado pero no
   implementado en la UI**: el frontend sigue siendo el panel Scout (8787) +

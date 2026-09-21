@@ -1,5 +1,45 @@
 # AGENT CHANGELOG
 
+## 2026-09-21 — OpenCode — Scout Legacy (aprobado): captura real de posts de grupos + permalinks
+
+El usuario reportó que los grupos publican ~15 terrenos/hora pero el scraping solo
+detecta ~5 (4 repetidos + 1 nuevo) y los enlaces abren el grupo en lugar de la
+publicación. Diagnóstico (lectura de `src/searchers.ts`/`src/extract.ts`/
+`src/store.ts` y `data/scout.db`):
+- **Scroll fijo corto** (`config.maxScrolls: 4` → 4 pasadas) + virtualización del
+  feed de Facebook → solo los ~5 tiles superiores en el DOM (4 pinned/destacados
+  repetidos por ciclo); las 10–11 publicaciones nuevas de la hora quedan fuera.
+- **Claves sintéticas inestables**: `fullText.slice(0,120)+imageUrl.slice(-30)`
+  colisiona entre publicaciones distintas y choca entre grupos (ej.
+  `957114593294351_p_hyt3pm` = `440710938703517_p_hyt3pm`), y cuando Facebook
+  hidrata el permalink tardíamente se inserta una segunda fila.
+- **Sin permalink real**: la mayoría de posts de grupo quedan con URL de
+  búsqueda interna (`search`) o raíz del grupo; solo 58 permalinks en la base.
+
+Implementado (Solución A+B+C aprobada):
+- **`src/searchers.ts`**: `searchGroup` ahora abre `?sort=RECENT_POSTS` (fallback
+  a URL plana si no hay `[role="feed"]`) y usa `collectGroupCardsExhaust`
+  (scroll hasta agotar: min 8 / max 24 pasadas, corte por 3 pasadas sin tarjetas
+  nuevas, actualiza en caliente el href cuando una pasada posterior hidrata el
+  permalink). `recoverGroupLinks` reescrito: mismo scroll exhaustivo, patch por
+  clave exacta + matching por solapamiento de tokens (≥0.5, palabras >3 chars)
+  para filas sintéticas `p_` y consolidación de duplicados cross-key.
+- **`src/extract.ts`**: id real vía `postIdFromDataFt` **o JSON embebido**
+  (`story_fbid`/`top_level_post_id`/`stableID`, `fb://post/`); firma sintética
+  ESTABLE (400 primeros caracteres normalizados + longitud + imagen completa)
+  para colisiones deterministas sin falsos repetidos entre grupos.
+- **`src/store.ts`**: `findByHref(href, idPrefix?)` y `listByPrefix(prefix)`
+  (SQLite `json_extract` sobre `listings.data`) para consolidar duplicados
+  cross-key (`storeRows` borra la fila sintética que comparte href canónico;
+  `recoverGroupLinks` idem).
+- NO se tocó OCR async (opción D no aprobada); `analyzeImage` sigue bloqueante.
+
+Verificación: `npm.cmd run typecheck` (raíz Scout Legacy) ✅. Suite server
+218/218 no afectada (sin cambios en `server/`). **Validación en vivo pendiente**
+(correr `iniciar-scout.bat`, revisar un ciclo en el panel 8787: nº de posts por
+grupo y `link_status` de la última hora; luego `npm.cmd run recover:links` para
+el backfill).
+
 ## 2026-09-20 — OpenCode — RP.2 (Buscar Predio / entrada B) — BLOCKED & REVERTED
 
 Estado: intento de acceptance test para RP.2 (entrada B: crear ResearchCase sin

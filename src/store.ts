@@ -61,6 +61,40 @@ class Store {
     return !!item;
   }
 
+  /**
+   * Busca una fila cuyo `url_publicacion` o `url` coincida EXACTAMENTE con el
+   * href dado. Con `idPrefix` limita la búsqueda a las claves `{prefix}_%`
+   * (p. ej. el id de un grupo) para consolidar duplicados cross-key.
+   */
+  findByHref(href: string, idPrefix?: string): ListingRow | null {
+    if (!href) return null;
+    let stmt = this.db.prepare(
+      'SELECT data FROM listings WHERE (json_extract(data, "$.url_publicacion") = ? OR json_extract(data, "$.url") = ?)'
+    ) as ReturnType<DatabaseSync['prepare']>;
+    let args: (string | number)[] = [href, href];
+    if (idPrefix) {
+      stmt = this.db.prepare(
+        'SELECT data FROM listings WHERE id LIKE ? AND (json_extract(data, "$.url_publicacion") = ? OR json_extract(data, "$.url") = ?)'
+      );
+      args = [`${idPrefix}_%`, href, href];
+    }
+    const item = stmt.get(...args) as { data: string } | undefined;
+    if (!item) return null;
+    try {
+      return JSON.parse(item.data) as ListingRow;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Todas las filas cuya clave empiece por `{prefix}_` (grupo o portal). */
+  listByPrefix(prefix: string): ListingRow[] {
+    const rows = this.db
+      .prepare('SELECT data FROM listings WHERE id LIKE ?')
+      .all(`${prefix}_%`) as Array<{ data: string }>;
+    return rows.map((r) => JSON.parse(r.data) as ListingRow);
+  }
+
   all(): ListingRow[] {
     const rows = this.db.prepare('SELECT data FROM listings').all() as Array<{ data: string }>;
     return rows.map((r) => JSON.parse(r.data) as ListingRow);

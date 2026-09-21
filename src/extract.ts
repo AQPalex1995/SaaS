@@ -173,6 +173,27 @@ export async function readGroupCards(page: Page, groupId: string): Promise<CardR
           }
           return fallback || null;
         },
+
+        /**
+         * Obtener el id real del post desde JSON embebido en el HTML del
+         * artículo (los feeds nuevos de Facebook ya casi no exponen `data-ft`,
+         * pero sí mantienen `"story_fbid"`, `"top_level_post_id"`, `"stableID"`
+         * o enlaces `fb://post/{id}` dentro del markup del story).
+         */
+        postIdFromInline(root: HTMLElement): string | null {
+          const html = root.outerHTML || root.innerHTML || '';
+          if (html.length > 100_000) return null;
+          const mJson = html.match(/(?:story_fbid|top_level_post_id|stableID)["'\s]*[:=]["'\s]*"?(\d{10,})/);
+          if (mJson) return mJson[1];
+          const mFb = html.match(/fb:(?:\/\/|\/?)\/?post\/(\d{10,})/);
+          if (mFb) return mFb[1];
+          return null;
+        },
+
+        /** Id real del post por cualquier señal disponible (data-ft, JSON, …). */
+        postIdFromArticle(root: HTMLElement): string | null {
+          return this.postIdFromDataFt(root) || this.postIdFromInline(root);
+        },
       };
 
       // ─── extracción principal por contenedores de feed ─────────────────────
@@ -248,27 +269,31 @@ export async function readGroupCards(page: Page, groupId: string): Promise<CardR
         cands.sort((a, b) => b.score - a.score);
         const best = cands[0] ?? null;
 
-        // id real desde data-ft (funciona aunque el feed no exponga el anchor)
-        const ftPid = helpers.postIdFromDataFt(article);
+        // id real desde data-ft / JSON embebido (funciona aunque el feed no exponga el anchor)
+        const realPid = helpers.postIdFromArticle(article);
 
         let postId: string;
         let finalHref: string;
 
-        if (best && (best.score >= 0 || !ftPid)) {
+        if (best && (best.score >= 0 || !realPid)) {
           postId = best.postId;
           finalHref = best.cleanUrl;
-        } else if (ftPid) {
-          // Anchor no disponible (o solo de comentario), pero data-ft conserva el id del post.
-          postId = ftPid;
-          finalHref = `https://www.facebook.com/groups/${gid}/posts/${ftPid}`;
+        } else if (realPid) {
+          // Anchor no utilizable (o solo de comentario), pero el artículo conserva el id real.
+          postId = realPid;
+          finalHref = `https://www.facebook.com/groups/${gid}/posts/${realPid}`;
         } else if (best) {
           postId = best.postId;
           finalHref = best.cleanUrl;
         } else {
-          // Sin permalink directo: generar búsqueda interna en el grupo como destino
+          // Sin permalink directo: generar búsqueda interna en el grupo como destino.
+          // Firma ESTABLE (texto normalizado + longitud + imagen completa) para
+          // que republicaciones con el mismo texto/imagen colisionen de forma
+          // determinista y publicaciones distintas no compartan clave.
+          const sigText = fullText.replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 400);
+          const signature = `${sigText}|${fullText.length}|${imageUrl || ''}`;
           let hash = 0;
-          const sample = fullText.slice(0, 120) + (imageUrl ? imageUrl.slice(-30) : '');
-          for (let i = 0; i < sample.length; i++) { hash = (hash << 5) - hash + sample.charCodeAt(i); hash |= 0; }
+          for (let i = 0; i < signature.length; i++) { hash = (hash << 5) - hash + signature.charCodeAt(i); hash |= 0; }
           postId = 'p_' + Math.abs(hash).toString(36);
 
           const queryWords = fullText

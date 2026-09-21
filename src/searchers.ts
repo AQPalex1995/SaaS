@@ -11,7 +11,7 @@ import {
   parsePrice,
   relativeDate,
 } from './detect';
-import { randomDelay, scrollPage } from './browser';
+import { randomDelay, scrollPage, sleep } from './browser';
 import { log } from './logs';
 import { store, type ListingRow } from './store';
 import { analyzeImage, type OcrData } from './ocr';
@@ -136,6 +136,19 @@ async function storeRows(cards: CardRaw[], started: Date): Promise<number> {
     const title = cleanTitleString(card);
     const isNew = !store.has(card.key);
 
+    // Consolidación cross-key: si esta publicación real (href canónico) ya
+    // existe bajo otra clave sintética (p. ej. `p_…` de una pasada anterior),
+    // eliminar el duplicado para que la fila con permalink real la reemplace
+    // (evita duplicar la misma publicación cuando Facebook recién hidrata el
+    // permalink — hoy `insert` crea una fila nueva con clave distinta).
+    if (isNew && card.key.includes('_') && isCanonicalPermalink(card.href) && card.href) {
+      const prefix = card.key.split('_')[0];
+      const dup = store.findByHref(card.href, prefix);
+      if (dup && dup.id_publicacion && dup.id_publicacion !== card.key) {
+        store.delete(dup.id_publicacion);
+      }
+    }
+
     let ocrData: OcrData | null = null;
     if (isNew && card.imageUrl) {
       try {
@@ -175,6 +188,58 @@ export async function searchMarketplace(page: Page, query: string, started: Date
   return { count: cards.length, inserted };
 }
 
+async function scrollFeedOnce(page: Page): Promise<void> {
+  await page.mouse.move(650, 450).catch(() => {});
+  await page.mouse.wheel(0, 1500).catch(() => {});
+  await page.evaluate(() => window.scrollBy(0, 900)).catch(() => {});
+  await sleep(1100 + Math.random() * 900);
+}
+
+/**
+ * Recorre el feed del grupo con scroll "hasta agotar": sigue bajando mientras
+ * aparezcan tarjetas nuevas y corta después de `staleLimit` pasadas vacías (o
+ * del tope `maxScrolls`). Facebook virtualiza el feed (solo ~5 tiles en el DOM
+ * a la vez + posts fijados), por lo que un scroll fijo corto deja de ver la
+ * mayoría de las publicaciones nuevas de cada ciclo.
+ */
+async function collectGroupCardsExhaust(
+  page: Page,
+  groupId: string,
+  opts?: { maxScrolls?: number; minScrolls?: number }
+): Promise<CardRaw[]> {
+  const minScrolls = opts?.minScrolls ?? Math.max(8, config.maxScrolls * 2);
+  const maxScrolls = opts?.maxScrolls ?? Math.max(24, config.maxScrolls * 4);
+  const staleLimit = 3;
+
+  const cards: CardRaw[] = [];
+  const seen = new Set<string>();
+  let stale = 0;
+
+  for (let i = 0; i < maxScrolls; i++) {
+    const found = await readGroupCards(page, groupId);
+    let added = 0;
+    for (const c of found) {
+      if (seen.has(c.key)) {
+        // Si una pasada posterior hidrata el permalink real, actualizar el href
+        const existing = cards.find((x) => x.key === c.key);
+        if (existing && isCanonicalPermalink(c.href) && !isCanonicalPermalink(existing.href)) {
+          existing.href = c.href;
+        }
+        continue;
+      }
+      seen.add(c.key);
+      cards.push(c);
+      added++;
+    }
+    stale = added > 0 ? 0 : stale + 1;
+    if (i + 1 >= minScrolls && stale >= staleLimit) break;
+    if (i + 1 >= maxScrolls) break;
+    await scrollFeedOnce(page);
+  }
+
+  return cards;
+}
+
 export async function searchGroup(
   page: Page,
   groupName: string,
@@ -184,54 +249,30 @@ export async function searchGroup(
 ): Promise<SearchOutcome> {
   const idMatch = groupUrl.match(/groups\/([^\/?#]+)/);
   const groupId = idMatch ? idMatch[1] : 'group';
+  const base = groupUrl.replace(/\/+$/, '');
 
-  // 1. Navegar directamente al feed principal del grupo (donde están todas las publicaciones recientes)
-  const feedUrl = groupUrl.replace(/\/+$/, '') + '/';
-  try {
+  // 1. Abrir el feed ordenado por "Más recientes": así evitamos quedarnos en
+  //    el tope de posts fijados/destacados (los "4 repetidos" de cada ciclo)
+  //    y sí vemos todo lo publicado en la última hora. Fallback a la URL plana.
+  const openFeed = async (feedUrl: string): Promise<void> => {
     await page.goto(feedUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
     await page.waitForTimeout(2500);
-    await scrollPage(page, Math.min(5, Math.max(3, config.maxScrolls)));
-    // Esperar a que Facebook hidrate los enlaces de las publicaciones
-    await page
-      .waitForSelector(
-        `a[href*="/groups/${groupId}/posts/"], a[href*="/groups/${groupId}/permalink/"], a[href*="set=gm."]`,
-        { timeout: 12000 }
-      )
-      .catch(() => {});
-    await page.waitForTimeout(1000);
+  };
+
+  try {
+    await openFeed(`${base}/?sort=RECENT_POSTS`);
   } catch (e) {
     log('warn', `  [grupo ${groupName}] Error al abrir feed: ${(e as Error).message}`);
   }
 
-  let cards = await readGroupCards(page, groupId);
-
-  const hasPermalink = (c: CardRaw) => isCanonicalPermalink(c.href);
-  const withLink = cards.filter(hasPermalink);
-
-  if (withLink.length === 0 && cards.length > 0) {
-    // Reintentar scroll adicional si no detectó permalinks
-    await page.waitForTimeout(1500);
-    await scrollPage(page, 3);
-    await page
-      .waitForSelector(
-        `a[href*="/groups/${groupId}/posts/"], a[href*="/groups/${groupId}/permalink/"], a[href*="set=gm."]`,
-        { timeout: 8000 }
-      )
-      .catch(() => {});
-    const retryCards = await readGroupCards(page, groupId);
-    const seenKeys = new Set(cards.map((c) => c.key));
-    for (const rc of retryCards) {
-      if (hasPermalink(rc)) {
-        if (!seenKeys.has(rc.key)) {
-          cards.push(rc);
-          seenKeys.add(rc.key);
-        } else {
-          const existing = cards.find((c) => c.key === rc.key);
-          if (existing && !hasPermalink(existing)) existing.href = rc.href;
-        }
-      }
-    }
+  const feedReady = (await page.locator('[role="feed"]').count().catch(() => 0)) > 0;
+  if (!feedReady) {
+    await openFeed(`${base}/`).catch(() => {});
   }
+  await page.waitForTimeout(1200);
+
+  // 2. Scroll hasta agotar para no perder las 10-15 publicaciones de la hora
+  let cards = await collectGroupCardsExhaust(page, groupId);
 
   // Fallback inteligente: si una publicación no tiene permalink directo,
   // crear un enlace de búsqueda interno del grupo con las palabras clave de su título
@@ -262,6 +303,23 @@ export async function searchGroup(
  * filas existentes que aún no tienen permalink real, usando los enlaces que
  * Facebook ya hidrata en esta nueva pasada. No inserta publicaciones nuevas.
  */
+function normalizeTitleForMatch(s: string): string {
+  return (s || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9áéíóúüñ\s]/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function tokenOverlap(a: string, b: string): number {
+  const ta = new Set(normalizeTitleForMatch(a).split(/\s+/).filter((w) => w.length > 3));
+  const tb = new Set(normalizeTitleForMatch(b).split(/\s+/).filter((w) => w.length > 3));
+  if (ta.size === 0 || tb.size === 0) return 0;
+  let hit = 0;
+  for (const w of ta) if (tb.has(w)) hit++;
+  return hit / Math.min(ta.size, tb.size);
+}
+
 export async function recoverGroupLinks(
   page: Page,
   groupName: string,
@@ -269,35 +327,74 @@ export async function recoverGroupLinks(
 ): Promise<{ scanned: number; fixed: number }> {
   const idMatch = groupUrl.match(/groups\/([^\/?#]+)/);
   const groupId = idMatch ? idMatch[1] : 'group';
-  const feedUrl = groupUrl.replace(/\/+$/, '') + '/';
+  const base = groupUrl.replace(/\/+$/, '');
 
   try {
-    await page.goto(feedUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.goto(`${base}/?sort=RECENT_POSTS`, { waitUntil: 'domcontentloaded', timeout: 45000 });
     await page.waitForTimeout(2500);
-    await page
-      .waitForSelector(
-        `a[href*="/groups/${groupId}/posts/"], a[href*="/groups/${groupId}/permalink/"], a[href*="set=gm."]`,
-        { timeout: 12000 }
-      )
-      .catch(() => {});
-    await scrollPage(page, Math.max(config.maxScrolls, 10));
-    await page.waitForTimeout(1500);
   } catch (e) {
     log('warn', `  [recover ${groupName}] Error al abrir feed: ${(e as Error).message}`);
   }
+  const feedReady = (await page.locator('[role="feed"]').count().catch(() => 0)) > 0;
+  if (!feedReady) {
+    await page.goto(`${base}/`, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    await page.waitForTimeout(2000);
+  }
 
-  const cards = await readGroupCards(page, groupId);
+  const cards = await collectGroupCardsExhaust(page, groupId, { minScrolls: 6, maxScrolls: 20 });
   let fixed = 0;
+
+  // Candidatas ya guardadas de este grupo que aún no tienen permalink real
+  const pending = store
+    .listByPrefix(groupId)
+    .filter((r) => !isCanonicalPermalink(r.url_publicacion || r.url || ''));
+  const pendingPool = pending.map((row) => ({
+    row,
+    title: normalizeTitleForMatch(row.titulo || ''),
+    desc: normalizeTitleForMatch(row.descripcion || ''),
+  }));
+
   for (const card of cards) {
     if (!isCanonicalPermalink(card.href)) continue;
+    const cardText = normalizeTitleForMatch(card.text);
+
+    // 1) Fila con la misma clave → actualizar URL a permalink real
     const prev = store.get(card.key);
-    if (!prev) continue;
-    const prevUrl = prev.url_publicacion || prev.url || '';
-    if (!isCanonicalPermalink(prevUrl)) {
-      store.patch(card.key, { url_publicacion: card.href, url: card.href, link_status: 'permalink' });
+    if (prev) {
+      const prevUrl = prev.url_publicacion || prev.url || '';
+      if (!isCanonicalPermalink(prevUrl)) {
+        store.patch(card.key, { url_publicacion: card.href, url: card.href, link_status: 'permalink' });
+        fixed++;
+      }
+      continue;
+    }
+
+    // 2) Fila sintética que coincide por contenido → escribirle el permalink real
+    let best: { row: ListingRow; score: number } | null = null;
+    for (const cand of pendingPool) {
+      if (cand.row.id_publicacion === card.key) continue;
+      const score = Math.max(tokenOverlap(cardText, cand.title), tokenOverlap(cardText, cand.desc));
+      if (score >= 0.5 && (!best || score > best.score)) best = { row: cand.row, score };
+    }
+    if (best) {
+      const cur = best.row.url_publicacion || best.row.url || '';
+      if (!isCanonicalPermalink(cur)) {
+        store.patch(best.row.id_publicacion, { url_publicacion: card.href, url: card.href, link_status: 'permalink' });
+        fixed++;
+        const idx = pendingPool.findIndex((c) => c.row.id_publicacion === best!.row.id_publicacion);
+        if (idx >= 0) pendingPool.splice(idx, 1);
+      }
+      continue;
+    }
+
+    // 3) Duplicado real con el mismo permalink bajo otra clave → consolidar
+    const dup = store.findByHref(card.href, groupId);
+    if (dup && dup.id_publicacion && dup.id_publicacion !== card.key) {
+      store.delete(dup.id_publicacion);
       fixed++;
     }
   }
+
   return { scanned: cards.length, fixed };
 }
 
