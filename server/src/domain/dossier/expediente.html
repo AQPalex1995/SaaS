@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Expediente - Land Intelligence</title>
+  <style>
+    :root { --bg:#0f1420; --card:#1a2130; --line:#2a3348; --txt:#e6ebf4; --mut:#9aa6bd; --acc:#4ea8e0; --ok:#2fbf6f; --warn:#e0a13a; --bad:#e0564f; --info:#5aa7e8; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--txt); font:14px/1.55 system-ui,Segoe UI,Roboto,sans-serif; padding:24px; }
+    header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+    header h1 { font-size:20px; margin:0; }
+    .sub { color:var(--mut); font-size:12.5px; }
+    nav { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:20px; }
+    nav button { background:var(--card); color:var(--txt); border:1px solid var(--line); border-radius:99px; padding:6px 12px; cursor:pointer; font-size:13px; }
+    nav button.active { background:var(--acc); border-color:var(--acc); color:#fff; }
+    main { display:grid; gap:14px; }
+    section.sect { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; display:none; }
+    section.sect.active { display:block; }
+    section.sect h2 { margin:0 0 12px; font-size:15px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:8px 14px; }
+    .kv { color:var(--mut); }
+    .kv b { color:var(--txt); font-weight:600; }
+    .card { background:#141b29; border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:8px; }
+    .card .t { font-weight:600; margin-bottom:4px; }
+    .row-list > div { display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-size:13px; }
+    .row-list > div:last-child { border-bottom:none; }
+    .badge { display:inline-block; padding:1px 8px; border-radius:99px; font-size:11.5px; border:1px solid var(--line); margin-left:6px; }
+    .kind-hecho{ color:var(--ok); border-color:var(--ok); }
+    .kind-senal{ color:var(--warn); border-color:var(--warn); }
+    .kind-verif{ color:var(--bad); border-color:var(--bad); }
+    .kind-nodisp{ color:var(--mut); }
+    .empty { color:var(--mut); font-style:italic; }
+    a { color:var(--info); }
+    .err { color:var(--bad); padding:20px; border:1px solid var(--bad); border-radius:10px; background:#2a1619; }
+    .muted { color:var(--mut); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1 id="title">Expediente del predio</h1>
+      <div class="sub" id="subtitle">Cargando...</div>
+    </div>
+    <a id="mapLink" class="sub" target="_blank" rel="noopener" style="display:none">Abrir en Google Maps</a>
+  </header>
+
+  <nav id="nav"></nav>
+
+  <main id="main">
+    <div class="err" id="error" style="display:none"></div>
+  </main>
+
+  <script>
+    'use strict';
+    var id = decodeURIComponent(location.pathname.split('/').pop() || '');
+    var NAV = [
+      ['resumen', 'Resumen'],
+      ['registral', 'Registral'],
+      ['urbanismo', 'Urbanismo'],
+      ['gis', 'GIS'],
+      ['riesgos', 'Riesgos'],
+      ['historico', 'Historico'],
+      ['judicial', 'Judicial'],
+      ['mercado', 'Mercado'],
+      ['evidencias', 'Evidencias'],
+      ['infra', 'Infraestructura'],
+    ];
+
+    function el(tag, attrs, children) {
+      var node = document.createElement(tag);
+      if (attrs) for (var k in attrs) {
+        if (k === 'class') node.className = attrs[k];
+        else if (k === 'href') node.href = attrs[k];
+        else if (k === 'target') node.target = attrs[k];
+        else if (k === 'rel') node.rel = attrs[k];
+        else if (k === 'onclick') node.onclick = attrs[k];
+        else node.setAttribute(k, attrs[k]);
+      }
+      (children || []).forEach(function (c) {
+        node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+      });
+      return node;
+    }
+
+    function kv(l, v) {
+      var d = document.createElement('div');
+      d.className = 'kv';
+      d.appendChild(el('b', null, [l + ': ']));
+      d.appendChild(document.createTextNode(v == null ? '-' : String(v)));
+      return d;
+    }
+
+    function card(title, rows) {
+      var c = document.createElement('div');
+      c.className = 'card';
+      c.appendChild(el('div', { class: 't' }, [title]));
+      rows.forEach(function (node) { c.appendChild(node); });
+      return c;
+    }
+
+    function empty(msg) {
+      return el('div', { class: 'empty' }, [msg || 'Sin datos capturados aun']);
+    }
+
+    function section(idSect, title, body) {
+      var s = document.createElement('section');
+      s.className = 'sect';
+      s.id = 'sect-' + idSect;
+      s.appendChild(el('h2', null, [title]));
+      (body || []).forEach(function (n) { s.appendChild(n); });
+      return s;
+    }
+
+    function kindBadge(kind) {
+      var map = {
+        fact: ['HECHO', 'kind-hecho'],
+        signal: ['SEÑAL', 'kind-senal'],
+        requiere_verificacion: ['REQUIERE VERIFICACION', 'kind-verif'],
+        unavailable: ['NO DISPONIBLE', 'kind-nodisp'],
+      };
+      var m = map[kind] || ['', ''];
+      return el('span', { class: 'badge ' + m[1] }, [m[0]]);
+    }
+
+    function secResumen(d) {
+      var rows = [
+        kv('Tipo', d.property.propertyType),
+        kv('Precio reportado', d.property.price + ' ' + d.property.currency),
+        kv('Area', d.property.areaM2 ? d.property.areaM2 + ' m2' : null),
+        kv('Distrito', d.property.district),
+        kv('Provincia', d.property.province),
+        kv('Direccion', d.property.address),
+        kv('Lat/lon', d.property.latitude && d.property.longitude ? d.property.latitude + ', ' + d.property.longitude : null),
+        kv('Ejecuciones', d.runs.length),
+      ];
+      var body = [card('Propiedad', rows)];
+      if (d.report.length) {
+        body.push(card('Informe', d.report.map(function (r) {
+          var row = document.createElement('div');
+          row.className = 'row-list';
+          var c1 = el('span', null, [r.label]);
+          var c2 = el('span', null, [(r.value == null ? '-' : r.value)]);
+          c2.appendChild(kindBadge(r.kind));
+          row.appendChild(c1); row.appendChild(c2);
+          return row;
+        })));
+      } else {
+        body.push(empty('Informe sin hallazgos'));
+      }
+      return body;
+    }
+
+    function secRegistral(d) {
+      if (!d.registry.length) return [empty('Sin datos registrales capturados (SUNARP).')];
+      return d.registry.map(function (e) {
+        var rows = [
+          kv('Partida', e.registryNumber),
+          kv('Oficina', e.registryOffice),
+          kv('Zona', e.registryZone),
+          kv('Area registral', e.registeredArea),
+          kv('Direccion registral', e.registeredAddress),
+          kv('Distrito', e.registeredDistrict),
+          kv('Fuente', e.source),
+          kv('Confianza', e.confidence),
+          kv('Verificacion', e.verification),
+        ];
+        if (e.owners.length) rows.push(el('div', { class: 'row-list' }, [el('div', null, [el('span', { class: 't' }, ['Titulares'])]),
+          e.owners.map(function (o) {
+            var line = document.createElement('div');
+            var info = o.ownerName + (o.documentType && o.documentNumber ? ' (' + o.documentType + ' ' + o.documentNumber + ')' : '');
+            line.appendChild(el('span', null, [info]));
+            line.appendChild(el('span', { class: 'muted' }, [o.ownershipPercentage ? o.ownershipPercentage + '%' : '']));
+            return line;
+          })]));
+        if (e.charges.length) rows.push(el('div', { class: 'row-list' }, [el('div', null, [el('span', { class: 't' }, ['Cargas'])]),
+          e.charges.map(function (c) {
+            var line = document.createElement('div');
+            line.appendChild(el('span', null, [(c.chargeType || '-') + (c.creditor ? ' - ' + c.creditor : '') + (c.amount ? ' - ' + c.amount + ' ' + c.currency : '') + (c.isActive === 'si' ? ' [ACTIVA]' : (c.isActive === 'no' ? ' [cancelada]' : ''))]));
+            return line;
+          })]));
+        if (e.titles.length) rows.push(el('div', { class: 'row-list' }, [el('div', null, [el('span', { class: 't' }, ['Titulos'])]),
+          e.titles.map(function (t) {
+            var line = document.createElement('div');
+            line.appendChild(el('span', null, [(t.titleNumber || '-') + (t.titleType ? ' - ' + t.titleType : '') + (t.notary ? ' - ' + t.notary : '')]));
+            return line;
+          })]));
+        return card('Partida ' + (e.registryNumber || e.id), rows);
+      });
+    }
+
+    function secUrbanismo(d) {
+      var body = [];
+      if (!d.urbanism.zones.length && !d.urbanism.parameters.length) {
+        return [empty('Sin zonificacion ni parametros aun (IMPLA/PDM).')];
+      }
+      if (d.urbanism.zones.length) {
+        body.push(card('Zonificacion', d.urbanism.zones.map(function (z) {
+          var g = document.createElement('div');
+          g.className = 'grid';
+          g.appendChild(kv('Zona', z.zoneName));
+          g.appendChild(kv('Codigo', z.zoneCode));
+          g.appendChild(kv('Tipo', z.zoneType));
+          g.appendChild(kv('Uso de suelo', z.landUse));
+          g.appendChild(kv('Fuente', z.source));
+          return g;
+        })));
+      }
+      if (d.urbanism.parameters.length) {
+        d.urbanism.parameters.forEach(function (p) {
+          var g = document.createElement('div');
+          g.className = 'grid';
+          g.appendChild(kv('Altura max', p.maxHeight));
+          g.appendChild(kv('Pisos max', p.maxFloors));
+          g.appendChild(kv('Area construible', p.maxBuildableArea));
+          g.appendChild(kv('Area libre min', p.minFreeArea));
+          g.appendChild(kv('Retiro frontal', p.setbackFront));
+          g.appendChild(kv('Retiro lateral', p.setbackSide));
+          g.appendChild(kv('Retiro posterior', p.setbackRear));
+          g.appendChild(kv('Densidad', p.density));
+          g.appendChild(kv('Usos compatibles', p.compatibleUses));
+          g.appendChild(kv('Fuente', p.source));
+          body.push(card('Parametros urbanisticos', [g]));
+        });
+      }
+      return body;
+    }
+
+    function secGis(d) {
+      var body = [];
+      if (!d.gis.locations.length && !d.gis.geometries.length && !d.property.latitude) {
+        body.push(empty('Sin datos GIS capturados.'));
+      }
+      if (d.gis.locations.length) {
+        body.push(card('Localizaciones', d.gis.locations.map(function (l) {
+          var g = document.createElement('div');
+          g.className = 'grid';
+          g.appendChild(kv('Direccion', l.address));
+          g.appendChild(kv('Distrito', l.district));
+          g.appendChild(kv('Provincia', l.province));
+          g.appendChild(kv('Departamento', l.department));
+          g.appendChild(kv('Lat', l.latitude));
+          g.appendChild(kv('Lon', l.longitude));
+          g.appendChild(kv('Fuente', l.source));
+          g.appendChild(kv('Confianza', l.confidence));
+          g.appendChild(kv('Verificacion', l.verification));
+          return g;
+        })));
+      }
+      if (d.gis.geometries.length) {
+        body.push(card('Geometrias', d.gis.geometries.map(function (g0) {
+          return kv('Geometria', g0.geomType + ' (' + g0.source + ')');
+        })));
+      }
+      return body;
+    }
+
+    function secRiesgos(d) {
+      var body = [];
+      if (!d.risks.scores.length && !d.risks.alerts.length) {
+        body.push(empty('Sin scores ni alertas aun.'));
+      }
+      if (d.risks.scores.length) {
+        body.push(card('Scores', d.risks.scores.map(function (s) {
+          var g = document.createElement('div');
+          g.className = 'grid';
+          g.appendChild(kv(s.label || s.scoreType, s.scoreValue + (s.maxValue ? '/' + s.maxValue : '')));
+          g.appendChild(kv('Confianza', s.confidence));
+          return g;
+        })));
+      }
+      if (d.risks.alerts.length) {
+        body.push(card('Alertas', d.risks.alerts.map(function (a) {
+          var g = document.createElement('div');
+          var t = el('div', { class: 't' }, [a.title]);
+          var badge = el('span', { class: 'badge ' + (a.severity === 'critical' || a.severity === 'high' ? 'kind-verif' : 'kind-senal') }, [a.severity]);
+          t.appendChild(badge);
+          g.appendChild(t);
+          g.appendChild(el('div', { class: 'muted' }, [a.description || '']));
+          g.appendChild(el('div', { class: 'muted' }, [(a.status === 'active' ? 'ACTIVA' : a.status) + (a.source ? ' - ' + a.source : '')]));
+          return g;
+        })));
+      }
+      return body;
+    }
+
+    function secHistorico(d) {
+      if (!d.history) return [empty('Sin historial de investigaciones.')];
+      var body = [card('Ejecuciones', d.history.runs.map(function (r) {
+        return kv('Ejecucion ' + r.runNumber, r.status + ' - ' + r.completedTaskCount + '/' + r.totalTaskCount + ' tareas' + (r.completedAt ? ' (' + r.completedAt.slice(0, 16).replace('T', ' ') + ')' : ''));
+      }))];
+      return body;
+    }
+
+    function secJudicial(d) {
+      if (!d.judicial.length) return [empty('Sin expedientes judiciales coincidentes (CEJ).')];
+      return d.judicial.map(function (j) {
+        var rows = [
+          kv('Expediente', j.caseNumber),
+          kv('Corte', j.court),
+          kv('Tipo', j.caseType),
+          kv('Materia', j.subject),
+          kv('Estado', j.status),
+          kv('Fecha de ingreso', j.filingDate),
+          kv('Partes', j.parties),
+          kv('Fuente', j.source),
+        ];
+        if (j.events.length) rows.push(el('div', { class: 'row-list' }, [el('div', null, [el('span', { class: 't' }, ['Eventos'])]),
+          j.events.map(function (ev) {
+            var line = document.createElement('div');
+            line.appendChild(el('span', null, [(ev.eventDate || '') + ' - ' + (ev.eventType || '') + (ev.description ? ': ' + ev.description : '')]));
+            return line;
+          })]));
+        return card('Caso ' + (j.caseNumber || j.id), rows);
+      });
+    }
+
+    function secMercado(d) {
+      var body = [];
+      if (!d.market.comparables.length && !d.market.prices.length) {
+        body.push(empty('Sin comparables ni precios estimados.'));
+      }
+      if (d.market.prices.length) {
+        body.push(card('Precios estimados', d.market.prices.map(function (p) {
+          var g = document.createElement('div');
+          g.className = 'grid';
+          g.appendChild(kv('Estimacion', p.estimatedPrice != null ? p.estimatedPrice + ' ' + p.currency : '-'));
+          g.appendChild(kv('Precio/m2', p.pricePerM2));
+          g.appendChild(kv('Metodo', p.estimationType));
+          g.appendChild(kv('Confianza', p.confidence));
+          g.appendChild(kv('Fuente', p.source));
+          return g;
+        })));
+      }
+      if (d.market.comparables.length) {
+        body.push(card('Comparables', d.market.comparables.map(function (c) {
+          var g = document.createElement('div');
+          g.className = 'grid';
+          var title = c.comparableUrl ? el('a', { href: c.comparableUrl, target: '_blank', rel: 'noopener' }, [c.comparableTitle || 'Comparable']) : el('b', null, [c.comparableTitle || 'Comparable']);
+          g.appendChild(kv('Titulo', c.comparableTitle));
+          g.appendChild(kv('Precio', c.comparablePrice != null ? c.comparablePrice + ' ' + c.comparableCurrency : '-'));
+          g.appendChild(kv('Area m2', c.comparableAreaM2));
+          g.appendChild(kv('Distrito', c.comparableDistrict));
+          g.appendChild(kv('Distancia m', c.distanceMeters));
+          g.appendChild(kv('Precio/m2', c.pricePerM2));
+          g.appendChild(kv('Similitud', c.similarity));
+          g.appendChild(kv('Fuente', c.source));
+          return g;
+        })));
+      }
+      return body;
+    }
+
+    function secEvidencias(d) {
+      var body = [];
+      if (!d.evidence.results.length && !d.evidence.documents.length && !d.evidence.links.length) {
+        body.push(empty('Sin evidencias capturadas.'));
+      }
+      if (d.evidence.results.length) {
+        body.push(card('Resultados por fuente', d.evidence.results.map(function (r) {
+          var g = document.createElement('div');
+          g.className = 'grid';
+          g.appendChild(kv('Tarea', r.taskType));
+          g.appendChild(kv('Fuente', r.source));
+          g.appendChild(kv('Estado', r.taskStatus + ' / run ' + r.runNumber));
+          g.appendChild(kv('Tipo dato', r.dataType));
+          g.appendChild(kv('Capturado', r.retrievedAt ? r.retrievedAt.slice(0, 10) : '-'));
+          g.appendChild(kv('Confianza', r.confidence));
+          g.appendChild(kv('Verificacion', r.verification));
+          return g;
+        })));
+      }
+      if (d.evidence.documents.length) {
+        body.push(card('Documentos', d.evidence.documents.map(function (doc) {
+          var line = document.createElement('div');
+          line.appendChild(el('span', null, [doc.fileName || doc.documentType]));
+          if (doc.storageUrl) line.appendChild(el('a', { href: doc.storageUrl, target: '_blank', rel: 'noopener', style: 'margin-left:8px' }, ['ver']));
+          return line;
+        })));
+      }
+      if (d.evidence.links.length) {
+        body.push(card('Enlaces externos', d.evidence.links.map(function (l) {
+          var line = document.createElement('div');
+          var a = el('a', { href: l.url, target: '_blank', rel: 'noopener' }, [l.title || l.url]);
+          var st = el('span', { class: 'muted', style: 'margin-left:8px' }, [l.linkType || '']);
+          line.appendChild(a); line.appendChild(st);
+          return line;
+        })));
+      }
+      return body;
+    }
+
+    function secInfra() {
+      return [empty('Seccion PLANNED - sin fuentes de infraestructura conectadas aun.')];
+    }
+
+    function render(d) {
+      document.getElementById('title').textContent = 'Expediente - ' + (d.property.title || d.property.publicId);
+      document.getElementById('subtitle').textContent = d.property.publicId + ' · ' + (d.property.district || '') + ' · ' + (d.property.province || '') + ' · actualizado ' + d.generatedAt.slice(0, 16).replace('T', ' ');
+      var mapLink = document.getElementById('mapLink');
+      if (d.gis.mapLink) { mapLink.style.display = 'inline'; mapLink.href = d.gis.mapLink; }
+
+      var nav = document.getElementById('nav');
+      var main = document.getElementById('main');
+      nav.innerHTML = ''; main.innerHTML = '';
+
+      var renderers = {
+        resumen: secResumen, registral: secRegistral, urbanismo: secUrbanismo, gis: secGis,
+        riesgos: secRiesgos, historico: secHistorico, judicial: secJudicial,
+        mercado: secMercado, evidencias: secEvidencias, infra: secInfra,
+      };
+
+      NAV.forEach(function (entry, i) {
+        var key = entry[0], label = entry[1];
+        var btn = el('button', { id: 'btn-' + key }, [label]);
+        btn.onclick = function (e) {
+          document.querySelectorAll('nav button').forEach(function (b) { b.classList.remove('active'); });
+          e.target.classList.add('active');
+          document.querySelectorAll('section.sect').forEach(function (s) { s.classList.remove('active'); });
+          document.getElementById('sect-' + key).classList.add('active');
+        };
+        nav.appendChild(btn);
+
+        var sec = section(key, label, renderers[key](d));
+        main.appendChild(sec);
+        if (i === 0) { btn.classList.add('active'); sec.classList.add('active'); }
+      });
+    }
+
+    if (!id) {
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error').textContent = 'Falta el id del predio en la URL (/investigaciones/:id).';
+      document.getElementById('subtitle').textContent = 'Sin id';
+    } else {
+      var apiUrl = '/api/v1/properties/' + encodeURIComponent(id) + '/dossier';
+      fetch(apiUrl, { headers: { 'Accept': 'application/json' } })
+        .then(function (res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        })
+        .then(function (payload) { render(payload.data); })
+        .catch(function (err) {
+          var errBox = document.getElementById('error');
+          errBox.style.display = 'block';
+          errBox.textContent = 'No se pudo cargar el expediente (' + err.message + '). Verifica que el predio exista y que la API este corriendo en el puerto 3001.';
+          document.getElementById('subtitle').textContent = 'Error';
+        });
+    }
+  </script>
+</body>
+</html>

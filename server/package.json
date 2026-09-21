@@ -12,7 +12,7 @@
     "dev:worker": "tsx watch src/worker.ts",
     "start": "tsx src/index.ts",
     "worker": "tsx src/worker.ts",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
     "prestart": "npm run build",
     "typecheck": "tsc --noEmit",
     "db:setup": "tsx src/db/setup.ts",

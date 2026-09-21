@@ -1044,8 +1044,8 @@ PHASE 5.5 — RESEARCH PLATFORM UX + IDENTITY (transversal)
 STATUS: PLANNED (registrado 2026-09-19 junto con `docs/PRODUCT.md`)
 
 Etapa transversal de producto — plataforma de investigación y due diligence
-de predios (Land Intelligence). **RP.1, RP.2 y RP.3 DONE**; las subfases
-RP.4–RP.11 están PLANNED y requieren su propio checkpoint y los Decision Gates
+de predios (Land Intelligence). **RP.1, RP.2, RP.3 y RP.4 DONE**; las subfases
+RP.5–RP.11 están PLANNED y requieren su propio checkpoint y los Decision Gates
 de AGENTS.md (auth, pagos, documentos, datos personales, APIs públicas).
 
 Subfases (RP = Research Platform; todas PLANNED salvo las marcadas DONE):
@@ -1077,6 +1077,16 @@ server+root y build OK.
 RP.4 Property dossier — expediente propio `/investigaciones/:id` en lugar del
 drawer (secciones Resumen/Registral/Urbanismo/GIS/Infraestructura/Riesgos/
 Histórico/Judicial/Mercado/Evidencias/Informe).
+**DONE (2026-09-21)**: `server/src/domain/dossier/service.ts` (`DossierService`)
+agrega las 11 secciones desde datos persistidos (PropertyService +
+ResearchHistoryService RP.3 + queries `eq` a registry/urban/locations/
+geometries/judicial/market/scores/alerts/documents/links/results); endpoint
+`GET /api/v1/properties/:id/dossier` + página `GET /investigaciones/:id`
+(`expediente.html`, vanilla, sin tocar `src/`); `report` con regla
+HECHO/SEÑAL/REQUIERE VERIFICACIÓN/NO DISPONIBLE; asset copiado a `dist/` vía
+`scripts/copy-assets.mjs`. Spec `server/tests/property-dossier.test.ts` (6
+tests). Suite 239/239 (33 files); typecheck server+root y build OK. Enlace
+desde el Drawer legacy queda como Decision Gate (requiere tocar `src/`).
 RP.5 Authentication — cuentas, sesiones, email, recuperación (Decision Gate).
 RP.6 Authorization / RBAC — roles USER/CUSTOMER/PROFESSIONAL/STAFF/ADMIN/
 SUPER_ADMIN; autorización server-side anti-IDOR/BOLA.

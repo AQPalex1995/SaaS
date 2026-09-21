@@ -229,6 +229,38 @@ tabla `research_runs` todavía).
   existe; id legacy no resoluble → mensaje honesto de publicación no
   encontrada.
 
+### `GET /api/v1/properties/:id/dossier` (RP.4 — Property dossier)
+Expediente completo del predio en un solo agregado (la vista RESULTADO del
+producto, correspondiente a `/investigaciones/:id`). Compone las 11 secciones
+conceptuales de `docs/UX_ARCHITECTURE.md` §3 a partir de datos **persistidos**
+(nunca inventados — política anti-stub):
+- `property` (PropertyDetail), `runs` (ResearchRunDTO ordenados por runNumber)
+  y `generatedAt`.
+- `risks`: `scores` (PropertyScoreDTO) + `alerts` (PropertyAlertDTO).
+- `registry`: entradas registrales con `owners`, `charges`, `titles`
+  (DossierRegistry*DTO).
+- `urbanism`: `zones` + `parameters` (DossierUrban*DTO).
+- `gis`: `locations` + `geometries` + `mapLink` (derivado de las coordenadas
+  del predio).
+- `infrastructure`: `{}` (sección PLANNED, sin fuentes).
+- `history`: ResearchHistoryDTO (reutiliza RP.3) o `null`.
+- `judicial`: casos con sus `events`.
+- `market`: `comparables` + `prices`.
+- `evidence`: `results` (resultados con taskType/estado/runNumber),
+  `documents`, `links`.
+- `report`: hallazgos consolidados por regla HECHO / SEÑAL /
+  REQUIERE VERIFICACIÓN / NO DISPONIBLE (`docs/RESEARCH_GOVERNANCE.md` §2).
+- `:id` puede ser un **UUID** de PostgreSQL o un **ID legacy de SQLite**
+  (resolución on-the-fly como el resto de rutas de research).
+- **Respuesta 200**: `{ "data": { ...PropertyDossierDTO } }`.
+- **Respuesta 404**: si el predio no existe o el id legacy no se resuelve.
+
+### `GET /investigaciones/:id` (RP.4 — página del expediente)
+Sirve la página HTML del expediente (`server/src/domain/dossier/expediente.html`
+— vanillа, sin dependencias nuevas; se copia a `dist/` vía
+`npm run build` = `tsc` + `scripts/copy-assets.mjs`). El navegador lee `:id` de
+la URL y consume `GET /api/v1/properties/:id/dossier`.
+
 ### `GET /api/v1/research/:id/tasks`
 Lista las tareas del expediente con su estado individual (`pending`, `running`, `completed`, `failed`, `requires_manual_action`, `unavailable`, `blocked`, `skipped`).
 - Las transiciones de tarea se validan de forma atómica en `server/src/domain/research/task-lifecycle.ts` (`transitionTask()`); `completed` y `skipped` son estados **inmutables**, y los estados `failed` / `blocked` / `unavailable` / `requires_manual_action` pueden reintentarse (incrementa `retryCount`). **Nota (T3.8)**: `maxRetries` se expone en el DTO pero todavía no se aplica como tope en `transitionTask`. Ver `docs/RESEARCH_ENGINE.md` §5 y §8.

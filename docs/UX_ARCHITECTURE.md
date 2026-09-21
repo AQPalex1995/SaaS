@@ -1,9 +1,12 @@
 # Arquitectura de UX / Navegación
 
-> **Estado**: PROPUESTA conceptual (2026‑09‑19) — `PLANNED`. Nada está
-> implementado todavía como UI de producto; el frontend actual es el panel del
-> Scout Legacy (`src/panel.html`, puerto 8787) con el Property Intelligence
-> Drawer.
+> **Estado**: PROPUESTA conceptual (2026‑09‑19). **RP.4 (2026‑09‑21): el
+> Expediente `/investigaciones/:id` ya está implementado** como página servida
+> por la API (puerto 3001) que consume el endpoint agregado
+> `GET /api/v1/properties/:id/dossier` con las 11 secciones; las demás vistas de
+> producto (Dashboard/Buscar predio/etc.) siguen `PLANNED`. El frontend actual
+> sigue siendo el panel del Scout Legacy (`src/panel.html`, puerto 8787) con el
+> Property Intelligence Drawer — el expediente no toca `src/` (ver §2).
 
 ---
 
@@ -34,6 +37,16 @@ Ruta conceptual:
 ```
 /investigaciones/:id
 ```
+
+**Estado RP.4 (2026‑09‑21)**: la ruta `/investigaciones/:id` ya existe y sirve
+`server/src/domain/dossier/expediente.html` (HTML estático servido por Fastify,
+sin tocar `src/` del Scout Legacy). La página consume el expediente agregado
+`GET /api/v1/properties/:id/dossier` (`DossierService`), que compone las 11
+secciones a partir de datos persistidos (`properties`, `registry_*`,
+`urban_*`, `property_locations`/`property_geometries`, `property_scores`/
+`property_alerts`, `research_*`, `judicial_*`, `market_*`, `documents`,
+`external_links`). Integrar el enlace desde el Drawer del panel legacy queda
+como cambio a `src/` (Decision Gate pendiente).
 
 ---
 

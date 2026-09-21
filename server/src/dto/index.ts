@@ -208,6 +208,255 @@ export interface ResearchHistoryDTO {
   cases: ResearchCaseHistoryDTO[];
 }
 
+// ── Property Dossier (RP.4) ─────────────────────────────────
+//
+// Expediente completo del predio (`/investigaciones/:id`), en lugar del
+// drawer. Un solo endpoint agregado que distingue las secciones conceptuales
+// de docs/UX_ARCHITECTURE.md §3: Resumen / Registral / Urbanismo / GIS /
+// Infraestructura / Riesgos / Histórico / Judicial / Mercado / Evidencias /
+// Informe. Secciones sin fuentes disponibles se devuelven vacías (nunca
+// inventadas — política anti-stub de AGENTS.md).
+
+export interface DossierRegistryOwnerDTO {
+  id: string;
+  ownerName: string | null;
+  ownerType: string | null;
+  documentType: string | null;
+  documentNumber: string | null;
+  ownershipPercentage: string | null;
+  registeredDate: string | null;
+}
+
+export interface DossierRegistryChargeDTO {
+  id: string;
+  chargeType: string | null;
+  description: string | null;
+  amount: string | null;
+  currency: string | null;
+  creditor: string | null;
+  registeredDate: string | null;
+  isActive: string | null;
+}
+
+export interface DossierRegistryTitleDTO {
+  id: string;
+  titleNumber: string | null;
+  titleDate: string | null;
+  titleType: string | null;
+  notary: string | null;
+  description: string | null;
+}
+
+export interface DossierRegistryEntryDTO {
+  id: string;
+  registryNumber: string | null;
+  registryOffice: string | null;
+  registryZone: string | null;
+  registeredArea: string | null;
+  registeredAddress: string | null;
+  registeredDistrict: string | null;
+  source: string;
+  confidence: string;
+  verification: string;
+  retrievedAt: string | null;
+  owners: DossierRegistryOwnerDTO[];
+  charges: DossierRegistryChargeDTO[];
+  titles: DossierRegistryTitleDTO[];
+}
+
+export interface DossierUrbanZoneDTO {
+  id: string;
+  zoneName: string | null;
+  zoneCode: string | null;
+  zoneType: string | null;
+  landUse: string | null;
+  description: string | null;
+  source: string;
+  confidence: string;
+  verification: string;
+}
+
+export interface DossierUrbanParamDTO {
+  id: string;
+  maxHeight: string | null;
+  maxFloors: string | null;
+  maxBuildableArea: string | null;
+  minFreeArea: string | null;
+  setbackFront: string | null;
+  setbackSide: string | null;
+  setbackRear: string | null;
+  density: string | null;
+  compatibleUses: string | null;
+  observations: string | null;
+  source: string;
+  confidence: string;
+  verification: string;
+}
+
+export interface DossierGisLocationDTO {
+  id: string;
+  address: string | null;
+  district: string | null;
+  province: string | null;
+  department: string | null;
+  postalCode: string | null;
+  latitude: string | null;
+  longitude: string | null;
+  source: string;
+  confidence: string;
+  verification: string;
+  verifiedAt: string | null;
+}
+
+export interface DossierGisGeometryDTO {
+  id: string;
+  geomType: string | null;
+  source: string;
+  confidence: string;
+  verification: string;
+}
+
+export interface DossierJudicialEventDTO {
+  id: string;
+  eventDate: string | null;
+  eventType: string | null;
+  description: string | null;
+  resolution: string | null;
+}
+
+export interface DossierJudicialCaseDTO {
+  id: string;
+  caseNumber: string | null;
+  court: string | null;
+  caseType: string | null;
+  subject: string | null;
+  status: string | null;
+  filingDate: string | null;
+  parties: string | null;
+  source: string;
+  sourceUrl: string | null;
+  retrievedAt: string | null;
+  events: DossierJudicialEventDTO[];
+}
+
+export interface DossierMarketComparableDTO {
+  id: string;
+  comparableTitle: string | null;
+  comparableUrl: string | null;
+  comparablePrice: string | null;
+  comparableCurrency: string;
+  comparableAreaM2: string | null;
+  comparableDistrict: string | null;
+  distanceMeters: string | null;
+  pricePerM2: string | null;
+  similarity: string | null;
+  source: string;
+  retrievedAt: string | null;
+}
+
+export interface DossierMarketPriceDTO {
+  id: string;
+  estimatedPrice: string | null;
+  currency: string;
+  pricePerM2: string | null;
+  estimationType: string | null;
+  confidence: string;
+  source: string;
+  retrievedAt: string | null;
+}
+
+export interface DossierEvidenceResultDTO {
+  id: string;
+  researchTaskId: string;
+  researchCaseId: string;
+  runNumber: number;
+  taskType: string;
+  taskStatus: string;
+  source: string;
+  sourceUrl: string | null;
+  retrievedAt: string | null;
+  dataType: string | null;
+  data: Record<string, unknown> | null;
+  confidence: string;
+  verification: string;
+  parserVersion: string | null;
+}
+
+export interface DossierDocumentDTO {
+  id: string;
+  documentType: string;
+  fileName: string | null;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  storageUrl: string | null;
+  checksum: string | null;
+  source: string | null;
+  description: string | null;
+  createdAt: string;
+}
+
+export interface DossierExternalLinkDTO {
+  id: string;
+  url: string;
+  title: string | null;
+  linkType: string | null;
+  source: string | null;
+  isAccessible: string | null;
+  lastCheckedAt: string | null;
+}
+
+export interface DossierReportEntryDTO {
+  label: string;
+  value: string | null;
+  /** HECHO / SEÑAL / REQUIERE VERIFICACIÓN / NO DISPONIBLE (regla de riesgos). */
+  kind: 'fact' | 'signal' | 'requiere_verificacion' | 'unavailable';
+  source: string | null;
+}
+
+export interface PropertyDossierDTO {
+  property: PropertyDetail;
+  /** Últimas ejecuciones (resumen). */
+  runs: ResearchRunDTO[];
+  /** Resumen — scores y alertas. */
+  risks: {
+    scores: PropertyScoreDTO[];
+    alerts: PropertyAlertDTO[];
+  };
+  /** Registral — entradas de partida + titulares/cargas/títulos. */
+  registry: DossierRegistryEntryDTO[];
+  /** Urbanismo — zonificación y parámetros urbanísticos. */
+  urbanism: {
+    zones: DossierUrbanZoneDTO[];
+    parameters: DossierUrbanParamDTO[];
+  };
+  /** GIS / Territorio — localizaciones, geometrías y enlace de mapa. */
+  gis: {
+    locations: DossierGisLocationDTO[];
+    geometries: DossierGisGeometryDTO[];
+    mapLink: string | null;
+  };
+  /** Infraestructura — PLANNED (sin fuentes aún). */
+  infrastructure: Record<string, never>;
+  /** Histórico — propiedades/casos/ejecuciones y cambios (RP.3). */
+  history: ResearchHistoryDTO | null;
+  /** Judicial — expedientes y eventos. */
+  judicial: DossierJudicialCaseDTO[];
+  /** Mercado — comparables y precios estimados. */
+  market: {
+    comparables: DossierMarketComparableDTO[];
+    prices: DossierMarketPriceDTO[];
+  };
+  /** Evidencias — resultados de investigación + documentos + enlaces. */
+  evidence: {
+    results: DossierEvidenceResultDTO[];
+    documents: DossierDocumentDTO[];
+    links: DossierExternalLinkDTO[];
+  };
+  /** Informe — hallazgos consolidados derivados de datos reales. */
+  report: DossierReportEntryDTO[];
+  generatedAt: string;
+}
+
 // ── Scores & Alerts ─────────────────────────────────────────
 
 export interface PropertyScoreDTO {

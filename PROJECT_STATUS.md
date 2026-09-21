@@ -39,7 +39,7 @@ PostGIS:
 ## Tests
 
 Server:
-✅ 233/233 (32 files — incl. RP.3 `research-history.test.ts` + RP.2 `research-entry-b.test.ts` + `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3 + `sunarp-normalize.test.ts` T5.4/T5.5/T5.6/T5.7 + `sunarp-historical.test.ts` T5.8 + provenance superficie T5.9 + `sunarp-intake.test.ts` T5.10 + `sunarp-acceptance.test.ts` T5.11)
+✅ 239/239 (33 files — incl. RP.4 `property-dossier.test.ts` + RP.3 `research-history.test.ts` + RP.2 `research-entry-b.test.ts` + `remaju*.test.ts` + `remate-*` + `remaju-research.test.ts` + `phase4-acceptance.test.ts` + `monitoring.*.test.ts` T4.2–T4.9 + `sunarp.test.ts` T5.1–T5.2 + `sunarp-sprl.test.ts` T5.3 + `sunarp-normalize.test.ts` T5.4/T5.5/T5.6/T5.7 + `sunarp-historical.test.ts` T5.8 + provenance superficie T5.9 + `sunarp-intake.test.ts` T5.10 + `sunarp-acceptance.test.ts` T5.11)
 
 Root:
 ✅
@@ -50,8 +50,23 @@ Phase 5 — ✅ SUNARP COMPLETED (T5.1–T5.11 DONE, 2026-09-19). Fase 4 — REM
 
 ## Current Task
 
-**Fase 5.5 / RP.3 (Research history — historial PROPERTY/RESEARCH_CASE/
-RESEARCH_RUN) — ✅ DONE (2026-09-21)**. Nuevo `ResearchHistoryService`
+**Fase 5.5 / RP.4 (Property dossier — expediente `/investigaciones/:id`) — ✅ DONE (2026-09-21)**.
+Nuevo `DossierService` (`server/src/domain/dossier/service.ts`) que agrega las
+11 secciones del expediente desde datos persistidos (PropertyService + RP.3
+ResearchHistoryService + queries a registry/urban/locations/geometries/
+judicial/market/scores/alerts/documents/links/results), endpoint
+`GET /api/v1/properties/:id/dossier` y página `GET /investigaciones/:id`
+(`expediente.html` vanilla, servida por Fastify, sin tocar el Scout Legacy
+`src/`). El `report` deriva hallazgos por regla HECHO/SEÑAL/REQUIERE
+VERIFICACIÓN/NO DISPONIBLE; secciones sin fuentes quedan vacías o
+`unavailable` (nunca inventadas). El build copia el asset a `dist/`
+(`scripts/copy-assets.mjs`). Spec `server/tests/property-dossier.test.ts`
+(6 tests, offline). Suite **239/239 (33 files)**; typecheck server+root y
+build OK. Enlace del Drawer legacy → expediente queda como Decision Gate
+(requeriría editar `src/panel.html`).
+
+Fase 5.5 / RP.3 (Research history — historial PROPERTY/RESEARCH_CASE/
+RESEARCH_RUN) — ✅ DONE (2026-09-21). Nuevo `ResearchHistoryService`
 (`server/src/domain/research/history.ts`), DTOs de historial
 (`ResearchRunDTO`/`ResearchChangeDTO`/`ResearchCaseHistoryDTO`/
 `ResearchHistoryDTO`) y endpoint `GET /api/v1/properties/:id/history`.
@@ -187,12 +202,10 @@ Suite **205/205 (28 archivos)**; typecheck server+root y build OK.
 
 ## Next Task
 
-**PHASE 5.5 / RP.4 — Property dossier** (expediente propio
-`/investigaciones/:id` en lugar del drawer — secciones
-Resumen/Registral/Urbanismo/GIS/Infraestructura/Riesgos/Histórico/Judicial/
-Mercado/Evidencias/Informe). Subfases RP.4–RP.11 requieren aprobación
-explícita y Decision Gates (AGENTS.md §2.3-bis). Ver `docs/NEXT_STEPS.md` y
-`docs/PRODUCT.md`.
+**PHASE 5.5 / RP.5 — Authentication** (cuentas, sesiones, email, recuperación
+— requiere aprobación explícita y Decision Gates, AGENTS.md §2.3-bis;
+`docs/SECURITY.md`). Subfases RP.5–RP.11 requieren aprobación explícita del
+usuario. Ver `docs/NEXT_STEPS.md`, `docs/PRODUCT.md` y `docs/SECURITY.md`.
 
 ## Gobernanza y producto (registrado 2026-09-19)
 

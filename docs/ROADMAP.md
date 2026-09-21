@@ -72,14 +72,14 @@
 ## Etapa transversal: Research Platform UX + Identity (PLANNED — registrada 2026-09-19)
 
 Etapa de producto definida en `docs/PRODUCT.md` (Land Intelligence, predios no
-publicados, expediente `/investigaciones/:id`). **RP.1, RP.2 y RP.3 DONE
-(2026-09-20/21)**; RP.4–RP.11 requieren aprobación explícita y los Decision
+publicados, expediente `/investigaciones/:id`). **RP.1, RP.2, RP.3 y RP.4 DONE
+(2026-09-20/21)**; RP.5–RP.11 requieren aprobación explícita y los Decision
 Gates de AGENTS.md §2.3-bis.
 
 - [x] RP.1 Domain model — separar Listing / Property / ResearchCase / ResearchRun (tabla `research_runs`: DECISION REQUIRED). **DONE (2026-09-20)**: `run_number` + índice único `idx_research_property_run` en `research_cases` (migración 0004); tabla `research_runs` PLANNED por ADR-007.
 - [x] RP.2 Search Property flow — módulo Buscar Predio (entrada B, ResearchCase sin Listing). **DONE (2026-09-21)**: `server/tests/research-entry-b.test.ts` (acceptance/spec de entrada B; suite 223/223).
 - [x] RP.3 Research history — historial PROPERTY / RESEARCH_CASE / RESEARCH_RUN. **DONE (2026-09-21)**: `ResearchHistoryService` + endpoint `GET /api/v1/properties/:id/history` + `server/tests/research-history.test.ts` (10); historial derivado de `run_number` (sin tabla `research_runs`), diff material entre ejecuciones.
-- [ ] RP.4 Property dossier — expediente `/investigaciones/:id` (11 secciones).
+- [x] RP.4 Property dossier — expediente `/investigaciones/:id` (11 secciones). **DONE (2026-09-21)**: `DossierService` agrega las 11 secciones desde datos persistidos; `GET /api/v1/properties/:id/dossier` + página `GET /investigaciones/:id` (`expediente.html`; sin tocar `src/`); `report` HECHO/SEÑAL/REQUIERE VERIFICACIÓN/NO DISPONIBLE; `server/tests/property-dossier.test.ts` (6); suite 239/239 (33 files).
 - [ ] RP.5 Authentication — cuentas, sesiones, email (Decision Gate).
 - [ ] RP.6 Authorization / RBAC — roles y autorización server-side anti-IDOR/BOLA.
 - [ ] RP.7 Entitlements — permisos por plan sin hardcodear (`docs/SECURITY.md` §5).

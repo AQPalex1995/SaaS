@@ -1,5 +1,56 @@
 # AGENT CHANGELOG
 
+## 2026-09-21 — OpenCode — Fase 5.5 / RP.4 (Property dossier — expediente `/investigaciones/:id`) — DONE
+
+Aprobado por el usuario ("okey continua con el RP 4"). Implementado el
+**expediente propio del predio** descrito en `docs/UX_ARCHITECTURE.md` §2–§3
+(la vista RESULTADO del producto, en lugar del drawer), íntegramente server-side
+sin tocar el Scout Legacy `src/` (modificar `src/panel.html` para enlazar el
+drawer → expediente queda como Decision Gate pendiente y se documenta).
+
+- **DTOs** (`server/src/dto/index.ts`): `PropertyDossierDTO` (property + runs
+  + risks + registry + urbanism + gis + infrastructure + history + judicial +
+  market + evidence + report + generatedAt) y los 16 DTO de sección
+  (`DossierRegistry*DTO`, `DossierUrban*DTO`, `DossierGis*DTO`,
+  `DossierJudicial*DTO`, `DossierMarket*DTO`, `DossierEvidenceResultDTO`,
+  `DossierDocumentDTO`, `DossierExternalLinkDTO`, `DossierReportEntryDTO` con
+  `kind`: fact | signal | requiere_verificacion | unavailable).
+- **Servicio** `server/src/domain/dossier/service.ts`: `DossierService.
+  getPropertyDossier(propertyId)` → `null` si el predio no existe. Agrega las 11
+  secciones de datos persistidos con queries `eq` (compatibles con el patrón
+  in-memory de tests): PropertyService (resumen) + ResearchHistoryService
+  (Histórico reutiliza RP.3) + consultas directas a `registry_*`, `urban_*`,
+  `property_locations`/`property_geometries`, `judicial_*`, `market_*`,
+  `property_scores`/`property_alerts`, `documents`, `external_links` y
+  `research_results` (evidencias con taskType/estado/runNumber vía join en
+  memoria con tasks/cases). Secciones sin fuentes → vacías o `unavailable` en
+  el informe (nunca datos inventados). `report` deriva hallazgos por regla
+  HECHO/SEÑAL/REQUIERE VERIFICACIÓN/NO DISPONIBLE (cargas activas evalúan
+  `is_active='si'`, alertas `critical/high` → requiere verificación).
+- **API** (`server/src/domain/dossier/routes.ts`, registrado en `app.ts`):
+  `GET /api/v1/properties/:id/dossier` (UUID o id legacy; 404 honesto) y
+  `GET /investigaciones/:id` que sirve `server/src/domain/dossier/expediente.html`
+  (HTML estático vanilla, self-contained, sin dependencias nuevas; consume el
+  endpoint agregado). El build copia el asset a `dist/`: `"build": "tsc -p
+  tsconfig.build.json && node scripts/copy-assets.mjs"`
+  (`scripts/copy-assets.mjs`).
+- **Tests** `server/tests/property-dossier.test.ts` (6, offline, ASCII puro,
+  patrón in-memory): null si el predio no existe; agregación completa (las 11
+  secciones con datos reales seedeados, incluida `mapLink` derivada de las
+  coordenadas, cargas activas y `report` con kinds correctos); predio nuevo →
+  secciones vacías honestas + `unavailable` en el informe; API 200/404; página
+  `/investigaciones/:id` sirve HTML.
+- Verificación: suite server **239/239 (33 files)** ✅ (antes 233/233);
+  typecheck server ✅; build server ✅ (incluye copia del asset);
+  typecheck raíz ✅.
+- Decisiones: sin migración de DB; la sección Infraestructura queda `{}`
+  + `unavailable` (PLANNED); el expediente no entra a `src/` (drawer sin
+  enlace aún — Decision Gate); fechas `date()` de Drizzle se serializan como
+  string (no `toISOString`).
+
+Siguiente: **RP.5 — Authentication** (cuentas, sesiones, email, recuperación —
+Decision Gate, `docs/SECURITY.md`).
+
 ## 2026-09-21 — OpenCode — Fase 5.5 / RP.3 (Research history — historial PROPERTY / RESEARCH_CASE / RESEARCH_RUN) — DONE
 
 Aprobado por el usuario ("okey continua"). Implementado el **historial de
