@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { ResearchService } from './service.js';
+import { ResearchHistoryService } from './history.js';
 import {
   resolveSqliteListing,
   isUuid,
@@ -14,6 +15,8 @@ import { getDb, type Database } from '../../db/connection.js';
 export interface ResearchRoutesDeps {
   /** Injectable for tests; defaults to a real ResearchService. */
   service?: ResearchService;
+  /** RP.3 history reader; defaults to a real service backed by `db`. */
+  historyService?: ResearchHistoryService;
   /** Injectable DB for the lifecycle transition; defaults to getDb(). */
   db?: Database;
 }
@@ -24,6 +27,7 @@ export async function researchRoutes(
 ) {
   const service = deps.service ?? new ResearchService();
   const db = deps.db ?? getDb();
+  const historyService = deps.historyService ?? new ResearchHistoryService(db);
 
   const notFound = (reply: any) =>
     reply.status(404).send({ error: 'Research case not found' });
@@ -66,6 +70,26 @@ export async function researchRoutes(
     }
     const cases = await service.getCasesByProperty(propertyId);
     return reply.send({ data: cases, resolvedPropertyId: propertyId });
+  });
+
+  // GET /api/v1/properties/:id/history — RP.3
+  // Historial completo del predio: PROPERTY + RESEARCH_CASES/RUNs ordenados,
+  // con tareas, resultados (provenance) y cambios vs. la ejecución anterior.
+  app.get('/api/v1/properties/:id/history', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    let propertyId: string = id;
+    if (!isUuid(id)) {
+      const resolved = await resolvePropertyId(id);
+      if (!resolved) {
+        return reply.status(404).send({
+          error: `Publicación '${id}' no encontrada en data/scout.db ni en PostgreSQL`,
+        });
+      }
+      propertyId = resolved;
+    }
+    const history = await historyService.getPropertyHistory(propertyId);
+    if (!history) return notFound(reply);
+    return reply.send({ data: history });
   });
 
   // POST /api/v1/properties/:id/research

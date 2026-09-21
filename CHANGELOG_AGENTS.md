@@ -1,5 +1,51 @@
 # AGENT CHANGELOG
 
+## 2026-09-21 — OpenCode — Fase 5.5 / RP.3 (Research history — historial PROPERTY / RESEARCH_CASE / RESEARCH_RUN) — DONE
+
+Aprobado por el usuario ("okey continua"). Implementado el **historial de
+predios** descrito en `docs/RESEARCH_GOVERNANCE.md` §4, respetando ADR-007
+(**no se creó la tabla `research_runs`** — DECISION REQUIRED sigue vigente;
+las ejecuciones se derivan de `research_cases.run_number`).
+
+- **DTOs** (`server/src/dto/index.ts`): `ResearchRunDTO` (una ejecución),
+  `ResearchChangeDTO` (cambio material por taskType+source: `added` /
+  `removed` / `edited` / `unchanged` + `fieldsChanged` + `changedAt`),
+  `ResearchHistoryTaskDTO`, `ResearchHistoryResultDTO` (con provenance),
+  `ResearchCaseHistoryDTO` (caso + tasks/results/changes/`updated`),
+  `ResearchHistoryDTO` (`property` + `runs` ordenados + `cases`).
+- **Servicio** `server/src/domain/research/history.ts`: `ResearchHistoryService.
+  getPropertyHistory(propertyId)` → `null` si el predio no existe; agrupa todos
+  los casos del predio ordenados por `runNumber`, por ejecución expone tareas
+  (taskType/status/manual), resultados (fuente, retrievedAt, confidence,
+  verification, parserVersion vía join con la task) y el diff vs. la ejecución
+  anterior del mismo predio. Helpers puros exportados: `serializeResultData`
+  (comparación estable ignorando orden de claves), `diffDataFields`,
+  `diffResults` (added/removed/edited/unchanged con `changedAt` =
+  retrievedAt de la versión nueva). El DTO distingue los 3 niveles del
+  historial (Property / ResearchCase / ResearchRun) y permite comparar,
+  detectar cambios, conservar ejecuciones anteriores y datar cuándo cambió la
+  información (requisitos §4).
+- **API** (`server/src/domain/research/routes.ts`): `GET /api/v1/properties/:id/
+  history` (UUID pregón; id legacy se resuelve como el resto de rutas de
+  research; 404 honesto si no hay predio). Inyectable `historyService` en
+  `ResearchRoutesDeps`.
+- **Tests** `server/tests/research-history.test.ts` (10, offline, ASCII puro):
+  helpers puros (estabilidad de serialización, fields diff, clasificación
+  added/removed/edited/unchanged incl. `removed`); servicio (null si inexistente,
+  history vacía para predio nuevo, orden por runNumber incluso si el seed entra
+  desordenado, detección de cambios entre runs con fieldsChanged/changedAt);
+  API (200 con runs ordenados + cambios, 404 para predio inexistente).
+- Verificación: suite server **233/233 (32 files)** ✅ (antes 223/223);
+  typecheck server ✅; build server ✅; typecheck raíz ✅.
+- Decisiones: sin migración de DB; `ResearchHistoryDTO.property` es no-nulo
+  (el 404 ya cubre predios inexistentes); el diff compara `data` normalizado
+  (no `rawData`).
+
+Siguiente: **RP.4 — Property dossier** (expediente `/investigaciones/:id` en
+lugar del drawer; secciones Resumen/Registral/Urbanismo/GIS/Infraestructura/
+Riesgos/Histórico/Judicial/Mercado/Evidencias/Informe). Requiere aprobación
+explícita (Decision Gates).
+
 ## 2026-09-21 — OpenCode — Fase 5.5 / RP.2 (Search Property flow — entrada B) — DONE
 
 Completado el delta pendiente de RP.2: **acceptance/spec test explícito** de la

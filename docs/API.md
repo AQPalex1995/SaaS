@@ -153,6 +153,82 @@ Consulta el estado de un expediente de investigación.
 - **Respuesta 400**: `{ "error": "Invalid research case id (expected UUID)" }` si `:id` no es un UUID válido.
 - **Respuesta 404**: `{ "error": "Research case not found" }` si el caso no existe.
 
+### `GET /api/v1/properties/:id/history` (RP.3 — Research history)
+Historial completo del predio: **PROPERTY** + todos sus **RESEARCH_CASE /
+RESEARCH_RUN**, distinguiendo los tres niveles de `docs/RESEARCH_GOVERNANCE.md`
+§4. Las ejecuciones se derivan de `research_cases.run_number` (ADR-007: no hay
+tabla `research_runs` todavía).
+- `:id` puede ser un **UUID** de PostgreSQL o un **ID legacy de SQLite**
+  (resolución on-the-fly como el resto de rutas de research).
+- **Respuesta 200**:
+  ```json
+  {
+    "data": {
+      "property": { "...PropertySummary" },
+      "runs": [
+        {
+          "runNumber": 1,
+          "caseId": "b0000000-0000-0000-0000-000000000001",
+          "status": "completed",
+          "summary": null,
+          "errorCount": 0,
+          "warningCount": 0,
+          "completedTaskCount": 8,
+          "totalTaskCount": 8,
+          "startedAt": "2026-09-15T21:50:00.000Z",
+          "completedAt": "2026-09-15T21:51:00.000Z",
+          "createdBy": "system",
+          "createdAt": "2026-09-15T21:50:00.000Z",
+          "updatedAt": "2026-09-15T21:51:00.000Z"
+        }
+      ],
+      "cases": [
+        {
+          "runNumber": 1,
+          "caseId": "b0000000-0000-0000-0000-000000000001",
+          "status": "completed",
+          "summary": null,
+          "errorCount": 0,
+          "warningCount": 0,
+          "completedTaskCount": 8,
+          "totalTaskCount": 8,
+          "startedAt": "2026-09-15T21:50:00.000Z",
+          "completedAt": "2026-09-15T21:51:00.000Z",
+          "createdBy": "system",
+          "createdAt": "2026-09-15T21:50:00.000Z",
+          "updatedAt": "2026-09-15T21:51:00.000Z",
+          "tasks": [ { "taskType": "identity", "status": "completed", "requiresManualAction": false } ],
+          "results": [
+            {
+              "researchTaskId": "c0000000-0000-0000-0000-000000000001",
+              "taskType": "identity",
+              "source": "admin_intake",
+              "dataType": "identity",
+              "retrievedAt": "2026-09-15T21:50:10.000Z",
+              "confidence": "high",
+              "verification": "reported",
+              "parserVersion": "identity-v1"
+            }
+          ],
+          "changes": [
+            { "taskType": "registry", "source": "sunarp_intake", "change": "edited", "fieldsChanged": ["titular"], "changedAt": "2026-09-15T21:50:20.000Z" }
+          ],
+          "updated": true
+        }
+      ]
+    }
+  }
+  ```
+- **`changes`** compara la ejecución con la **anterior** del mismo predio por
+  `(taskType, source)`: `added` (aparece), `removed` (desaparece), `edited`
+  (cambió el dato normalizado; `fieldsChanged` lista las claves de primer nivel
+  de `data` que cambiaron), `unchanged`. `changedAt` = `retrievedAt` de la
+  versión nueva; `updated` = `true` si la ejecución introdujo o perdió
+  información vs. la previa.
+- **Respuesta 404**: `{ "error": "Research case not found" }` si el predio no
+  existe; id legacy no resoluble → mensaje honesto de publicación no
+  encontrada.
+
 ### `GET /api/v1/research/:id/tasks`
 Lista las tareas del expediente con su estado individual (`pending`, `running`, `completed`, `failed`, `requires_manual_action`, `unavailable`, `blocked`, `skipped`).
 - Las transiciones de tarea se validan de forma atómica en `server/src/domain/research/task-lifecycle.ts` (`transitionTask()`); `completed` y `skipped` son estados **inmutables**, y los estados `failed` / `blocked` / `unavailable` / `requires_manual_action` pueden reintentarse (incrementa `retryCount`). **Nota (T3.8)**: `maxRetries` se expone en el DTO pero todavía no se aplica como tope en `transitionTask`. Ver `docs/RESEARCH_ENGINE.md` §5 y §8.

@@ -1043,12 +1043,12 @@ PHASE 5.5 — RESEARCH PLATFORM UX + IDENTITY (transversal)
 
 STATUS: PLANNED (registrado 2026-09-19 junto con `docs/PRODUCT.md`)
 
-Etapa de producto transversal: plataforma de investigación y due diligence
-de predios (Land Intelligence). Ninguna subfase está implementada todavía;
-cada una requiere su propio checkpoint y los Decision Gates de AGENTS.md
-(auth, pagos, documentos, datos personales, APIs públicas).
+Etapa transversal de producto — plataforma de investigación y due diligence
+de predios (Land Intelligence). **RP.1, RP.2 y RP.3 DONE**; las subfases
+RP.4–RP.11 están PLANNED y requieren su propio checkpoint y los Decision Gates
+de AGENTS.md (auth, pagos, documentos, datos personales, APIs públicas).
 
-Subfases (RP = Research Platform; todas PLANNED):
+Subfases (RP = Research Platform; todas PLANNED salvo las marcadas DONE):
 
 RP.1 Domain model — separar Listing / Property / ResearchCase / ResearchRun;
 **DONE (2026-09-20)**: separación Case/Run resuelta por ADR-007/ADR-008 — `run_number`
@@ -1065,6 +1065,15 @@ property, y `POST /api/v1/properties/:id/research` acepta un UUID pelado (sin
 publicación) → 201. Suite 223/223 (31 files); typecheck server+root y build OK.
 Sin cambios productivos (el dominio ya soportaba entrada B).
 RP.3 Research history — historial PROPERTY / RESEARCH_CASE / RESEARCH_RUN.
+**DONE (2026-09-21)**: `server/src/domain/research/history.ts`
+(`ResearchHistoryService`) + DTOs de historial (`ResearchRunDTO`,
+`ResearchChangeDTO`, `ResearchCaseHistoryDTO`, `ResearchHistoryDTO`) + endpoint
+`GET /api/v1/properties/:id/history` + spec `research-history.test.ts` (10
+tests). El historial distingue los 3 niveles, ordena las ejecuciones por
+`run_number` (sin tabla `research_runs`, ADR-007) y expone el diff material
+por ejecución vs. la anterior (added/removed/edited/unchanged con
+`fieldsChanged` y el momento del cambio). Suite 233/233 (32 files); typecheck
+server+root y build OK.
 RP.4 Property dossier — expediente propio `/investigaciones/:id` en lugar del
 drawer (secciones Resumen/Registral/Urbanismo/GIS/Infraestructura/Riesgos/
 Histórico/Judicial/Mercado/Evidencias/Informe).

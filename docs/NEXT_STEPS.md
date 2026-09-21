@@ -524,13 +524,17 @@ cd server && npm.cmd run sync:sqlite
   convierte una señal en conclusión profesional (HECHO/SEÑAL/INTERPRETACIÓN/
   REQUIERE VERIFICACIÓN/OPINIÓN PROFESIONAL).
 - **Etapa transversal PHASE 5.5 — Research Platform UX + Identity** (11 subfases
-  RP.1–RP.11) registrada en `PROJECT_EXECUTION_PLAN.md` como **PLANNED**. **RP.1
-  (Domain model Case/Run)** ✅ (2026-09-20, migración 0004 + índice único) y
-  **RP.2 (Search Property flow / entrada B)** ✅ (2026-09-21,
-  `server/tests/research-entry-b.test.ts`, suite 223/223). Las subfases
-  RP.3–RP.11 requieren aprobación explícita del usuario y sus Decision Gates
-  (AGENTS.md §2.3-bis) antes de implementarse. **Siguiente: RP.3 — Research
-  history** (historial PROPERTY / RESEARCH_CASE / RESEARCH_RUN).
+  RP.1–RP.11) registrada en `PROJECT_EXECUTION_PLAN.md`. **RP.1 (Domain model
+  Case/Run)** ✅ (2026-09-20, migración 0004 + índice único), **RP.2 (Search
+  Property flow / entrada B)** ✅ (2026-09-21, `server/tests/research-entry-b.test.ts`,
+  suite 223/223) y **RP.3 (Research history)** ✅ (2026-09-21:
+  `ResearchHistoryService` + DTOs + `GET /api/v1/properties/:id/history` +
+  `server/tests/research-history.test.ts`, suite **233/233 (32 files)**). Las
+  subfases RP.4–RP.11 requieren aprobación explícita del usuario y sus Decision
+  Gates (AGENTS.md §2.3-bis) antes de implementarse. **Siguiente: RP.4 —
+  Property dossier** (expediente propio `/investigaciones/:id` en lugar del
+  drawer; secciones Resumen/Registral/Urbanismo/GIS/Infraestructura/Riesgos/
+  Histórico/Judicial/Mercado/Evidencias/Informe).
 - Pendientes DECISION REQUIRED: tabla `research_runs`, proveedor de
   autenticación, pagos/planes, acceso comercial a fuentes, almacenamiento de
   documentos, retención/borrado de datos.
