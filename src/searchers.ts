@@ -338,17 +338,24 @@ async function tryRecoverPermalinkViaShare(
 
     // 1) Vía portapapeles: el item "Copiar enlace" deposita el permalink real.
     //    (español "Copiar enlace" / inglés "Copy link")
-    //    Se espera a que el menú termine de renderizar (up to 2s).
+    //    Facebook lo renderiza como div[role="button"] dentro del diálogo (no
+    //    como menuitem). OJO: no usar getByText a nivel de página — casa primero
+    //    con <html>/<body> y ancestros inertes, y el clic no copia nada.
     await page
-      .getByText('Copiar enlace', { exact: false })
+      .locator('[role="dialog"]')
       .first()
       .waitFor({ state: 'visible', timeout: 2000 })
       .catch(() => {});
-    const copyLabels = ['Copiar enlace', 'Copy link'];
+    const copySels = [
+      '[role="dialog"] [role="menuitem"]:has-text("Copiar enlace")',
+      '[role="dialog"] div[role="button"]:has-text("Copiar enlace")',
+      '[role="dialog"] [role="menuitem"]:has-text("Copy link")',
+      '[role="dialog"] div[role="button"]:has-text("Copy link")',
+    ];
     let copyBtn: Locator | null = null;
-    for (const label of copyLabels) {
-      const el = page.getByText(label, { exact: false }).first();
-      const visible = await el.isVisible({ timeout: 400 }).catch(() => false);
+    for (const sel of copySels) {
+      const el = page.locator(sel).first();
+      const visible = await el.isVisible({ timeout: 500 }).catch(() => false);
       if (visible) {
         copyBtn = el;
         break;

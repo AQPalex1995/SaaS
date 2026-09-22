@@ -1,5 +1,44 @@
 # AGENT CHANGELOG
 
+## 2026-09-22 — OpenCode — Scout Legacy: validación en vivo del share-peek + fix de clic en "Copiar enlace"
+
+Validación en vivo del checkpoint `762feff` (share-peek) terminada:
+
+- **Reinicio del Scout** (8787) con el código nuevo y ciclo completo
+  `12:54:08 → 13:10:51` (26 búsquedas, 334 nuevos, ok). Medición del grupo
+  reportado (898903077352539) por `link_status`:
+  - Los 11 enlaces muertos `group_root` desaparecieron (fallback mejorado),
+    pero el share-peek **no produjo ningún permalink** (28 `search` + 1).
+  - `recover:links` (headless=false) → solo **3/616** enlaces recuperados.
+- **Diagnóstico en vivo** (scratch/validate-share-dim*.ts, sin commitear): el
+  clic en "Compartir" del artículo SÍ abre el diálogo ("Enviar por Messenger /
+  Enviar por X / Copiar enlace") y `navigator.clipboard.readText()` está
+  concedido y responde. **Causa raíz del bajo rédito**: `page.getByText
+  ('Copiar enlace').first()` casa primero con `<html>`/`<body>`/ancestros
+  inertes → el clic no copiaba nada (pifia clásica de Playwright). Además el
+  ítem real es `div[role="button"]` (no `[role="menuitem"]`).
+- **Fix aplicado** (`src/searchers.ts`, `tryRecoverPermalinkViaShare`): el
+  targeting se acota al diálogo con `[role="dialog"] div[role="button"]:
+  has-text("Copiar enlace")` (+ variantes menuitem / "Copy link"), se espera el
+  diálogo visible y solo entonces clic + `readText()`. El diagnóstico confirmó
+  que ese clic deposita el permalink real
+  (`facebook.com/groups/{gid}/posts/{pid}/?comment_id=…` → `postUrlFromRaw` lo
+  reduce a URL canónica).
+- **Validación final en vivo** (ciclo `13:56:31 → 14:12:50`, 341 nuevos, ok):
+  grupo objetivo **28 filas → 3 `permalink`, 25 `search`, 0 `group_root`**
+  (antes: 1 permalink y 11 raíz muerta). El permalink se recupera de verdad vía
+  "Copiar enlace" en el ciclo Headless real, sin colgarse.
+- **Hallazgo adicional**: `recover:links` mantiene rédito bajo (3/625) porque
+  hace el share-peek DESPUÉS del scroll exhaustivo, cuando los artículos ya
+  salieron del DOM virtualizado y no hay artículo visible para emparejar; el
+  que funciona es el share-peek del ciclo normal (por barrido, con el artículo
+  visible). Mejora abierta: intercalar scroll+peek dentro de `recoverGroupLinks`.
+- **Incidente transitorio**: el ciclo encolado vía `runNow` (13:34) quedó
+  colgado en la sección de grupo (API 8787 sin responder, event loop
+  bloqueado); resuelto reiniciando el Scout. No reproducido en ciclos
+  posteriores.
+- Verificación: `npm.cmd run typecheck` raíz ✅. Suite server no afectada.
+
 ## 2026-09-22 — OpenCode — Scout Legacy (aprobado): recuperación de permalink de posts de grupo vía botón "Compartir" (share-peek) + fallback mejorado
 
 El usuario reportó que la bitácora mostraba "[grupo Compra y Venta Terrenos

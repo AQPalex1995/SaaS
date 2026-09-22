@@ -6,7 +6,7 @@ Updated:
 ## Runtime
 
 Scout:
-▶️ 8787 (en ejecución — verificado al analizar el grupo del 2026-09-22)
+▶️ 8787 (en ejecución — validación en vivo del share-peek completada 2026-09-22)
 
 Land Intelligence API:
 ⏸️ 3001 (detenido)
@@ -21,8 +21,8 @@ GitHub:
 ✅ `origin` → `https://github.com/AQPalex1995/SaaS.git` — `main` sincronizado
    (autopush por checkpoint, ver AGENTS.md §2.9)
 
-> Nota: el Scout (8787) quedó corriendo y los contenedores Postgres/Redis
-> detenidos al cierre de esta sesión (ver CHANGELOG_AGENTS.md).
+> Nota: el Scout (8787) quedó corriendo al cierre; los contenedores
+> Postgres/Redis detenidos (ver CHANGELOG_AGENTS.md).
 
 ## Database
 
@@ -67,9 +67,14 @@ reporte del usuario: grupo `Compra y Venta Terrenos Arequipa` (898903077352539),
 ciclo 11:11:21 → 11:25:47 con "83 encontradas (41 nuevas)": las 41 están en
 `data/scout.db`/API, pero 33 tenían URL = raíz del grupo (enlace muerto), 5 =
 búsqueda interna y solo 3 = permalink. Typecheck raíz ✅; server no afectado
-(suite intacta). **Validación en vivo pendiente**: reiniciar el Scout para el
-próximo ciclo y revisar `link_status` en el panel 8787 + `npm.cmd run
-recover:links`.
+(suite intacta). **Validación en vivo COMPLETADA (2026-09-22)**: ciclo
+`13:56:31 → 14:12:50` con el código nuevo → grupo objetivo **28 filas, 3
+`permalink` reales (vía "Copiar enlace" en el diálogo Compartir), 25 `search`,
+0 raíz de grupo**; el ciclo previo al fix del click daba 1 permalink. Se
+corrigió el targeting del ítem "Copiar enlace" (getByText global → `[role=
+"dialog"] div[role="button"]:has-text("Copiar enlace")` en `searchers.ts`).
+`recover:links` sigue acotado (3/625): share-peek tras el scroll exhaustivo no
+tiene artículos visibles en el DOM virtualizado (mejora abierta).
 
 **Fase 5.5 / RP.4 (Property dossier — expediente `/investigaciones/:id`) — ✅ DONE (2026-09-21)**.
 Nuevo `DossierService` (`server/src/domain/dossier/service.ts`) que agrega las
@@ -267,12 +272,16 @@ None
   fallback de búsqueda interna mejorado (`src/searchers.ts`), reconocimiento de
   `facebook.com/share/p/…` (`src/links.ts`), permisos de clipboard en el
   navegador (`src/browser.ts`) y flags `sharePeek*` (`src/config.ts`). Typecheck
-  raíz ✅. Estado medido del grupo reportado: de 41 filas del último ciclo, 33
-  tenían raíz del grupo + 5 búsqueda interna + 3 permalink. **Validación en vivo
-  pendiente**: reiniciar el Scout (`iniciar-scout.bat`), revisar un ciclo en el
-  panel 8787 (nº de posts por grupo + `link_status` de la última hora) y luego
-  `npm.cmd run recover:links` para el backfill de las filas guardadas con enlace
-  no canónico.
+  raíz ✅. **Validación en vivo completada (2026-09-22)**: los `group_root`
+  muertos desaparecieron y el share-peek ya produce permalinks reales en el
+  ciclo headless (grupo objetivo: 3 permalink / 25 search / 0 raíz en el ciclo
+  `13:56:31→14:12:50`; 1 permalink antes del fix de click). Fix del click
+  "Copiar enlace" acotado al diálogo (`searchers.ts`). `recover:links` aún con
+  rédito bajo (3/625): hace el share-peek tras el scroll exhaustivo sin
+  artículos visibles (mejora abierta: intercalar scroll+peek). Incidente
+  transitorio registrado: ciclo en cola vía `runNow` (13:34) colgado en la
+  sección de grupo (API 8787 sin responder) → reinicio del Scout; no
+  reproducido.
 - El producto definido (2026-09-19: Land Intelligence, Buscar Predio,
   expediente `/investigaciones/:id`, planes) está **documentado pero no
   implementado en la UI**: el frontend sigue siendo el panel Scout (8787) +
