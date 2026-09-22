@@ -1,29 +1,28 @@
 # PROJECT STATUS
 
 Updated:
-2026-09-21
+2026-09-22
 
 ## Runtime
 
 Scout:
-⏸️ 8787 (detenido al cierre de esta sesión)
+▶️ 8787 (en ejecución — verificado al analizar el grupo del 2026-09-22)
 
 Land Intelligence API:
-⏸️ 3001 (detenido al cierre de esta sesión)
+⏸️ 3001 (detenido)
 
 PostgreSQL:
-▶️ 5433 (docker `land-intel-postgres`, healthy)
+⏸️ 5433 (docker `land-intel-postgres` detenido)
 
 Redis:
-▶️ 6380 (docker `land-intel-redis`, healthy)
+⏸️ 6380 (docker `land-intel-redis` detenido)
 
 GitHub:
 ✅ `origin` → `https://github.com/AQPalex1995/SaaS.git` — `main` sincronizado
    (autopush por checkpoint, ver AGENTS.md §2.9)
 
-> Nota: los contenedores `land-intel-postgres`/`land-intel-redis` se levantaron
-> al final de la sesión para aplicar la migración `0003`. La API y el Scout
-> permanecen detenidos (ver CHANGELOG_AGENTS.md).
+> Nota: el Scout (8787) quedó corriendo y los contenedores Postgres/Redis
+> detenidos al cierre de esta sesión (ver CHANGELOG_AGENTS.md).
 
 ## Database
 
@@ -49,6 +48,28 @@ Root:
 Phase 5 — ✅ SUNARP COMPLETED (T5.1–T5.11 DONE, 2026-09-19). Fase 4 — REM@JU COMPLETED.
 
 ## Current Task
+
+**Scout Legacy — recuperación de permalink de posts de grupo vía botón
+Compartir (share-peek) — ✅ DONE (2026-09-22)** (`src/searchers.ts`,
+`src/links.ts`, `src/browser.ts`, `src/config.ts`, `src/store.ts`).
+Implementada la técnica manual del usuario (Compartir → "Copiar enlace" →
+leer portapapeles) que revela el permalink real que el feed virtualizado de
+Facebook no expone: `tryRecoverPermalinkViaShare` empareja la tarjeta sin
+enlace con su artículo visible (solapamiento ≥ 0.35), hace clic en Compartir
+y copia el enlace (fallback DOM sobre el panel abierto). `config.ts`:
+`sharePeekEnabled=true`, `sharePeekMax=24`. `links.ts` reconoce
+`facebook.com/share/p/…` como permalink. `browser.ts` otorga
+`clipboard-read/write` a facebook.com. Fallback de `searchGroup` mejorado
+(>2 letras, más palabras, stopWords ampliado → casi nunca la raíz del grupo).
+`recoverGroupLinks` reusa share-peek acotado por tarjeta para el backfill.
+`store.ts`: fix de comillas en `json_extract` para `findByHref`. Evidencia del
+reporte del usuario: grupo `Compra y Venta Terrenos Arequipa` (898903077352539),
+ciclo 11:11:21 → 11:25:47 con "83 encontradas (41 nuevas)": las 41 están en
+`data/scout.db`/API, pero 33 tenían URL = raíz del grupo (enlace muerto), 5 =
+búsqueda interna y solo 3 = permalink. Typecheck raíz ✅; server no afectado
+(suite intacta). **Validación en vivo pendiente**: reiniciar el Scout para el
+próximo ciclo y revisar `link_status` en el panel 8787 + `npm.cmd run
+recover:links`.
 
 **Fase 5.5 / RP.4 (Property dossier — expediente `/investigaciones/:id`) — ✅ DONE (2026-09-21)**.
 Nuevo `DossierService` (`server/src/domain/dossier/service.ts`) que agrega las
@@ -237,16 +258,21 @@ None
 
 ## Known Issues
 
-- **Scout Legacy — captura de posts de grupos (2026-09-21)**: implementada la
-  solución aprobada A+B+C (`src/searchers.ts`/`src/extract.ts`/`src/store.ts`):
-  feed `?sort=RECENT_POSTS` + scroll hasta agotar (captura las ~10–15
-  publicaciones nuevas de la hora, no solo los 4 posts fijados del tope), id
-  real por `data-ft`/JSON embebido, firma sintética estable (sin doble fila ni
-  colisiones entre grupos), consolidación cross-key (borra la fila sintética
-  cuando aparece el permalink real) y `recover:links` reforzado. Typecheck raíz
-  ✅. **Validación en vivo pendiente** (ciclo real en el panel 8787 +
-  `npm.cmd run recover:links`). Distribución previa en `data/scout.db`: 956
-  filas de grupo → 50 `permalink` + 906 `search`.
+- **Scout Legacy — captura de posts de grupos (2026-09-22)**: sigue vigente la
+  solución A+B+C (`src/searchers.ts`/`src/extract.ts`/`src/store.ts`): feed
+  `?sort=RECENT_POSTS` + scroll hasta agotar, id real por `data-ft`/JSON
+  embebido, firma sintética estable y consolidación cross-key. **Nuevo en esta
+  sesión**: recuperación del permalink real vía botón **Compartir** (share-peek,
+  clic → "Copiar enlace" → portapapeles) para las tarjetas sin enlace real, más
+  fallback de búsqueda interna mejorado (`src/searchers.ts`), reconocimiento de
+  `facebook.com/share/p/…` (`src/links.ts`), permisos de clipboard en el
+  navegador (`src/browser.ts`) y flags `sharePeek*` (`src/config.ts`). Typecheck
+  raíz ✅. Estado medido del grupo reportado: de 41 filas del último ciclo, 33
+  tenían raíz del grupo + 5 búsqueda interna + 3 permalink. **Validación en vivo
+  pendiente**: reiniciar el Scout (`iniciar-scout.bat`), revisar un ciclo en el
+  panel 8787 (nº de posts por grupo + `link_status` de la última hora) y luego
+  `npm.cmd run recover:links` para el backfill de las filas guardadas con enlace
+  no canónico.
 - El producto definido (2026-09-19: Land Intelligence, Buscar Predio,
   expediente `/investigaciones/:id`, planes) está **documentado pero no
   implementado en la UI**: el frontend sigue siendo el panel Scout (8787) +

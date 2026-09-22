@@ -1,4 +1,4 @@
-import type { Page } from 'playwright';
+import type { Locator, Page } from 'playwright';
 import { config } from './config';
 import { readGroupCards, readMarketplaceCards, type CardRaw } from './extract';
 import {
@@ -195,6 +195,192 @@ async function scrollFeedOnce(page: Page): Promise<void> {
   await sleep(1100 + Math.random() * 900);
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Recuperación de permalink vía botón "Compartir"
+   ─────────────────────────────────────────────────────────────
+   Facebook no siempre expone el enlace canónico de un post de grupo
+   (feed virtualizado). Pero el menú Compartir (botón junto a Me gusta /
+   Comentar) ofrece "Copiar enlace", y ESO sí revela el permalink real
+   del post (bien sea /groups/{id}/posts/{pid} o facebook.com/share/p/…).
+   Simulamos lo que haría un usuario: clic en Compartir → Copiar enlace →
+   leemos el portapapeles y construimos el enlace usable.
+*/
+
+/** Extrae el id real del post desde una URL/texto capturado. */
+function postIdFromUrl(raw: string, groupId: string): string | null {
+  if (!raw) return null;
+  let m = raw.match(new RegExp(`/groups/${groupId}/(?:posts|permalink|multi_permalink)/(\\d+)`));
+  if (m) return m[1];
+  m = raw.match(/[?&](?:story_fbid|multi_permalinks)=(\d+)/);
+  if (m) return m[1];
+  m = raw.match(/[?&]set=gm\.(\d+)/);
+  if (m) return m[1];
+  m = raw.match(/(?:posts|permalink|multi_permalink)\/(\d+)/);
+  if (m) return m[1];
+  return null;
+}
+
+/** Detecta un enlace de compartir global facebook.com/share/… */
+function shareUrlFromText(raw: string): string | null {
+  if (!raw) return null;
+  const m = raw.match(/https?:\/\/www\.facebook\.com\/share\/[a-z]\/[A-Za-z0-9]+/);
+  return m ? m[0] : null;
+}
+
+/** Convierte lo capturado en la mejor URL usable del post. */
+function postUrlFromRaw(raw: string, groupId: string): string | null {
+  const pid = postIdFromUrl(raw, groupId);
+  if (pid) return `https://www.facebook.com/groups/${groupId}/posts/${pid}`;
+  return shareUrlFromText(raw);
+}
+
+/** Clic en el botón Compartir dentro del artículo visible. */
+async function clickShareButtonOf(article: Locator): Promise<boolean> {
+  const selectors = [
+    'div[role="button"][aria-label*="Compartir"]',
+    'a[aria-label*="Compartir"]',
+    '[aria-label*="Compartir"]',
+    'div[role="button"]:has-text("Compartir")',
+    'a:has-text("Compartir")',
+  ];
+  for (const sel of selectors) {
+    const btn = article.locator(sel).first();
+    try {
+      if (await btn.isVisible({ timeout: 900 }).catch(() => false)) {
+        await btn.click({ timeout: 1500 });
+        return true;
+      }
+    } catch {}
+  }
+  return false;
+}
+
+/** Escanea el panel/menú de compartir por enlaces al post (fallback sin portapapeles). */
+async function collectShareSurfaceUrls(page: Page): Promise<string[]> {
+  return page
+    .evaluate(() => {
+      const out: string[] = [];
+      const pick = (el: Element): void => {
+        const a = el as HTMLAnchorElement;
+        const val = (a.href || (el as HTMLInputElement).value || '') as string;
+        if (val && /facebook\.com/.test(val)) {
+          const t = val.toLowerCase();
+          if (
+            t.includes('story_fbid') ||
+            t.includes('/posts/') ||
+            t.includes('permalink') ||
+            t.includes('multi_permalinks') ||
+            t.includes('set=gm') ||
+            t.includes('/share/')
+          ) {
+            out.push(val);
+          }
+        }
+      };
+      document
+        .querySelectorAll(
+          'div[role="dialog"] a[href], div[role="menu"] a[href], div[role="dialog"] input, div[role="menu"] input, div[role="dialog"] textarea, div[role="menu"] textarea, [role="dialog"] [aria-label*="enlace"] a[href]'
+        )
+        .forEach((el) => pick(el));
+      return out;
+    })
+    .catch(() => []);
+}
+
+/** Cierra el menú Compartir abierto (Escape + botón de cierre si queda dialog). */
+async function dismissShareSurface(page: Page): Promise<void> {
+  await page.keyboard.press('Escape').catch(() => {});
+  await sleep(400);
+  const closeBtn = page.locator('div[aria-label="Cerrar"], div[aria-label="Close"]').first();
+  try {
+    if (await closeBtn.isVisible({ timeout: 600 }).catch(() => false)) {
+      await closeBtn.click({ timeout: 600 });
+    }
+  } catch {}
+  await page.keyboard.press('Escape').catch(() => {});
+  await sleep(300);
+}
+
+/**
+ * Intenta descubrir el permalink de una tarjeta sin enlace real abriendo el
+ * menú Compartir del artículo visible correspondiente y copiando su enlace.
+ * Devuelve { url, postId? } o null si no se pudo.
+ */
+async function tryRecoverPermalinkViaShare(
+  page: Page,
+  groupId: string,
+  textHint: string
+): Promise<{ url: string; postId?: string } | null> {
+  if (!config.sharePeekEnabled) return null;
+  const hint = normalizeTitleForMatch(textHint);
+  if (!hint) return null;
+
+  const articles = page.locator('div[role="article"]');
+  const count = (await articles.count().catch(() => 0)) || 0;
+  let best: Locator | null = null;
+  let bestScore = 0;
+  for (let i = 0; i < count; i++) {
+    const art = articles.nth(i);
+    if (!(await art.isVisible().catch(() => false))) continue;
+    const txt = normalizeTitleForMatch((await art.innerText().catch(() => '')).replace(/\s+/g, ' ').trim());
+    if (!txt) continue;
+    const s = tokenOverlap(hint, txt);
+    if (s > bestScore) {
+      bestScore = s;
+      best = art;
+    }
+  }
+  if (!best || bestScore < config.sharePeekMinOverlap) return null;
+
+  let out: { url: string; postId?: string } | null = null;
+  try {
+    if (!(await clickShareButtonOf(best))) return null;
+
+    // 1) Vía portapapeles: el item "Copiar enlace" deposita el permalink real.
+    //    (español "Copiar enlace" / inglés "Copy link")
+    //    Se espera a que el menú termine de renderizar (up to 2s).
+    await page
+      .getByText('Copiar enlace', { exact: false })
+      .first()
+      .waitFor({ state: 'visible', timeout: 2000 })
+      .catch(() => {});
+    const copyLabels = ['Copiar enlace', 'Copy link'];
+    let copyBtn: Locator | null = null;
+    for (const label of copyLabels) {
+      const el = page.getByText(label, { exact: false }).first();
+      const visible = await el.isVisible({ timeout: 400 }).catch(() => false);
+      if (visible) {
+        copyBtn = el;
+        break;
+      }
+    }
+    if (copyBtn) {
+      await copyBtn.click({ timeout: 1200 }).catch(() => {});
+      await sleep(600);
+      const clip = await page.evaluate(() => navigator.clipboard.readText()).catch(() => '');
+      const clipUrl = postUrlFromRaw(clip || '', groupId);
+      if (clipUrl) {
+        out = { url: clipUrl, postId: postIdFromUrl(clip || '', groupId) || undefined };
+      }
+    }
+
+    // 2) Fallback DOM: escanear el panel/menú abierto por enlaces al post.
+    if (!out) {
+      const urls = await collectShareSurfaceUrls(page);
+      for (const raw of urls) {
+        const url = postUrlFromRaw(raw, groupId);
+        if (url) {
+          out = { url, postId: postIdFromUrl(raw, groupId) || undefined };
+          break;
+        }
+      }
+    }
+  } finally {
+    await dismissShareSurface(page);
+  }
+  return out;
+}
+
 /**
  * Recorre el feed del grupo con scroll "hasta agotar": sigue bajando mientras
  * aparezcan tarjetas nuevas y corta después de `staleLimit` pasadas vacías (o
@@ -205,18 +391,22 @@ async function scrollFeedOnce(page: Page): Promise<void> {
 async function collectGroupCardsExhaust(
   page: Page,
   groupId: string,
-  opts?: { maxScrolls?: number; minScrolls?: number }
+  opts?: { maxScrolls?: number; minScrolls?: number; sharePeek?: boolean }
 ): Promise<CardRaw[]> {
   const minScrolls = opts?.minScrolls ?? Math.max(8, config.maxScrolls * 2);
   const maxScrolls = opts?.maxScrolls ?? Math.max(24, config.maxScrolls * 4);
+  const sharePeek = opts?.sharePeek ?? true;
   const staleLimit = 3;
 
   const cards: CardRaw[] = [];
   const seen = new Set<string>();
+  const sharePeeked = new Set<string>();
   let stale = 0;
+  let shareAttempts = 0;
 
   for (let i = 0; i < maxScrolls; i++) {
     const found = await readGroupCards(page, groupId);
+    const newOnes: CardRaw[] = [];
     let added = 0;
     for (const c of found) {
       if (seen.has(c.key)) {
@@ -229,9 +419,35 @@ async function collectGroupCardsExhaust(
       }
       seen.add(c.key);
       cards.push(c);
+      newOnes.push(c);
       added++;
     }
     stale = added > 0 ? 0 : stale + 1;
+
+    // Recuperar enlace real vía botón Compartir para las tarjetas nuevas que aún
+    // no tienen permalink (mientras su artículo sigue visible en el viewport).
+    if (sharePeek && config.sharePeekEnabled) {
+      for (const c of newOnes) {
+        if (shareAttempts >= config.sharePeekMax) break;
+        if (isCanonicalPermalink(c.href)) continue;
+        const tag = `${c.key}|${c.text.slice(0, 80)}`;
+        if (sharePeeked.has(tag)) continue;
+        sharePeeked.add(tag);
+        shareAttempts++;
+        // Comportarse más parecido a un humano: pausa pequeña aleatoria antes del clic.
+        await randomDelay(0.4, 1.1);
+        const rec = await tryRecoverPermalinkViaShare(page, groupId, c.text || c.label || '');
+        if (rec) {
+          c.href = rec.url;
+          if (rec.postId) {
+            const canonicalKey = `${groupId}_${rec.postId}`;
+            c.key = canonicalKey;
+            seen.add(canonicalKey);
+          }
+        }
+      }
+    }
+
     if (i + 1 >= minScrolls && stale >= staleLimit) break;
     if (i + 1 >= maxScrolls) break;
     await scrollFeedOnce(page);
@@ -275,19 +491,32 @@ export async function searchGroup(
   let cards = await collectGroupCardsExhaust(page, groupId);
 
   // Fallback inteligente: si una publicación no tiene permalink directo,
-  // crear un enlace de búsqueda interno del grupo con las palabras clave de su título
+  // crear un enlace de búsqueda interno del grupo con las palabras clave de su título.
+  // Se usa un corte más laxo (más palabras, >2 letras) para que casi nunca
+  // quede la raíz del grupo como destino (eso era un enlace muerto en la UI).
+  const stopWords =
+    /\b(publicaci[oó]n|facebook|precio|venta|vendo|remato|ocasi[oó]n|gratis|d[oó]lares|soles|informes|whatsapp|inmobiliaria|ahora|mismo|muy|para|como|desde|hasta|aqui|pero|este|esta)\b/gi;
   for (const c of cards) {
     if (!c.href || c.href === `https://www.facebook.com/groups/${groupId}`) {
       const words = (c.rawTitle || c.label || c.text || '')
         .replace(/[^\w\sáéíóúÁÉÍÓÚñÑ]/g, ' ')
-        .replace(/\b(publicaci[oó]n|facebook|precio|venta|vendo|remato|ocasi[oó]n|gratis|d[oó]lares|soles|informes|whatsapp|inmobiliaria)\b/gi, ' ')
+        .replace(stopWords, ' ')
         .trim()
         .split(/\s+/)
-        .filter((w) => w.length > 3)
-        .slice(0, 4)
+        .filter((w) => w.length > 2)
+        .slice(0, 6)
         .join(' ');
-      c.href = words
-        ? `https://www.facebook.com/groups/${groupId}/search/?q=${encodeURIComponent(words)}`
+      const fallbackWords = (c.text || c.label || '')
+        .replace(/[^\w\sáéíóúÁÉÍÓÚñÑ]/g, ' ')
+        .replace(stopWords, ' ')
+        .trim()
+        .split(/\s+/)
+        .filter((w) => w.length > 2)
+        .slice(0, 8)
+        .join(' ');
+      const finalWords = words || fallbackWords;
+      c.href = finalWords
+        ? `https://www.facebook.com/groups/${groupId}/search/?q=${encodeURIComponent(finalWords)}`
         : `https://www.facebook.com/groups/${groupId}`;
     }
   }
@@ -341,8 +570,9 @@ export async function recoverGroupLinks(
     await page.waitForTimeout(2000);
   }
 
-  const cards = await collectGroupCardsExhaust(page, groupId, { minScrolls: 6, maxScrolls: 20 });
+  const cards = await collectGroupCardsExhaust(page, groupId, { minScrolls: 6, maxScrolls: 20, sharePeek: false });
   let fixed = 0;
+  let shareAttempts = 0;
 
   // Candidatas ya guardadas de este grupo que aún no tienen permalink real
   const pending = store
@@ -355,15 +585,28 @@ export async function recoverGroupLinks(
   }));
 
   for (const card of cards) {
-    if (!isCanonicalPermalink(card.href)) continue;
+    // Recuperar enlace real vía botón Compartir cuando el feed aún no lo expone.
+    let href = card.href;
+    const origKey = card.key;
+    if (!isCanonicalPermalink(href) && shareAttempts < config.sharePeekMax) {
+      shareAttempts++;
+      await randomDelay(0.4, 1.0);
+      const rec = await tryRecoverPermalinkViaShare(page, groupId, card.text || card.label || '');
+      if (rec) {
+        href = rec.url;
+        if (rec.postId) card.key = `${groupId}_${rec.postId}`;
+      }
+    }
+    if (!isCanonicalPermalink(href)) continue;
+
     const cardText = normalizeTitleForMatch(card.text);
 
     // 1) Fila con la misma clave → actualizar URL a permalink real
-    const prev = store.get(card.key);
+    const prev = store.get(origKey);
     if (prev) {
       const prevUrl = prev.url_publicacion || prev.url || '';
       if (!isCanonicalPermalink(prevUrl)) {
-        store.patch(card.key, { url_publicacion: card.href, url: card.href, link_status: 'permalink' });
+        store.patch(origKey, { url_publicacion: href, url: href, link_status: 'permalink' });
         fixed++;
       }
       continue;
@@ -379,7 +622,7 @@ export async function recoverGroupLinks(
     if (best) {
       const cur = best.row.url_publicacion || best.row.url || '';
       if (!isCanonicalPermalink(cur)) {
-        store.patch(best.row.id_publicacion, { url_publicacion: card.href, url: card.href, link_status: 'permalink' });
+        store.patch(best.row.id_publicacion, { url_publicacion: href, url: href, link_status: 'permalink' });
         fixed++;
         const idx = pendingPool.findIndex((c) => c.row.id_publicacion === best!.row.id_publicacion);
         if (idx >= 0) pendingPool.splice(idx, 1);
@@ -388,7 +631,7 @@ export async function recoverGroupLinks(
     }
 
     // 3) Duplicado real con el mismo permalink bajo otra clave → consolidar
-    const dup = store.findByHref(card.href, groupId);
+    const dup = store.findByHref(href, groupId);
     if (dup && dup.id_publicacion && dup.id_publicacion !== card.key) {
       store.delete(dup.id_publicacion);
       fixed++;

@@ -10,6 +10,7 @@
 export type LinkStatus = 'permalink' | 'search' | 'group_root' | 'direct' | '';
 
 const GROUP_POST_RE = /\/groups\/[^/?#]+\/(?:posts|permalink|multi_permalink)\/\d+/;
+const SHARE_P_RE = /facebook\.com\/share\/[a-z]\/[A-Za-z0-9]+/;
 
 /** ¿La URL apunta directamente a una publicación? */
 export function isCanonicalPermalink(url: string | null | undefined): boolean {
@@ -17,7 +18,8 @@ export function isCanonicalPermalink(url: string | null | undefined): boolean {
   return (
     GROUP_POST_RE.test(url) ||
     /[?&]multi_permalinks=\d+/.test(url) ||
-    /[?&]set=gm\.\d+/.test(url)
+    /[?&]set=gm\.\d+/.test(url) ||
+    SHARE_P_RE.test(url)
   );
 }
 

@@ -18,6 +18,12 @@ export async function openBrowser(headless: boolean): Promise<{ ctx: BrowserCont
     (window as unknown as Record<string, unknown>).chrome = undefined;
     (window as unknown as Record<string, unknown>).__name = (target: unknown) => target;
   });
+  // Permitir leer/escribir el portapapeles: la opción "Copiar enlace" del menú
+  // Compartir de Facebook deposita el permalink del post ahí (lo usamos para
+  // recuperar enlaces reales de publicaciones de grupo sin permalink expuesto).
+  await ctx
+    .grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'https://www.facebook.com' })
+    .catch(() => {});
   const page = ctx.pages()[0] ?? (await ctx.newPage());
   page.setDefaultTimeout(25000);
   return { ctx, page };

@@ -69,12 +69,12 @@ class Store {
   findByHref(href: string, idPrefix?: string): ListingRow | null {
     if (!href) return null;
     let stmt = this.db.prepare(
-      'SELECT data FROM listings WHERE (json_extract(data, "$.url_publicacion") = ? OR json_extract(data, "$.url") = ?)'
+      `SELECT data FROM listings WHERE (json_extract(data, '$.url_publicacion') = ? OR json_extract(data, '$.url') = ?)`
     ) as ReturnType<DatabaseSync['prepare']>;
     let args: (string | number)[] = [href, href];
     if (idPrefix) {
       stmt = this.db.prepare(
-        'SELECT data FROM listings WHERE id LIKE ? AND (json_extract(data, "$.url_publicacion") = ? OR json_extract(data, "$.url") = ?)'
+        `SELECT data FROM listings WHERE id LIKE ? AND (json_extract(data, '$.url_publicacion') = ? OR json_extract(data, '$.url') = ?)`
       );
       args = [`${idPrefix}_%`, href, href];
     }

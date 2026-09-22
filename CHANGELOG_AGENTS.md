@@ -1,5 +1,61 @@
 # AGENT CHANGELOG
 
+## 2026-09-22 — OpenCode — Scout Legacy (aprobado): recuperación de permalink de posts de grupo vía botón "Compartir" (share-peek) + fallback mejorado
+
+El usuario reportó que la bitácora mostraba "[grupo Compra y Venta Terrenos
+Arequipa] -> 83 publicaciones encontradas (41 nuevas)" pero esas 41 no podían
+visualizarse desde el panel. Diagnóstico (verificado contra `data/scout.db` +
+API del panel 8787): **las 41 SÍ están guardadas**, pero de ellas **33 tienen
+URL = raíz del grupo** (`https://www.facebook.com/groups/{gid}` — enlace
+muerto en la UI), 5 = búsqueda interna del grupo y solo 3 = permalink real.
+Causa raíz: el feed de grupo virtualizado de Facebook no expone el permalink;
+el extractor crea claves sintéticas `{gid}_p_<hash>` con href de la raíz.
+
+Implementado (técnica manual del usuario: Compartir → "Copiar enlace"):
+- **`src/config.ts`**: `AppConfig` gana `sharePeekEnabled: true`,
+  `sharePeekMax: 24` y `sharePeekMinOverlap: 0.35` (tope de intentos por
+  grupo/barrido para acotar tiempo y riesgo).
+- **`src/links.ts`**: nuevo `SHARE_P_RE = /facebook\.com\/share\/[a-z]\/[A-Za-z0-9]+/`;
+  `isCanonicalPermalink` ahora reconoce también `facebook.com/share/p/…`
+  (el enlace real que FB deposita en el portapapeles via Copiar enlace).
+- **`src/browser.ts`**: `openBrowser` otorga `clipboard-read`/`clipboard-write`
+  para `https://www.facebook.com` (el menú Compartir lee/escribe el
+  portapapeles mediante `navigator.clipboard`).
+- **`src/searchers.ts`** (helpers puros + integración):
+  - `postIdFromUrl` (posts/permalink/multi_permalink/story_fbid/set=gm),
+    `shareUrlFromText`, `postUrlFromRaw`, `clickShareButtonOf` (selectores
+    ARIA "Compartir"), `collectShareSurfaceUrls` (fallback DOM por dialogs/
+    menus/inputs), `dismissShareSurface` (Escape + cierre de dialog) y
+    `tryRecoverPermalinkViaShare` (artículo visible mejor emparejado por
+    solapamiento de tokens ≥ `sharePeekMinOverlap` → clic Compartir → espera
+    "Copiar enlace"/"Copy link" → click → `navigator.clipboard.readText()` →
+    URL usable; fallback DOM).
+  - `collectGroupCardsExhaust` acepta `opts.sharePeek` (default true) y, por
+    barrido, aplica share-peek a las tarjetas NUEVAS sin permalink (con
+    `randomDelay(0.4–1.1 s)` previo al clic, respetando `sharePeekMax`);
+    si se obtiene `postId`, la clave sintética se reemplaza por la canónica
+    `{gid}_{postId}`.
+  - `searchGroup`: fallback inteligente mejorado — más palabras (>2 letras,
+    slice 6, fallback con slice 8) y `stopWords` ampliado, para que casi nunca
+    quede la raíz del grupo como destino.
+  - `recoverGroupLinks`: topo `shareAttempts < sharePeekMax` con share-peek
+    por tarjeta (guarda `origKey` antes de reescribir la clave) antes de
+    clasificar como permalink; usa la URL recuperada al parchear/consolidar.
+- **`src/store.ts`**: `findByHref` usa comillas simples en la ruta JSON de
+  `json_extract` (sintaxis válida de SQLite) para que funcione el lookup por
+  href/permalinks recuperados.
+
+Verificación: `npm.cmd run typecheck` (raíz Scout Legacy) ✅ ×2; smoke test de
+carga del módulo `searchers.ts` OK. Suite server **no afectada** (sin cambios
+en `server/`). **Validación en vivo pendiente**: reiniciar el Scout
+(`iniciar-scout.bat`) para que el próximo ciclo use share-peek y revisar
+`link_status` de la hora en el panel 8787; luego `npm.cmd run recover:links`
+para el backfill de filas existentes (50 filas de grupo hoy: 43 con enlace
+rojo/raíz/sin permalink).
+
+Siguiente (plan): **RP.5 Authentication** sigue siendo la siguiente tarea de
+PHASE 5.5 (requiere aprobación explícita y Decision Gates).
+
 ## 2026-09-21 — OpenCode — Fase 5.5 / RP.4 (Property dossier — expediente `/investigaciones/:id`) — DONE
 
 Aprobado por el usuario ("okey continua con el RP 4"). Implementado el

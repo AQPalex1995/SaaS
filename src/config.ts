@@ -17,6 +17,12 @@ export interface AppConfig {
   delayMaxSec: number;
   headless: boolean;
   firstRunDelaySec: number;
+  /** Habilitar recuperación de permalink vía botón Compartir (clic + copiar enlace). */
+  sharePeekEnabled: boolean;
+  /** Máximo de intentos de Compartir por grupo/barrido (acota tiempo y riesgo de bloqueo). */
+  sharePeekMax: number;
+  /** Solapamiento mínimo de texto para asociar una tarjeta sin enlace a su artículo visible. */
+  sharePeekMinOverlap: number;
 }
 
 export const config: AppConfig = {
@@ -59,6 +65,9 @@ export const config: AppConfig = {
   delayMaxSec: 6,
   headless: true,
   firstRunDelaySec: 45,
+  sharePeekEnabled: true,
+  sharePeekMax: 24,
+  sharePeekMinOverlap: 0.35,
 };
 
 export function isPlaceholderGroup(g: GroupSearch): boolean {
