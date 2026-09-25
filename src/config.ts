@@ -12,6 +12,10 @@ export interface AppConfig {
   groupQueries: string[];
   groups: GroupSearch[];
   maxScrolls: number;
+  marketplaceScrolls: number;
+  groupMinScrolls: number;
+  groupMaxScrolls: number;
+  groupStaleLimit: number;
   capPerSearch: number;
   delayMinSec: number;
   delayMaxSec: number;
@@ -59,15 +63,19 @@ export const config: AppConfig = {
     { name: 'Terrenos y Lotes en Venta', url: 'https://www.facebook.com/groups/648889315758138' },
     { name: 'Casas en Venta Arequipa', url: 'https://www.facebook.com/groups/casasenventaenarequipa/' },
   ],
-  maxScrolls: 4,
+  maxScrolls: 6,
+  marketplaceScrolls: 4,
+  groupMinScrolls: 6,
+  groupMaxScrolls: 12,
+  groupStaleLimit: 3,
   capPerSearch: 60,
   delayMinSec: 3,
   delayMaxSec: 6,
-  headless: true,
+  headless: process.env.HEADLESS !== undefined ? process.env.HEADLESS === 'true' : true,
   firstRunDelaySec: 45,
   sharePeekEnabled: true,
-  sharePeekMax: 24,
-  sharePeekMinOverlap: 0.35,
+  sharePeekMax: 40,
+  sharePeekMinOverlap: 0.25,
 };
 
 export function isPlaceholderGroup(g: GroupSearch): boolean {

@@ -176,84 +176,48 @@ async function fetchPortalCards(
 }
 
 export async function scrapeAdondeVivir(started: Date): Promise<SearchOutcome> {
-  const baseCategories = [
-    'https://www.adondevivir.com/inmuebles-en-venta-en-arequipa-provincia.html',
-    'https://www.adondevivir.com/terrenos-en-venta-en-arequipa-provincia.html',
-    'https://www.adondevivir.com/casas-en-venta-en-arequipa-provincia.html',
-    'https://www.adondevivir.com/departamentos-en-venta-en-arequipa-provincia.html',
-    'https://www.adondevivir.com/inmuebles-en-venta-en-uchumayo-arequipa.html',
-    'https://www.adondevivir.com/inmuebles-en-venta-en-la-joya-arequipa.html',
-    'https://www.adondevivir.com/inmuebles-en-venta-en-cayma-arequipa.html',
-    'https://www.adondevivir.com/inmuebles-en-venta-en-cerro-colorado-arequipa.html',
-    'https://www.adondevivir.com/inmuebles-en-venta-en-yanahuara-arequipa.html',
-    'https://www.adondevivir.com/inmuebles-en-venta-en-paucarpata-arequipa.html',
-  ];
-
-  const urls: string[] = [];
-  for (const base of baseCategories) {
-    urls.push(base);
-    const prefix = base.replace('.html', '');
-    for (let p = 2; p <= 5; p++) {
-      urls.push(`${prefix}-pagina-${p}.html`);
-    }
-  }
-
+  const url = 'https://www.adondevivir.com/inmuebles-en-venta-en-arequipa-provincia.html?sort=more_recent';
   let totalFound = 0;
   let totalInserted = 0;
 
-  // Lanzar un solo navegador para todas las páginas de AdondeVivir
+  // Lanzar navegador headless (según config.headless)
   const browser = await chromium.launch({ headless: config.headless });
   try {
-    for (const url of urls) {
-      try {
-        const items = await fetchPortalCards(url, 'adondevivir', browser);
-        totalFound += items.length;
-        for (const item of items) {
-          if (storePortalItem(item, 'adondevivir', started)) totalInserted++;
-        }
-      } catch (e) {
-        log('warn', `  [adondevivir] ${url}: ${(e as Error).message}`);
-      }
+    const items = await fetchPortalCards(url, 'adondevivir', browser);
+    totalFound = items.length;
+    for (const item of items) {
+      if (storePortalItem(item, 'adondevivir', started)) totalInserted++;
     }
+  } catch (e) {
+    log('warn', `  [adondevivir] ${url}: ${(e as Error).message}`);
   } finally {
     await browser.close().catch(() => {});
   }
 
-  log('info', `  [adondevivir] Barrido Arequipa -> ${totalFound} publicaciones (${totalInserted} nuevas)`);
+  log('info', `  [adondevivir] Más recientes Arequipa -> ${totalFound} publicaciones (${totalInserted} nuevas)`);
   return { count: totalFound, inserted: totalInserted };
 }
 
 export async function scrapeUrbania(started: Date): Promise<SearchOutcome> {
-  const baseCategories = [
-    'https://urbania.pe/buscar/venta-de-terrenos',
-    'https://urbania.pe/buscar/venta-de-casas',
-    'https://urbania.pe/buscar/venta-de-inmuebles',
-  ];
-
+  const url = 'https://urbania.pe/buscar/venta-de-propiedades-en-arequipa?sort=more_recent';
   let totalFound = 0;
   let totalInserted = 0;
 
-  // Reutilizar un solo navegador para Urbania
+  // Lanzar navegador headless (según config.headless)
   const browser = await chromium.launch({ headless: config.headless });
   try {
-    for (const url of baseCategories) {
-      try {
-        const items = (await fetchPortalCards(url, 'urbania', browser)).filter((i) =>
-          isArequipaArea(`${i.title} ${i.descriptionRaw} ${i.featuresRaw} ${i.href}`)
-        );
-        totalFound += items.length;
-        for (const item of items) {
-          if (storePortalItem(item, 'urbania', started)) totalInserted++;
-        }
-      } catch (e) {
-        log('warn', `  [urbania] ${url}: ${(e as Error).message}`);
-      }
+    const items = await fetchPortalCards(url, 'urbania', browser);
+    totalFound = items.length;
+    for (const item of items) {
+      if (storePortalItem(item, 'urbania', started)) totalInserted++;
     }
+  } catch (e) {
+    log('warn', `  [urbania] ${url}: ${(e as Error).message}`);
   } finally {
     await browser.close().catch(() => {});
   }
 
-  log('info', `  [urbania] Barrido Arequipa (filtro distritos) -> ${totalFound} publicaciones (${totalInserted} nuevas)`);
+  log('info', `  [urbania] Más recientes Arequipa -> ${totalFound} publicaciones (${totalInserted} nuevas)`);
   return { count: totalFound, inserted: totalInserted };
 }
 

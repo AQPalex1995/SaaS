@@ -543,6 +543,14 @@ cd server && npm.cmd run sync:sqlite
   documentos, retención/borrado de datos.
 
 - Conectar fuentes reales por el motor de conectores (SUNARP/REM@JU/IMPLA/PDM…) **solo cuando el usuario lo apruebe**, respetando la política anti-stub: datos reales o `unavailable`, nunca simulados.
+- Scout Legacy (2026-09-25, tras validar el interceptor GraphQL): descartar
+  pids de >17 dígitos antes de marcar `link_status='permalink'` (FB usa
+  post IDs de 15–17) y pasar un script de auditoría sobre las ~17 filas
+  históricas afectadas + los 6 pids con títulos conflictivos. Ver
+  `PROJECT_STATUS.md` §Known Issues.
+- Scout Legacy: `src/portals.ts` ahora baja 1 URL "más recientes" por portal
+  (antes 10–15 paginadas). Si la cobertura de AdondeVivir/Urbania cae, revertir
+  a la paginación (queda en el historial de git, commit de 2026-09-25).
 - Implementar la verificación a nivel de caso: confirmar manualmente la identidad del property y la coordenada geocodificada (hoy `verification='inferred'`).
 - Probar escenarios de error restantes con Postgres caído (degradación sin crash) y OSM devolviendo 429/500 con retry+backoff.
 - Fase 3: motor de scores y alertas (hay endpoints marcados `not_implemented`).

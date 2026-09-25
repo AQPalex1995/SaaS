@@ -1,5 +1,83 @@
 # AGENT CHANGELOG
 
+## 2026-09-25 — OpenCode — Scout Legacy: validación en vivo del WIP "interceptor GraphQL" + checkpoint
+
+Se encontró trabajo **sin commitear** en el Scout Legacy (`src/config.ts`,
+`src/extract.ts`, `src/portals.ts`, `src/searchers.ts`, mtime 2026-09-23 10:53)
+que no figuraba en la bitácora. Con aprobación explícita del usuario
+("validar en vivo y luego checkpoint"), se validó en vivo y se commitea.
+
+### Qué hace el WIP (nuevo, todo en código del Scout Legacy)
+- **`src/searchers.ts` — `setupPostIdInterceptor` (interceptor pasivo de
+  GraphQL)**: escucha las respuestas GraphQL del feed de cada grupo y extrae
+  los post IDs reales (FB los devuelve en el JSON aunque el DOM virtualizado no
+  los exponga): patrón `/groups/{gid}/(posts|permalink|multi_permalink)/(\d+)`
+  y `"post_id"|"story_fbid"|"top_level_post_id"|"feedback_id"`. El texto se
+  recupera de una ventana de ±4000 chars alrededor del ID
+  (`extractNearbyMessageText`). `enrichCardsFromIntercepted` empareja cada
+  tarjeta sin permalink con el ID interceptado por `tokenOverlap >= 0.2`
+  (respeta `usedPids`, sin colisiones dentro del ciclo) y rebuild
+  `href`/`key` como `{gid}_posts_{pid}`. Registrado en `searchGroup` **y** en
+  `recoverGroupLinks` (cerrando la mejora abierta del share-peek en backfill).
+- **`src/extract.ts`**: reconoce `/share/{p,v,g}/ID` como permalink; patrones
+  modernos de post ID en HTML embebido (`/groups/\d+/(posts|permalink)/`,
+  `content_id`, `feedback_id`, `object_fbid`, `mf_story_key`); extracción por
+  `<time>` → `<a>` ancestors (score 10) y fallback `aria-describedby`;
+  limpieza del ruido "Facebook Facebook Facebook" inyectado por iconos/SVG;
+  `a.href` (URL absoluta resuelta) en vez del atributo crudo.
+- **`src/searchers.ts`**: `cleanTitleString` sanea el ruido "Facebook" y exige
+  >5 chars; selectores de Compartir/Copiar enlace ampliados a `[role="menu"]`
+  y a inglés; `collectShareSurfaceUrls` cubre `listbox`/`data-pagelet`.
+- **`src/config.ts`**: `marketplaceScrolls`, `groupMinScrolls`, `groupMaxScrolls`,
+  `groupStaleLimit` (barrido de grupo 6–12 scrolls, antes 8–24), `sharePeekMax`
+  40, `sharePeekMinOverlap` 0.25, y `headless` por env (`HEADLESS`).
+- **`src/portals.ts`**: AdondeVivir y Urbania pasan a 1 URL de "más recientes"
+  (`?sort=more_recent` en Arequipa) en vez de 10–15 URLs paginadas.
+
+### Validación en vivo (2026-09-25, Scout 8787, 2 ciclos completos)
+- Ciclo #1 `15:00:05` y ciclo #2 `16:13:06`, ambos `ok`: 26 búsquedas,
+  368 + 151 nuevos, 13.767 filas en CSV. Sesión de Facebook de `data/profile`
+  sigue vigente (sin login manual).
+- **Interceptor activo en los 8 grupos**: p. ej. "Terrenos y Lotes en Venta"
+  33 IDs interceptados / 31 permalinks; "Compra Venta Inmuebles Arequipa"
+  39/27; "Compra y Venta Terrenos Arequipa" (grupo del reporte del usuario)
+  60→69 IDs / 14→15 permalinks. Total **357 permalinks recuperados** en 2 ciclos.
+- **Grupo objetivo 898903077352539** (`Compra y Venta Terrenos Arequipa`):
+  | fecha | filas | permalink | search | group_root |
+  |---|---|---|---|---|
+  | 2026-09-22 (pre-WIP, post share-peek) | 205 | 19 (9.3%) | 152 | 34 |
+  | 2026-09-23 (WIP) | 209 | 74 (35.4%) | 135 | 0 |
+  | 2026-09-24 (WIP) | 213 | 57 (26.8%) | 156 | 0 |
+  | 2026-09-25 (WIP, 2 ciclos) | 56 | 14 (25.0%) | 42 | 0 |
+  → permalinks **9.3% → 25–35%** y `group_root` **34 → 0** (la raíz del grupo
+  era el enlace muerto que el usuario reportó).
+- Global: `permalink` 1871 → 1991, `direct` 1895 → 2052, `group_root` 392
+  (sin nuevas).
+
+### Contaminación de enlaces (análisis de integridad, no supuesto)
+- **Dentro de un ciclo+grupo: 0 colisiones** de pid (el set `usedPids` funciona).
+- **En el DB de hoy: 144 pids únicos con permalink, 1 (0.7%) reutilizado entre
+  grupos y 0 con títulos conflictivos** → contaminación ~0.
+- **Histórico (correradas anteriores al WIP): 9 pids multi-grupo, 6 con títulos
+  conflictivos (0.3%)**, incluido `28917325377956732` con el título corrupto
+  `"facebook facebook facebook..."` (bug de texto que el WIP ya corrige) y
+  `29270688222537625` adjunto a 4 grupos/títulos distintos. Son datos previos,
+  no introducidos por el WIP.
+- **Riesgo residual Known Issue**: 2 filas de hoy (y 17 históricas) con pid de
+  18 dígitos (`122138543577145701`, `122266388486154771`), que no son post IDs
+  de grupo (FB usa 15–17); esos permalinks probablemente no resuelven. No se
+  corrige aquí: requiere descartar ids >17 dígitos o verificar el id contra el
+  feed. La regresión del texto "Facebook" en títulos quedó eliminada.
+
+### Verificación de checkpoint
+- `npm.cmd run typecheck` raíz ✅ y `server/` ✅.
+- `npm.cmd test` (server): **239/239 (33 files)** ✅ (ruido ambiental
+  `ECONNREFUSED :5433` conocido, PostgreSQL/Redis detenidos; no afecta).
+- `server/` sin cambios; no aplica `build` de server (no se tocó `server/src`).
+- `data/scout.db` / CSV / profile están gitignorados (`.gitignore:15 data/*`).
+- `server/tmp/verify-run.sql` (untracked, de una sesión anterior, ajeno a esta
+  tarea) **NO** se commitea; sigue sin trackear.
+
 ## 2026-09-22 — OpenCode — Scout Legacy: validación en vivo del share-peek + fix de clic en "Copiar enlace"
 
 Validación en vivo del checkpoint `762feff` (share-peek) terminada:

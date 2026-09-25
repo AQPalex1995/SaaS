@@ -1,12 +1,13 @@
 # PROJECT STATUS
 
 Updated:
-2026-09-22
+2026-09-25
 
 ## Runtime
 
 Scout:
-▶️ 8787 (en ejecución — validación en vivo del share-peek completada 2026-09-22)
+▶️ 8787 (en ejecución — validado en vivo con el interceptor GraphQL 2026-09-25;
+   arrancado por el agente con `npm.cmd start`, ciclo cada 60 min)
 
 Land Intelligence API:
 ⏸️ 3001 (detenido)
@@ -49,9 +50,35 @@ Phase 5 — ✅ SUNARP COMPLETED (T5.1–T5.11 DONE, 2026-09-19). Fase 4 — REM
 
 ## Current Task
 
-**Scout Legacy — recuperación de permalink de posts de grupo vía botón
-Compartir (share-peek) — ✅ DONE (2026-09-22)** (`src/searchers.ts`,
-`src/links.ts`, `src/browser.ts`, `src/config.ts`, `src/store.ts`).
+**Scout Legacy — interceptor GraphQL para recuperar permalinks de posts de grupo
+— ✅ DONE y validado en vivo (2026-09-25)** (`src/searchers.ts`, `src/extract.ts`,
+`src/config.ts`, `src/portals.ts`). `setupPostIdInterceptor` escucha pasivamente
+las respuestas GraphQL del feed de cada grupo y recupera los post IDs reales que
+el DOM virtualizado no expone; `enrichCardsFromIntercepted` los empareja con las
+tarjetas sin permalink (`tokenOverlap >= 0.2`, con `usedPids`) y reconstruye
+`href`/`key` como `{gid}_posts_{pid}`. Registrado en `searchGroup` **y** en
+`recoverGroupLinks` (backfill). `src/extract.ts` suma: `/share/{p,v,g}/ID`,
+patrones modernos de post ID en HTML embebido, extracción por `<time>` → `<a>`
+(score 10) y fallback `aria-describedby`, limpieza del ruido "Facebook Facebook"
+en títulos/textos. `config.ts`: `marketplaceScrolls`/`groupMinScrolls`/
+`groupMaxScrolls`/`groupStaleLimit`, `sharePeek*` 40/0.25, `headless` por env
+`HEADLESS`. `portals.ts`: AdondeVivir/Urbania a 1 URL "más recientes".
+
+**Validación en vivo (2 ciclos completos, Scout 8787)**: `15:00:05` y `16:13:06`,
+26 búsquedas, 368 + 151 nuevos, 13.767 filas. 357 permalinks recuperados vía
+GraphQL en los 8 grupos. Grupo objetivo `898903077352539` (`Compra y Venta
+Terrenos Arequipa`): permalinks **9.3% (09-22, pre-WIP) → 25% (hoy) / 35%
+(09-23)** y `group_root` **34 → 0** (la raíz del grupo era el enlace muerto
+reportado por el usuario). Global: `permalink` 1871 → 1991, `direct` 1895 → 2052.
+Integridad: 0 colisiones de pid dentro de ciclo+grupo; en el DB de hoy 144 pids
+únicos, 1 (0.7%) multi-grupo y **0 con títulos conflictivos**. Typecheck raíz y
+`server/` ✅; suite server **239/239 (33 files)** ✅. Detalle y riesgos residuales
+en `CHANGELOG_AGENTS.md` (2026-09-25). No se tocó `server/`;
+`server/tmp/verify-run.sql` sigue untracked (ajeno a esta tarea).
+
+**Sesión previa — Scout Legacy — recuperación de permalink vía botón Compartir
+(share-peek) — ✅ DONE (2026-09-22)** (`src/searchers.ts`, `src/links.ts`,
+`src/browser.ts`, `src/config.ts`, `src/store.ts`).
 Implementada la técnica manual del usuario (Compartir → "Copiar enlace" →
 leer portapapeles) que revela el permalink real que el feed virtualizado de
 Facebook no expone: `tryRecoverPermalinkViaShare` empareja la tarjeta sin
@@ -263,6 +290,17 @@ None
 
 ## Known Issues
 
+- **Scout Legacy — interceptor GraphQL (2026-09-25)**: el emparejamiento
+  tarjeta→post ID es heurístico (`tokenOverlap >= 0.2` sobre el texto recovered
+  de una ventana de ±4000 chars del JSON de GraphQL). MEDIDO, no supuesto:
+  0 colisiones dentro de ciclo+grupo y 0 títulos conflictivos en las filas de
+  hoy. **Riesgo residual**: (a) 2 filas de hoy (17 históricas) con pid de
+  18 dígitos (`122138543577145701`, `122266388486154771`) que no son post IDs de
+  grupo (FB usa 15–17) → esos permalinks probablemente no resuelven; corrección
+  sugerida: descartar ids >17 dígitos o validarlos contra el feed antes de
+  escribir `link_status='permalink'`; (b) 1 pid (0.7%) reutilizado entre grupos;
+  (c) el histórico ya contiene 6 pids (0.3%) con títulos conflictivos de
+  corridas previas al WIP — se pueden limpiar con un script de auditoría.
 - **Scout Legacy — captura de posts de grupos (2026-09-22)**: sigue vigente la
   solución A+B+C (`src/searchers.ts`/`src/extract.ts`/`src/store.ts`): feed
   `?sort=RECENT_POSTS` + scroll hasta agotar, id real por `data-ft`/JSON

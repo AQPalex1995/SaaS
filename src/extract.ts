@@ -146,6 +146,13 @@ export async function readGroupCards(page: Page, groupId: string): Promise<CardR
             }
           }
 
+          // 7. /share/p/ID o /share/v/ID o /share/g/ID (enlaces directos de compartir)
+          const shareM = u.pathname.match(/\/share\/[pvg]\/([A-Za-z0-9_-]+)/);
+          if (shareM) {
+            const pid = shareM[1];
+            return { postId: pid, cleanUrl: `https://www.facebook.com/share/p/${pid}` };
+          }
+
           return null;
         },
 
@@ -183,10 +190,20 @@ export async function readGroupCards(page: Page, groupId: string): Promise<CardR
         postIdFromInline(root: HTMLElement): string | null {
           const html = root.outerHTML || root.innerHTML || '';
           if (html.length > 100_000) return null;
+          // Classic patterns
           const mJson = html.match(/(?:story_fbid|top_level_post_id|stableID)["'\s]*[:=]["'\s]*"?(\d{10,})/);
           if (mJson) return mJson[1];
           const mFb = html.match(/fb:(?:\/\/|\/?)\/?post\/(\d{10,})/);
           if (mFb) return mFb[1];
+          // Modern patterns: post URLs embedded in inline JSON/data attributes
+          const mPostUrl = html.match(/\/groups\/\d+\/(?:posts|permalink)\/(\d{10,})/);
+          if (mPostUrl) return mPostUrl[1];
+          // "content_id":"12345" or "feedback_id":"12345"
+          const mContentId = html.match(/(?:content_id|feedback_id|object_fbid)["']\s*:\s*["'](\d{10,})/);
+          if (mContentId) return mContentId[1];
+          // data-ft sometimes has nested JSON with story keys
+          const mDataKey = html.match(/mf_story_key["']\s*:\s*["']?(\d{10,})/);
+          if (mDataKey) return mDataKey[1];
           return null;
         },
 
@@ -220,8 +237,12 @@ export async function readGroupCards(page: Page, groupId: string): Promise<CardR
       }
 
       for (const article of candidateElements) {
-        const rawTxt = (article.innerText || '').replace(/\s+/g, ' ').trim();
-        if (rawTxt.length < 20) continue;
+        // Limpiar repeticiones espurias de "Facebook" inyectadas por íconos y SVGs accesibles
+        const rawTxt = (article.innerText || '')
+          .replace(/\b(?:Facebook\s*){2,}/gi, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (rawTxt.length < 15) continue;
         // Omitir barras de filtro / encabezado
         if (/ordenar feed del grupo/i.test(rawTxt) && rawTxt.length < 120) continue;
 
@@ -235,13 +256,16 @@ export async function readGroupCards(page: Page, groupId: string): Promise<CardR
             imageUrl = img.src;
           }
         }
-        const fullText = (rawTxt + ' ' + imgAltText).replace(/\s+/g, ' ').trim();
+        const fullText = (rawTxt + ' ' + imgAltText)
+          .replace(/\b(?:Facebook\s*){2,}/gi, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
 
         // Buscar el mejor permalink disponible dentro del contenedor
         const cands: Array<{ postId: string; cleanUrl: string; score: number }> = [];
 
         for (const a of Array.from(article.querySelectorAll<HTMLAnchorElement>('a[href]'))) {
-          const raw = (a.getAttribute('href') || '').trim();
+          const raw = (a.href || a.getAttribute('href') || '').trim();
           const parsed = helpers.parsePostLink(raw);
           if (!parsed) continue;
 
@@ -264,6 +288,52 @@ export async function readGroupCards(page: Page, groupId: string): Promise<CardR
           } catch { continue; }
 
           cands.push({ ...parsed, score });
+        }
+
+        // ── Targeted timestamp link extraction ──────────────────────────────
+        // The <time> element's parent <a> almost always has the canonical
+        // permalink in its computed href. This is the most reliable signal
+        // for modern Facebook feeds where other anchors may be missing.
+        if (cands.length === 0 || !cands.some((c) => c.score >= 5)) {
+          const timeEls = Array.from(article.querySelectorAll('time'));
+          for (const timeEl of timeEls) {
+            let anchor = timeEl.closest('a') as HTMLAnchorElement | null;
+            if (!anchor) {
+              // Traverse up to find nearest <a> ancestor (up to 6 levels)
+              let parent = timeEl.parentElement;
+              for (let d = 0; d < 6 && parent; d++) {
+                if (parent.tagName === 'A') { anchor = parent as HTMLAnchorElement; break; }
+                parent = parent.parentElement;
+              }
+            }
+            if (!anchor) continue;
+            // Use computed .href property (fully resolved absolute URL)
+            const computedHref = anchor.href || '';
+            if (!computedHref || computedHref === '#') continue;
+            const parsed = helpers.parsePostLink(computedHref);
+            if (parsed) {
+              cands.push({ ...parsed, score: 10 }); // Highest priority: timestamp links
+            }
+          }
+        }
+
+        // ── Fallback: aria-describedby references ────────────────────────
+        // Some Facebook versions expose post links in elements referenced
+        // by the aria-describedby attribute of the article container.
+        if (cands.length === 0) {
+          const describedById = article.getAttribute('aria-describedby') || '';
+          if (describedById) {
+            for (const partId of describedById.split(/\s+/)) {
+              const descEl = document.getElementById(partId);
+              if (!descEl) continue;
+              const descAnchors = Array.from(descEl.querySelectorAll<HTMLAnchorElement>('a[href]'));
+              for (const da of descAnchors) {
+                const daHref = da.href || da.getAttribute('href') || '';
+                const parsed = helpers.parsePostLink(daHref);
+                if (parsed) { cands.push({ ...parsed, score: 5 }); }
+              }
+            }
+          }
         }
 
         cands.sort((a, b) => b.score - a.score);
@@ -315,13 +385,16 @@ export async function readGroupCards(page: Page, groupId: string): Promise<CardR
         if (seen.has(key)) continue;
         seen.add(key);
 
+        const meaningfulText = fullText.replace(/^\s*(?:Facebook\s*)+/gi, '').trim();
+        const rawTitle = meaningfulText.slice(0, 100) || fullText.slice(0, 100);
+
         out.push({
           key,
           href: finalHref,
           text: fullText,
-          label: fullText.slice(0, 140),
+          label: meaningfulText.slice(0, 140) || fullText.slice(0, 140),
           imageUrl,
-          rawTitle: fullText.slice(0, 100),
+          rawTitle,
         });
       }
 

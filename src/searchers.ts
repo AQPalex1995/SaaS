@@ -1,4 +1,4 @@
-import type { Locator, Page } from 'playwright';
+import type { Locator, Page, Response as PwResponse } from 'playwright';
 import { config } from './config';
 import { readGroupCards, readMarketplaceCards, type CardRaw } from './extract';
 import {
@@ -38,17 +38,21 @@ function buildMarketplaceUrl(query: string): string {
 }
 
 function cleanTitleString(card: CardRaw): string {
-  if (card.rawTitle && card.rawTitle.trim()) {
-    return card.rawTitle.trim();
+  let title = (card.rawTitle || '').trim();
+  title = title.replace(/\b(?:Facebook\s*)+/gi, ' ').replace(/\s+/g, ' ').trim();
+  if (title && title.length > 5) {
+    return title;
   }
   if (card.label && card.label.trim()) {
-    return card.label
+    let lbl = card.label
+      .replace(/\b(?:Facebook\s*)+/gi, ' ')
       .replace(/,\s*publicaci[oó]n\s*\d+/i, '')
       .replace(/,\s*(?:S\/|\$|Gratis)[^,]+/i, '')
       .replace(/,\s*[^,]+,\s*AR$/i, '')
       .trim();
+    if (lbl && lbl.length > 5) return lbl;
   }
-  return firstMeaningfulLine(card.text);
+  return firstMeaningfulLine(card.text.replace(/\b(?:Facebook\s*)+/gi, ' ')) || 'Publicación en grupo';
 }
 
 export function cardToRow(card: CardRaw, started: Date, ocr?: OcrData | null): ListingRow {
@@ -181,7 +185,7 @@ export async function searchMarketplace(page: Page, query: string, started: Date
   const url = buildMarketplaceUrl(query);
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForSelector('a[href*="/marketplace/item/"]', { timeout: 30000 }).catch(() => {});
-  await scrollPage(page, config.maxScrolls);
+  await scrollPage(page, config.marketplaceScrolls ?? 4);
   const cards = await readMarketplaceCards(page);
   const inserted = await storeRows(cards, started);
   log('info', `  [marketplace] "${query}" -> ${cards.length} publicaciones (${inserted} nuevas)`);
@@ -237,11 +241,21 @@ function postUrlFromRaw(raw: string, groupId: string): string | null {
 /** Clic en el botón Compartir dentro del artículo visible. */
 async function clickShareButtonOf(article: Locator): Promise<boolean> {
   const selectors = [
+    // Español
     'div[role="button"][aria-label*="Compartir"]',
+    'div[role="button"][aria-label*="Enviar"]',
     'a[aria-label*="Compartir"]',
     '[aria-label*="Compartir"]',
+    // Inglés
+    'div[role="button"][aria-label*="Share"]',
+    'div[role="button"][aria-label*="Send"]',
+    'a[aria-label*="Share"]',
+    '[aria-label*="Share"]',
+    // Texto (Playwright :has-text)
     'div[role="button"]:has-text("Compartir")',
+    'div[role="button"]:has-text("Share")',
     'a:has-text("Compartir")',
+    'a:has-text("Share")',
   ];
   for (const sel of selectors) {
     const btn = article.locator(sel).first();
@@ -277,9 +291,17 @@ async function collectShareSurfaceUrls(page: Page): Promise<string[]> {
           }
         }
       };
+      // Search in dialogs, menus, popover surfaces, and any visible overlay
       document
         .querySelectorAll(
-          'div[role="dialog"] a[href], div[role="menu"] a[href], div[role="dialog"] input, div[role="menu"] input, div[role="dialog"] textarea, div[role="menu"] textarea, [role="dialog"] [aria-label*="enlace"] a[href]'
+          'div[role="dialog"] a[href], div[role="menu"] a[href], ' +
+          'div[role="listbox"] a[href], [data-pagelet] a[href], ' +
+          'div[role="dialog"] input, div[role="menu"] input, ' +
+          'div[role="dialog"] textarea, div[role="menu"] textarea, ' +
+          '[role="dialog"] [aria-label*="enlace"] a[href], ' +
+          '[role="menu"] [aria-label*="enlace"] a[href], ' +
+          '[role="dialog"] [aria-label*="link"] a[href], ' +
+          '[role="menu"] [aria-label*="link"] a[href]'
         )
         .forEach((el) => pick(el));
       return out;
@@ -301,6 +323,154 @@ async function dismissShareSurface(page: Page): Promise<void> {
   await sleep(300);
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Interceptor pasivo de GraphQL — captura post IDs sin clics
+   ─────────────────────────────────────────────────────────────
+   Facebook carga el feed de grupos vía GraphQL. Las respuestas
+   contienen los post IDs reales incluso cuando el DOM no los
+   expone. Escuchamos pasivamente las respuestas mientras se
+   hace scroll normal — cero tiempo extra, cero interacción.
+*/
+
+interface InterceptedPostInfo {
+  postId: string;
+  text: string;
+}
+
+interface PostIdInterceptor {
+  discovered: Map<string, InterceptedPostInfo>;
+  cleanup: () => void;
+}
+
+/** Extrae texto de mensaje cercano a una posición en el body JSON. */
+function extractNearbyMessageText(body: string, pos: number): string {
+  const start = Math.max(0, pos - 4000);
+  const end = Math.min(body.length, pos + 4000);
+  const searchWindow = body.slice(start, end);
+  const textMatch =
+    searchWindow.match(/"text"\s*:\s*"([^"]{15,500})"/) ||
+    searchWindow.match(/"message"\s*:\s*\{"text"\s*:\s*"([^"]{15,500})"/) ||
+    searchWindow.match(/"accessibility_caption"\s*:\s*"([^"]{15,500})"/);
+  if (textMatch) {
+    return textMatch[1]
+      .replace(/\\u[\da-fA-F]{4}/g, ' ')
+      .replace(/\\n/g, ' ')
+      .replace(/\\t/g, ' ')
+      .replace(/\\\\/g, '')
+      .replace(/\\"/g, '"')
+      .replace(/\b(?:Facebook\s*)+/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  return '';
+}
+
+/**
+ * Escucha pasivamente las respuestas GraphQL de Facebook para extraer
+ * post IDs que el DOM virtualizado no expone. Llamar ANTES de navegar
+ * al feed del grupo. Devuelve un Map que se puebla automáticamente.
+ */
+function setupPostIdInterceptor(page: Page, groupId: string): PostIdInterceptor {
+  const discovered = new Map<string, InterceptedPostInfo>();
+
+  const handler = async (resp: PwResponse): Promise<void> => {
+    try {
+      const url = resp.url();
+      if (!url.includes('graphql') && !url.includes('/api/graphql')) return;
+      if (resp.status() !== 200) return;
+
+      const body = await resp.text().catch(() => '');
+      if (!body || body.length < 100 || body.length > 5_000_000) return;
+
+      // Unescape JSON-escaped slashes for URL matching
+      const unescaped = body.replace(/\\\//g, '/');
+
+      // Pattern 1: Full post URLs  /groups/{gid}/posts/{pid}
+      const urlRe = new RegExp(
+        `(?:facebook\\.com)?/groups/${groupId}/(?:posts|permalink|multi_permalink)/(\\d+)`,
+        'g'
+      );
+      let m: RegExpExecArray | null;
+      while ((m = urlRe.exec(unescaped)) !== null) {
+        const pid = m[1];
+        if (pid.length >= 10 && !discovered.has(pid)) {
+          const nearText = extractNearbyMessageText(unescaped, m.index);
+          discovered.set(pid, { postId: pid, text: nearText });
+        }
+      }
+
+      // Pattern 2: "post_id":"xxx", "story_fbid":"xxx", etc.
+      const idRe = /"(?:post_id|story_fbid|top_level_post_id|feedback_id)"\s*:\s*"(\d{10,})"/g;
+      while ((m = idRe.exec(body)) !== null) {
+        const pid = m[1];
+        if (!discovered.has(pid)) {
+          const nearText = extractNearbyMessageText(body, m.index);
+          discovered.set(pid, { postId: pid, text: nearText });
+        }
+      }
+    } catch {}
+  };
+
+  page.on('response', handler);
+
+  return {
+    discovered,
+    cleanup: () => { page.removeListener('response', handler); },
+  };
+}
+
+/**
+ * Enriquece tarjetas sin permalink usando los post IDs capturados
+ * pasivamente de las respuestas GraphQL de Facebook.
+ */
+function enrichCardsFromIntercepted(
+  cards: CardRaw[],
+  discovered: Map<string, InterceptedPostInfo>,
+  groupId: string
+): number {
+  if (discovered.size === 0) return 0;
+  let enriched = 0;
+
+  // Build a set of already-used post IDs to avoid duplicates
+  const usedPids = new Set<string>();
+  for (const c of cards) {
+    if (isCanonicalPermalink(c.href)) {
+      const m = c.href.match(/\/posts\/(\d+)/);
+      if (m) usedPids.add(m[1]);
+    }
+  }
+
+  for (const card of cards) {
+    if (isCanonicalPermalink(card.href)) continue;
+
+    const cardText = normalizeTitleForMatch(card.text || card.label || '').replace(/\bfacebook\b/g, ' ').trim();
+    if (!cardText || cardText.length < 10) continue;
+
+    let bestPid: string | null = null;
+    let bestScore = 0;
+
+    for (const [pid, info] of discovered) {
+      if (usedPids.has(pid)) continue;
+      if (!info.text) continue;
+      const cleanInfoText = normalizeTitleForMatch(info.text).replace(/\bfacebook\b/g, ' ').trim();
+      const score = tokenOverlap(cardText, cleanInfoText);
+      if (score > bestScore && score >= 0.2) {
+        bestScore = score;
+        bestPid = pid;
+      }
+    }
+
+    if (bestPid) {
+      card.href = `https://www.facebook.com/groups/${groupId}/posts/${bestPid}`;
+      card.key = `${groupId}_${bestPid}`;
+      usedPids.add(bestPid);
+      enriched++;
+      log('info', `  [graphql] Permalink recuperado: "${(card.text || '').slice(0, 45)}..." → posts/${bestPid}`);
+    }
+  }
+  return enriched;
+}
+
 /**
  * Intenta descubrir el permalink de una tarjeta sin enlace real abriendo el
  * menú Compartir del artículo visible correspondiente y copiando su enlace.
@@ -312,7 +482,7 @@ async function tryRecoverPermalinkViaShare(
   textHint: string
 ): Promise<{ url: string; postId?: string } | null> {
   if (!config.sharePeekEnabled) return null;
-  const hint = normalizeTitleForMatch(textHint);
+  const hint = normalizeTitleForMatch(textHint).replace(/\bfacebook\b/g, ' ').trim();
   if (!hint) return null;
 
   const articles = page.locator('div[role="article"]');
@@ -322,7 +492,12 @@ async function tryRecoverPermalinkViaShare(
   for (let i = 0; i < count; i++) {
     const art = articles.nth(i);
     if (!(await art.isVisible().catch(() => false))) continue;
-    const txt = normalizeTitleForMatch((await art.innerText().catch(() => '')).replace(/\s+/g, ' ').trim());
+    const txt = normalizeTitleForMatch(
+      (await art.innerText().catch(() => ''))
+        .replace(/\b(?:Facebook\s*)+/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    ).replace(/\bfacebook\b/g, ' ').trim();
     if (!txt) continue;
     const s = tokenOverlap(hint, txt);
     if (s > bestScore) {
@@ -337,20 +512,29 @@ async function tryRecoverPermalinkViaShare(
     if (!(await clickShareButtonOf(best))) return null;
 
     // 1) Vía portapapeles: el item "Copiar enlace" deposita el permalink real.
-    //    (español "Copiar enlace" / inglés "Copy link")
-    //    Facebook lo renderiza como div[role="button"] dentro del diálogo (no
-    //    como menuitem). OJO: no usar getByText a nivel de página — casa primero
-    //    con <html>/<body> y ancestros inertes, y el clic no copia nada.
-    await page
-      .locator('[role="dialog"]')
-      .first()
-      .waitFor({ state: 'visible', timeout: 2000 })
-      .catch(() => {});
+    //    Facebook puede mostrar un [role="dialog"] o [role="menu"] — esperamos ambos.
+    await Promise.race([
+      page.locator('[role="dialog"]').first().waitFor({ state: 'visible', timeout: 2000 }),
+      page.locator('[role="menu"]').first().waitFor({ state: 'visible', timeout: 2000 }),
+    ]).catch(() => {});
     const copySels = [
+      // En diálogo (español)
       '[role="dialog"] [role="menuitem"]:has-text("Copiar enlace")',
       '[role="dialog"] div[role="button"]:has-text("Copiar enlace")',
+      // En menú (español)
+      '[role="menu"] [role="menuitem"]:has-text("Copiar enlace")',
+      '[role="menu"] div[role="button"]:has-text("Copiar enlace")',
+      // En diálogo (inglés)
       '[role="dialog"] [role="menuitem"]:has-text("Copy link")',
       '[role="dialog"] div[role="button"]:has-text("Copy link")',
+      // En menú (inglés)
+      '[role="menu"] [role="menuitem"]:has-text("Copy link")',
+      '[role="menu"] div[role="button"]:has-text("Copy link")',
+      // Genérico — cualquier overlay visible
+      '[role="menuitem"]:has-text("Copiar enlace")',
+      '[role="menuitem"]:has-text("Copy link")',
+      'div[role="button"]:has-text("Copiar enlace")',
+      'div[role="button"]:has-text("Copy link")',
     ];
     let copyBtn: Locator | null = null;
     for (const sel of copySels) {
@@ -400,10 +584,10 @@ async function collectGroupCardsExhaust(
   groupId: string,
   opts?: { maxScrolls?: number; minScrolls?: number; sharePeek?: boolean }
 ): Promise<CardRaw[]> {
-  const minScrolls = opts?.minScrolls ?? Math.max(8, config.maxScrolls * 2);
-  const maxScrolls = opts?.maxScrolls ?? Math.max(24, config.maxScrolls * 4);
+  const minScrolls = opts?.minScrolls ?? config.groupMinScrolls ?? 6;
+  const maxScrolls = opts?.maxScrolls ?? config.groupMaxScrolls ?? 12;
   const sharePeek = opts?.sharePeek ?? true;
-  const staleLimit = 3;
+  const staleLimit = config.groupStaleLimit ?? 3;
 
   const cards: CardRaw[] = [];
   const seen = new Set<string>();
@@ -474,6 +658,9 @@ export async function searchGroup(
   const groupId = idMatch ? idMatch[1] : 'group';
   const base = groupUrl.replace(/\/+$/, '');
 
+  // Interceptar respuestas GraphQL ANTES de navegar para capturar post IDs pasivamente
+  const interceptor = setupPostIdInterceptor(page, groupId);
+
   // 1. Abrir el feed ordenado por "Más recientes": así evitamos quedarnos en
   //    el tope de posts fijados/destacados (los "4 repetidos" de cada ciclo)
   //    y sí vemos todo lo publicado en la última hora. Fallback a la URL plana.
@@ -497,10 +684,15 @@ export async function searchGroup(
   // 2. Scroll hasta agotar para no perder las 10-15 publicaciones de la hora
   let cards = await collectGroupCardsExhaust(page, groupId);
 
-  // Fallback inteligente: si una publicación no tiene permalink directo,
+  // 3. Enriquecer tarjetas sin permalink usando los post IDs capturados del GraphQL
+  const gqlEnriched = enrichCardsFromIntercepted(cards, interceptor.discovered, groupId);
+  if (gqlEnriched > 0 || interceptor.discovered.size > 0) {
+    log('info', `  [grupo ${groupName}] GraphQL: ${interceptor.discovered.size} post IDs interceptados, ${gqlEnriched} permalinks recuperados`);
+  }
+  interceptor.cleanup();
+
+  // 4. Fallback inteligente: si una publicación no tiene permalink directo,
   // crear un enlace de búsqueda interno del grupo con las palabras clave de su título.
-  // Se usa un corte más laxo (más palabras, >2 letras) para que casi nunca
-  // quede la raíz del grupo como destino (eso era un enlace muerto en la UI).
   const stopWords =
     /\b(publicaci[oó]n|facebook|precio|venta|vendo|remato|ocasi[oó]n|gratis|d[oó]lares|soles|informes|whatsapp|inmobiliaria|ahora|mismo|muy|para|como|desde|hasta|aqui|pero|este|esta)\b/gi;
   for (const c of cards) {
@@ -565,6 +757,9 @@ export async function recoverGroupLinks(
   const groupId = idMatch ? idMatch[1] : 'group';
   const base = groupUrl.replace(/\/+$/, '');
 
+  // Interceptar GraphQL antes de navegar
+  const interceptor = setupPostIdInterceptor(page, groupId);
+
   try {
     await page.goto(`${base}/?sort=RECENT_POSTS`, { waitUntil: 'domcontentloaded', timeout: 45000 });
     await page.waitForTimeout(2500);
@@ -578,6 +773,14 @@ export async function recoverGroupLinks(
   }
 
   const cards = await collectGroupCardsExhaust(page, groupId, { minScrolls: 6, maxScrolls: 20, sharePeek: false });
+
+  // Enriquecer con GraphQL interceptado
+  const gqlEnriched = enrichCardsFromIntercepted(cards, interceptor.discovered, groupId);
+  if (gqlEnriched > 0) {
+    log('info', `  [recover ${groupName}] GraphQL: ${gqlEnriched} permalinks recuperados de interceptor`);
+  }
+  interceptor.cleanup();
+
   let fixed = 0;
   let shareAttempts = 0;
 
